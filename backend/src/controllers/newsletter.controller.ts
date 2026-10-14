@@ -5,6 +5,7 @@ import { AppError } from "../middleware/error";
 import { NewsletterService } from "../services/newsletter.service";
 import { emailService } from "../services/email.service";
 import logger from "../config/logger";
+import { escapeRegex } from "../utils/regexHelpers";
 
 const newsletterService = new NewsletterService();
 
@@ -258,9 +259,9 @@ export const getAllSubscribers = async (
     const query: any = {};
     if (search) {
       query.$or = [
-        { email: { $regex: search, $options: "i" } },
-        { name: { $regex: search, $options: "i" } },
-        { city: { $regex: search, $options: "i" } },
+        { email: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { name: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { city: { $regex: escapeRegex(String(search)), $options: "i" } },
       ];
     }
     if (isActive !== undefined && isActive !== "") {

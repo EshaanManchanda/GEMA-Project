@@ -8,6 +8,7 @@ import CommissionTransaction, {
 import mongoose from "mongoose";
 import { CacheService } from "../services/cache.service";
 import commissionService from "../services/commission.service";
+import { escapeRegex } from "../utils/regexHelpers";
 
 const cacheService = new CacheService();
 
@@ -41,8 +42,8 @@ export const getCommissionConfigs = async (
     if (status) query.status = status;
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
+        { name: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { description: { $regex: escapeRegex(String(search)), $options: "i" } },
       ];
     }
 

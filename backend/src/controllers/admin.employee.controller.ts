@@ -6,6 +6,7 @@ import { ApiResponse } from "../types/index";
 import * as bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import { adminSetPasswordError } from "../validators/auth.validator";
+import { escapeRegex } from "../utils/regexHelpers";
 
 /**
  * Interface for employee query parameters
@@ -153,10 +154,10 @@ export const getAllEmployees = async (
     // Search functionality (searches firstName, lastName, email, employeeId)
     if (search) {
       query.$or = [
-        { firstName: { $regex: search, $options: "i" } },
-        { lastName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { employeeId: { $regex: search, $options: "i" } },
+        { firstName: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { lastName: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { email: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { employeeId: { $regex: escapeRegex(String(search)), $options: "i" } },
       ];
     }
 

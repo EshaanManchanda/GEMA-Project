@@ -19,6 +19,7 @@ import fs from "fs";
 import { stripe } from "../config/stripe";
 import { AuthRequest } from "../types";
 import { certificateService } from "../modules/certificates/services/certificate.service";
+import { escapeRegex } from "../utils/regexHelpers";
 
 // ─── Create Payment Intent ──────────────────────────────────────────────────
 
@@ -844,7 +845,7 @@ export const getSubmissions = catchAsync(
     }
     if (req.query.search) {
       const searchStr = req.query.search as string;
-      const searchRegex = new RegExp(searchStr, "i");
+      const searchRegex = new RegExp(escapeRegex(String(searchStr)), "i");
       const orConditions: any[] = [
         { "participant.studentFullName": searchRegex },
         { "participant.parentEmail": searchRegex },
@@ -858,7 +859,7 @@ export const getSubmissions = catchAsync(
           $expr: {
             $regexMatch: {
               input: { $toString: "$_id" },
-              regex: new RegExp(`${suffix}$`, "i")
+              regex: new RegExp(`${escapeRegex(suffix)}$`, "i")
             }
           }
         });

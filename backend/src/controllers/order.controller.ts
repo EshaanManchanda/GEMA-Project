@@ -10,6 +10,7 @@ import { calculateOrderPricing, resolveVatRate } from "../services/pricing.servi
 import { stripe } from "../config/stripe";
 import logger from "../config/logger";
 import { v4 as uuidv4 } from "uuid";
+import { escapeRegex } from "../utils/regexHelpers";
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -630,7 +631,7 @@ export const getAdminOrders = async (
 
     // Search filter (search across multiple fields)
     if (search) {
-      const searchRegex = new RegExp(search as string, "i"); // Case-insensitive
+      const searchRegex = new RegExp(escapeRegex(String(search as string)), "i"); // Case-insensitive
       filter.$or = [
         { orderNumber: searchRegex },
         { "billingAddress.email": searchRegex },

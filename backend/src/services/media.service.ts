@@ -5,6 +5,7 @@ import path from "path";
 import mongoose from "mongoose";
 import { v4 as uuidv4 } from "uuid";
 import logger from "../config/logger";
+import { escapeRegex } from "../utils/regexHelpers";
 
 /**
  * Media Service
@@ -125,7 +126,7 @@ export class MediaService {
     if (filters.category) query.category = filters.category;
     if (filters.folder) query.folder = filters.folder;
     if (filters.mimeType)
-      query.mimeType = { $regex: filters.mimeType, $options: "i" };
+      query.mimeType = { $regex: escapeRegex(String(filters.mimeType)), $options: "i" };
     if (filters.uploadedBy) query.uploadedBy = filters.uploadedBy;
 
     // Text search

@@ -11,6 +11,7 @@ import {
   transformBlogsResponse,
 } from "../utils/blog.utils";
 import logger from "../config/logger";
+import { escapeRegex } from "../utils/regexHelpers";
 
 // Public blog controllers
 export const getAllBlogs = catchAsync(async (req: Request, res: Response) => {
@@ -50,9 +51,9 @@ export const getAllBlogs = catchAsync(async (req: Request, res: Response) => {
 
   if (search) {
     filter.$or = [
-      { title: { $regex: search, $options: "i" } },
-      { excerpt: { $regex: search, $options: "i" } },
-      { content: { $regex: search, $options: "i" } },
+      { title: { $regex: escapeRegex(String(search)), $options: "i" } },
+      { excerpt: { $regex: escapeRegex(String(search)), $options: "i" } },
+      { content: { $regex: escapeRegex(String(search)), $options: "i" } },
     ];
   }
 
@@ -420,9 +421,9 @@ export function buildBlogAdminQuery(q: BlogAdminFilterQuery): {
   if (q.category) filter.category = q.category;
   if (q.search) {
     filter.$or = [
-      { title:        { $regex: q.search, $options: "i" } },
-      { excerpt:      { $regex: q.search, $options: "i" } },
-      { "author.name":{ $regex: q.search, $options: "i" } },
+      { title:        { $regex: escapeRegex(String(q.search)), $options: "i" } },
+      { excerpt:      { $regex: escapeRegex(String(q.search)), $options: "i" } },
+      { "author.name":{ $regex: escapeRegex(String(q.search)), $options: "i" } },
     ];
   }
 

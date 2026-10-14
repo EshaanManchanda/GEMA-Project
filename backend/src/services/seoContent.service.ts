@@ -1,5 +1,6 @@
 import SEOContent, { ISEOContent } from "../models/SEOContent";
 import { AppError } from "../middleware/error";
+import { escapeRegex } from "../utils/regexHelpers";
 
 class SEOContentService {
   /**
@@ -26,9 +27,9 @@ class SEOContentService {
 
     if (search) {
       query.$or = [
-        { metaTitle: new RegExp(search, "i") },
-        { metaDescription: new RegExp(search, "i") },
-        { "faqItems.question": new RegExp(search, "i") },
+        { metaTitle: new RegExp(escapeRegex(String(search)), "i") },
+        { metaDescription: new RegExp(escapeRegex(String(search)), "i") },
+        { "faqItems.question": new RegExp(escapeRegex(String(search)), "i") },
       ];
     }
 

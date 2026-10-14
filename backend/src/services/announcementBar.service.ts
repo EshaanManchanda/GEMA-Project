@@ -1,6 +1,7 @@
 import AnnouncementBar, { IAnnouncementBar } from "../models/AnnouncementBar";
 import { AppError } from "../middleware/error";
 import logger from "../config/logger";
+import { escapeRegex } from "../utils/regexHelpers";
 
 class AnnouncementBarService {
   /**
@@ -144,8 +145,8 @@ class AnnouncementBarService {
     if (status) query.status = status;
     if (search) {
       query.$or = [
-        { message: new RegExp(search, "i") },
-        { linkText: new RegExp(search, "i") },
+        { message: new RegExp(escapeRegex(String(search)), "i") },
+        { linkText: new RegExp(escapeRegex(String(search)), "i") },
       ];
     }
 

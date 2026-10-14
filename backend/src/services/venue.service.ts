@@ -3,6 +3,7 @@ import { Event, IEvent, User } from "../models/index";
 // import { VenueStatus } from '../models/Venue'; // Removed
 import { AppError } from "../middleware/index";
 import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
+import { escapeRegex } from "../utils/regexHelpers";
 
 // ==================== INTERFACES ====================
 
@@ -176,14 +177,14 @@ class VenueService {
 
     if (params.search) {
       query.$or = [
-        { title: { $regex: params.search, $options: "i" } },
-        { description: { $regex: params.search, $options: "i" } },
-        { "location.address": { $regex: params.search, $options: "i" } },
-        { "location.city": { $regex: params.search, $options: "i" } },
-        { "location.state": { $regex: params.search, $options: "i" } },
-        { "location.country": { $regex: params.search, $options: "i" } },
-        { facilities: { $regex: params.search, $options: "i" } },
-        { amenities: { $regex: params.search, $options: "i" } },
+        { title: { $regex: escapeRegex(String(params.search)), $options: "i" } },
+        { description: { $regex: escapeRegex(String(params.search)), $options: "i" } },
+        { "location.address": { $regex: escapeRegex(String(params.search)), $options: "i" } },
+        { "location.city": { $regex: escapeRegex(String(params.search)), $options: "i" } },
+        { "location.state": { $regex: escapeRegex(String(params.search)), $options: "i" } },
+        { "location.country": { $regex: escapeRegex(String(params.search)), $options: "i" } },
+        { facilities: { $regex: escapeRegex(String(params.search)), $options: "i" } },
+        { amenities: { $regex: escapeRegex(String(params.search)), $options: "i" } },
       ];
     }
 
@@ -203,10 +204,10 @@ class VenueService {
       query.isApproved = params.isApproved === "true";
     }
     if (params.city) {
-      query["location.city"] = { $regex: params.city, $options: "i" };
+      query["location.city"] = { $regex: escapeRegex(String(params.city)), $options: "i" };
     }
     if (params.country) {
-      query["location.country"] = { $regex: params.country, $options: "i" };
+      query["location.country"] = { $regex: escapeRegex(String(params.country)), $options: "i" };
     }
     if (params.vendorId && mongoose.Types.ObjectId.isValid(params.vendorId)) {
       query.vendorId = params.vendorId;
@@ -254,8 +255,8 @@ class VenueService {
 
     if (params.search) {
       filter.$or = [
-        { title: { $regex: params.search, $options: "i" } },
-        { "location.city": { $regex: params.search, $options: "i" } },
+        { title: { $regex: escapeRegex(String(params.search)), $options: "i" } },
+        { "location.city": { $regex: escapeRegex(String(params.search)), $options: "i" } },
       ];
     }
     // Status mapping
@@ -421,14 +422,14 @@ class VenueService {
 
     if (params.search) {
       filter.$or = [
-        { title: { $regex: params.search, $options: "i" } },
-        { "location.city": { $regex: params.search, $options: "i" } },
-        { facilities: { $regex: params.search, $options: "i" } },
+        { title: { $regex: escapeRegex(String(params.search)), $options: "i" } },
+        { "location.city": { $regex: escapeRegex(String(params.search)), $options: "i" } },
+        { facilities: { $regex: escapeRegex(String(params.search)), $options: "i" } },
       ];
     }
     if (params.venueType) filter.venueType = params.venueType;
     if (params.city) {
-      filter["location.city"] = { $regex: params.city, $options: "i" };
+      filter["location.city"] = { $regex: escapeRegex(String(params.city)), $options: "i" };
     }
 
     const sortObj: any = {};

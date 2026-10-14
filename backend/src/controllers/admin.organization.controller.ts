@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import OrganizationOnboarding from "../models/OrganizationOnboarding";
 import { AppError } from "../middleware/error";
+import { escapeRegex } from "../utils/regexHelpers";
 
 export const getOrganizationOnboardingStats = async (
   req: Request,
@@ -73,9 +74,9 @@ export const getOrganizationOnboardings = async (
 
     if (search) {
       filter.$or = [
-        { "application.organizationName": { $regex: search, $options: "i" } },
-        { "application.primaryContactName": { $regex: search, $options: "i" } },
-        { "application.organizationPhone": { $regex: search, $options: "i" } },
+        { "application.organizationName": { $regex: escapeRegex(String(search)), $options: "i" } },
+        { "application.primaryContactName": { $regex: escapeRegex(String(search)), $options: "i" } },
+        { "application.organizationPhone": { $regex: escapeRegex(String(search)), $options: "i" } },
       ];
     }
 

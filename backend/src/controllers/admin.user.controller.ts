@@ -14,6 +14,7 @@ import Employee from "../models/Employee";
 import { cacheService } from "../services/cache.service";
 import { adminSetPasswordError } from "../validators/auth.validator";
 import { getAuth, logger } from "../config/index";
+import { escapeRegex } from "../utils/regexHelpers";
 
 /**
  * Temporary storage for admin password reset OTPs
@@ -228,10 +229,10 @@ export const getAllUsers = async (
     // Search functionality
     if (search) {
       query.$or = [
-        { firstName: { $regex: search, $options: "i" } },
-        { lastName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
+        { firstName: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { lastName: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { email: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { phone: { $regex: escapeRegex(String(search)), $options: "i" } },
       ];
     }
 

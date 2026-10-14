@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { Coupon, Order, ICoupon, CouponStatus } from "../models/index";
 import { AppError } from "../middleware/index";
 import { ApiResponse } from "../types/index";
+import { escapeRegex } from "../utils/regexHelpers";
 
 /**
  * Get all coupons (admin only)
@@ -29,8 +30,8 @@ export const getCoupons = async (
     // Search by code or name
     if (search) {
       query.$or = [
-        { code: { $regex: search, $options: "i" } },
-        { name: { $regex: search, $options: "i" } },
+        { code: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { name: { $regex: escapeRegex(String(search)), $options: "i" } },
       ];
     }
 

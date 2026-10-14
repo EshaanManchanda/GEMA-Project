@@ -2,6 +2,7 @@ import PopupNotification, {
   IPopupNotification,
 } from "../models/PopupNotification";
 import { AppError } from "../middleware/error";
+import { escapeRegex } from "../utils/regexHelpers";
 
 interface UserContext {
   isAuthenticated: boolean;
@@ -141,8 +142,8 @@ class PopupService {
     if (status) query.status = status;
     if (search) {
       query.$or = [
-        { title: new RegExp(search, "i") },
-        { message: new RegExp(search, "i") },
+        { title: new RegExp(escapeRegex(String(search)), "i") },
+        { message: new RegExp(escapeRegex(String(search)), "i") },
       ];
     }
 

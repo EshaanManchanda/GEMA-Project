@@ -18,6 +18,7 @@ import {
   CommunicationCategory,
   NotificationTemplateKey,
 } from "../models/index";
+import { escapeRegex } from "../utils/regexHelpers";
 
 /**
  * Get all vendors with pagination
@@ -44,8 +45,8 @@ export const getAllVendors = async (
     // Search by business name or email
     if (search) {
       query.$or = [
-        { businessName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
+        { businessName: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { email: { $regex: escapeRegex(String(search)), $options: "i" } },
       ];
     }
 

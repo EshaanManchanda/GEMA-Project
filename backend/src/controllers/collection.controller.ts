@@ -9,6 +9,7 @@ import { getFileUrl, getFileInfo } from "../middleware/upload";
 import { transformEventResponse } from "../utils/event.utils";
 import { collectionSyncService } from "../services/collection-sync.service";
 import logger from "../config/logger";
+import { escapeRegex } from "../utils/regexHelpers";
 
 const normalizeEventIds = (eventsInput: any): string[] => {
   if (eventsInput === undefined || eventsInput === null || eventsInput === "") {
@@ -742,8 +743,8 @@ export const getAdminCollections = async (
     // Text search
     if (search) {
       filter.$or = [
-        { title: { $regex: search as string, $options: "i" } },
-        { description: { $regex: search as string, $options: "i" } },
+        { title: { $regex: escapeRegex(String(search as string)), $options: "i" } },
+        { description: { $regex: escapeRegex(String(search as string)), $options: "i" } },
       ];
     }
 

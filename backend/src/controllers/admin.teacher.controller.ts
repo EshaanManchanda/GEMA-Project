@@ -8,6 +8,7 @@ import Teacher, {
 } from "../models/Teacher";
 import User from "../models/User";
 import logger from "../config/logger";
+import { escapeRegex } from "../utils/regexHelpers";
 
 /**
  * Get all teachers with pagination
@@ -116,8 +117,8 @@ export const getAllTeachers = async (
 
     if (search) {
       query.$or = [
-        { fullName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
+        { fullName: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { email: { $regex: escapeRegex(String(search)), $options: "i" } },
       ];
     }
 
@@ -222,7 +223,7 @@ export const getAllTeachersOptions = async (
     );
 
     // Get active teachers, sorted by full name
-    const teachers = await Teacher.find({ isActive: true, isDeleted: { $ne: true }, fullName: { $regex: search, $options: "i" } })
+    const teachers = await Teacher.find({ isActive: true, isDeleted: { $ne: true }, fullName: { $regex: escapeRegex(String(search)), $options: "i" } })
       .select("_id fullName")
       .sort({ fullName: 1 })
       .limit(limit)

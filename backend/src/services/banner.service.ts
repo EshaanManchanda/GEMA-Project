@@ -2,6 +2,7 @@ import Banner, { IBanner } from "../models/Banner";
 import { mediaService } from "./media.service";
 import mongoose from "mongoose";
 import { AppError } from "../middleware/error";
+import { escapeRegex } from "../utils/regexHelpers";
 
 class BannerService {
   /**
@@ -54,8 +55,8 @@ class BannerService {
     if (status) query.status = status;
     if (search) {
       query.$or = [
-        { title: new RegExp(search, "i") },
-        { description: new RegExp(search, "i") },
+        { title: new RegExp(escapeRegex(String(search)), "i") },
+        { description: new RegExp(escapeRegex(String(search)), "i") },
       ];
     }
 

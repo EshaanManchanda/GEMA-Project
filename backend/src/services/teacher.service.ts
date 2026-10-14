@@ -8,6 +8,7 @@ import {
 } from "../models/Teacher";
 import { AppError } from "../middleware/index";
 import logger from "../config/logger";
+import { escapeRegex } from "../utils/regexHelpers";
 
 /**
  * Teacher Service Layer
@@ -793,9 +794,9 @@ export async function searchTeachers(query: {
 
   if (search) {
     filter.$or = [
-      { fullName: new RegExp(search, "i") },
-      { bio: new RegExp(search, "i") },
-      { specialization: new RegExp(search, "i") },
+      { fullName: new RegExp(escapeRegex(String(search)), "i") },
+      { bio: new RegExp(escapeRegex(String(search)), "i") },
+      { specialization: new RegExp(escapeRegex(String(search)), "i") },
     ];
   }
 
@@ -816,7 +817,7 @@ export async function searchTeachers(query: {
   }
 
   if (city) {
-    filter["address.city"] = new RegExp(city, "i");
+    filter["address.city"] = new RegExp(escapeRegex(String(city)), "i");
   }
 
   const skip = (page - 1) * limit;

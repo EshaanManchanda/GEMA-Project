@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import { validationResult } from "express-validator";
 import { transformEventResponse } from "../utils/event.utils";
 import logger from "../config/logger";
+import { escapeRegex } from "../utils/regexHelpers";
 
 /**
  * Interface for event query parameters
@@ -334,12 +335,12 @@ export const getAllEvents = async (
     // Search functionality
     if (search) {
       query.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { category: { $regex: search, $options: "i" } },
-        { "location.city": { $regex: search, $options: "i" } },
-        { "location.address": { $regex: search, $options: "i" } },
-        { tags: { $regex: search, $options: "i" } },
+        { title: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { description: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { category: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { "location.city": { $regex: escapeRegex(String(search)), $options: "i" } },
+        { "location.address": { $regex: escapeRegex(String(search)), $options: "i" } },
+        { tags: { $regex: escapeRegex(String(search)), $options: "i" } },
       ];
     }
 

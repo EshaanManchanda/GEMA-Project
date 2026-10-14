@@ -13,6 +13,7 @@ import { getOrCreateTeacherProfile } from "../utils/teacherHelpers";
 import { cacheService } from "../services/cache.service";
 import { CacheTTL } from "../config/cache-tiers";
 import { transformEventResponse } from "../utils/event.utils";
+import { escapeRegex } from "../utils/regexHelpers";
 
 const getScheduleCapacity = (schedule: any): number => {
   if (schedule?.unlimitedSeats) return 999999;
@@ -232,7 +233,7 @@ export const getTeacherTeachingEvents = catchAsync(
     };
 
     if (search) {
-      filter.title = { $regex: search as string, $options: "i" };
+      filter.title = { $regex: escapeRegex(String(search as string)), $options: "i" };
     }
     if (status) {
       filter.status = status;
@@ -362,7 +363,7 @@ export const getTeacherBookings = catchAsync(
     }
 
     if (search) {
-      filter.orderNumber = new RegExp(search as string, "i");
+      filter.orderNumber = new RegExp(escapeRegex(String(search as string)), "i");
     }
 
     const sort: any = {};
@@ -712,7 +713,7 @@ export const exportTeacherBookings = catchAsync(
     }
 
     if (filters.search) {
-      filter.orderNumber = new RegExp(filters.search as string, "i");
+      filter.orderNumber = new RegExp(escapeRegex(String(filters.search as string)), "i");
     }
 
     // Fetch Orders
@@ -855,7 +856,7 @@ export const importTeacherBookings = catchAsync(
           type: {
             $in: ["Class", "Course", "Workshop", "Bootcamp", "Masterclass"],
           },
-          title: new RegExp(`^${row.teachingEventTitle}$`, "i"),
+          title: new RegExp(`^${escapeRegex(String(row.teachingEventTitle))}$`, "i"),
           isDeleted: false,
         });
 
@@ -1837,8 +1838,8 @@ export const getPublicTeachersList = catchAsync(
     const userQuery: any = { role: "teacher", status: "active" };
     if (search) {
       userQuery.$or = [
-        { firstName: { $regex: search, $options: "i" } },
-        { lastName: { $regex: search, $options: "i" } },
+        { firstName: { $regex: escapeRegex(String(search)), $options: "i" } },
+        { lastName: { $regex: escapeRegex(String(search)), $options: "i" } },
       ];
     }
 
