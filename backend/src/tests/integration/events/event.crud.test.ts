@@ -765,6 +765,44 @@ describe("G. Soft Delete", () => {
 // ===========================================================================
 
 describe("H. Ownership / Mass Assignment", () => {
+  // Paid promotion and social proof must not be self-assignable.
+  const selfPromotion = {
+    isFeatured: true,
+    promotionTier: "premium",
+    featuredUntil: "2099-01-01T00:00:00.000Z",
+    averageRating: 5,
+    reviewCount: 999,
+    totalReviews: 999,
+    viewsCount: 100000,
+  };
+  const expectNoSelfPromotion = (ev: any) => {
+    expect(ev.isFeatured).not.toBe(true);
+    expect(ev.promotionTier ?? null).not.toBe("premium");
+    expect(ev.featuredUntil ?? null).toBeNull();
+    expect(ev.averageRating ?? 0).not.toBe(5);
+    expect(ev.reviewCount ?? 0).not.toBe(999);
+    expect(ev.viewsCount ?? 0).not.toBe(100000);
+  };
+
+  it("ignores promotion/rating fields in the create body", async () => {
+    const { res } = await createEventAsVendor(app, undefined, selfPromotion);
+    expectNoSelfPromotion(await Event.findById(res.body.data.event._id).lean());
+  });
+
+  it("ignores promotion/rating fields in the update body", async () => {
+    const { res: createRes, vendor } = await createEventAsVendor(app);
+    const eventId = createRes.body.data.event._id;
+
+    await request(app)
+      .put(`/api/events/${eventId}`)
+      .set("Authorization", `Bearer ${vendor.accessToken}`)
+      .send({ title: "Renamed", ...selfPromotion });
+
+    const ev: any = await Event.findById(eventId).lean();
+    expect(ev.title).toBe("Renamed");
+    expectNoSelfPromotion(ev);
+  });
+
   it("Vendor A creates event, Vendor B cannot update it (404)", async () => {
     const { res: createRes } = await createEventAsVendor(app);
     const eventId = createRes.body.data.event._id;

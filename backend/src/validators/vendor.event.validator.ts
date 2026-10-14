@@ -22,6 +22,33 @@ import { EVENT_TYPES, VENUE_TYPES, CURRENCIES } from "./event.validator";
 // "pending_review" / "cancelled" are NOT valid enum values; using them crashes event.save().
 export const VENDOR_SETTABLE_STATUSES = ["draft", "pending"] as const;
 
+/**
+ * Event fields a vendor must never set from a request body: ownership,
+ * moderation, paid promotion and social proof. Used by create and update.
+ */
+export const VENDOR_PROTECTED_EVENT_FIELDS = [
+  "_id",
+  "createdAt",
+  "updatedAt",
+  "vendorId",
+  "isApproved",
+  "isDeleted",
+  "deletedAt",
+  "isFeatured",
+  "promotionTier",
+  "featuredUntil",
+  "viewsCount",
+  "averageRating",
+  "reviewCount",
+  "totalReviews",
+] as const;
+
+export const omitProtectedEventFields = <T extends Record<string, unknown>>(body: T): Partial<T> => {
+  const copy: Record<string, unknown> = { ...body };
+  for (const f of VENDOR_PROTECTED_EVENT_FIELDS) delete copy[f];
+  return copy as Partial<T>;
+};
+
 /** id-format check for :id-based routes (update/delete/restore). */
 export const validateEventId = [
   param("id").isMongoId().withMessage("Invalid event id"),

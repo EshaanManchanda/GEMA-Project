@@ -20,7 +20,7 @@ import { parseEventQuery } from "../utils/aiEventQueryParser";
 import { escapeHtml } from "../utils/htmlHelpers";
 import { eventService } from "../services/event.service";
 import { shouldAutoApproveEvents } from "../services/settings.service";
-import { VENDOR_SETTABLE_STATUSES } from "../validators/vendor.event.validator";
+import { VENDOR_SETTABLE_STATUSES, omitProtectedEventFields } from "../validators/vendor.event.validator";
 import { CacheTTL } from "../config/cache-tiers"; // ✅ Phase 2.3: Tiered cache strategy
 import { emailService } from "../services/email.service";
 import { stripe } from "../config/stripe";
@@ -735,7 +735,7 @@ export const createEvent = async (
     // different path and are not subject to this setting.
     const autoApprove = await shouldAutoApproveEvents();
     const eventData = {
-      ...req.body,
+      ...(omitProtectedEventFields(req.body) as any), // body is untyped
       vendorId: userId,
       isApproved: autoApprove,
       isActive: true, // Set as active by default
@@ -805,21 +805,8 @@ export const updateEvent = async (
     // status: "published", or even vendorId to steal/dump the event onto
     // another account. Strip those and clamp status the same way the
     // sibling /api/vendors/events/:id route already does.
-    const {
-      vendorId: _vendorId,
-      isApproved: _isApproved,
-      isFeatured: _isFeatured,
-      isDeleted: _isDeleted,
-      deletedAt: _deletedAt,
-      viewsCount: _viewsCount,
-      averageRating: _averageRating,
-      totalReviews: _totalReviews,
-      status: requestedStatus,
-      _id: _bodyId,
-      createdAt: _createdAt,
-      updatedAt: _updatedAt,
-      ...safeUpdateFields
-    } = req.body;
+    const { status: requestedStatus, ...rest } = req.body;
+    const safeUpdateFields = omitProtectedEventFields(rest);
 
     if (
       requestedStatus !== undefined &&
