@@ -1,0 +1,161 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Kidrove Branch Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single reading column, summary strip, then grouped sections; file list collapsible. */
+:root {
+  --bg: #f6f7f9; --surface: #ffffff; --fg: #1b2230; --muted: #5b6577; --line: #dde1e8;
+  --accent: #1f5f8b; --accent-soft: #e3eef6;
+  --crit: #b42318; --crit-bg: #fde8e6; --high: #b54708; --high-bg: #fdefe0;
+  --med: #6a5a00; --med-bg: #f7f1d0; --low: #40627a; --low-bg: #e6eef3;
+  --plus: #1a7f37; --minus: #b42318;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11151c; --surface: #181e27; --fg: #e4e8ef; --muted: #98a2b3; --line: #2a3340;
+  --accent: #7fb6dd; --accent-soft: #1d2d3b;
+  --crit: #ff8a7a; --crit-bg: #3a1c1a; --high: #f5a65b; --high-bg: #3a2614;
+  --med: #e3cf6a; --med-bg: #332e12; --low: #9cc0d8; --low-bg: #1c2a35;
+  --plus: #5fd07a; --minus: #ff8a7a; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #11151c; --surface: #181e27; --fg: #e4e8ef; --muted: #98a2b3; --line: #2a3340;
+  --accent: #7fb6dd; --accent-soft: #1d2d3b;
+  --crit: #ff8a7a; --crit-bg: #3a1c1a; --high: #f5a65b; --high-bg: #3a2614;
+  --med: #e3cf6a; --med-bg: #332e12; --low: #9cc0d8; --low-bg: #1c2a35;
+  --plus: #5fd07a; --minus: #ff8a7a; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--body); }
+.wrap { max-width: 960px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; display: grid; gap: 48px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.2; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 42px); }
+h2 { font-size: 26px; }
+h3 { font-size: 19px; display: flex; align-items: center; gap: 10px; }
+h4 { margin: 0; font-size: 15px; font-weight: 600; }
+p { margin: 0; }
+code, .path, .commit, .refs { font-family: var(--mono); font-size: 13px; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+header.top { display: grid; gap: 14px; }
+.lede { color: var(--muted); max-width: 68ch; }
+.refs { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); }
+.refs b { color: var(--fg); font-weight: 500; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.stat { background: var(--surface); padding: 16px 18px; display: grid; gap: 2px; }
+.stat .n { font-family: var(--display); font-size: 28px; font-variant-numeric: tabular-nums; }
+.stat .l { color: var(--muted); font-size: 13px; }
+.verdict { border-left: 3px solid var(--high); background: var(--surface); padding: 16px 20px; border-radius: 0 8px 8px 0; display: grid; gap: 8px; }
+.verdict h2 { font-size: 20px; }
+.verdict ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+section.block { display: grid; gap: 20px; }
+.sectionhead { display: grid; gap: 6px; }
+.sectionhead p { color: var(--muted); }
+.count { font-family: var(--body); font-size: 12px; font-weight: 600; color: var(--muted); background: var(--accent-soft); padding: 1px 8px; border-radius: 99px; font-variant-numeric: tabular-nums; }
+.igroup { display: grid; gap: 10px; }
+.issues { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.issue { display: grid; grid-template-columns: 84px 1fr auto; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.ibody { min-width: 0; display: grid; gap: 4px; }
+.ibody p { color: var(--muted); }
+.sev { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; text-align: center; }
+.sev.critical { color: var(--crit); background: var(--crit-bg); }
+.sev.high { color: var(--high); background: var(--high-bg); }
+.sev.medium { color: var(--med); background: var(--med-bg); }
+.sev.low { color: var(--low); background: var(--low-bg); }
+.commit { color: var(--muted); white-space: nowrap; }
+.tests { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.test { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.test header { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.where { font-size: 12px; color: var(--accent); font-weight: 600; }
+.test ol { margin: 0; padding-left: 18px; display: grid; gap: 4px; overflow-wrap: anywhere; }
+.expect { font-size: 14px; border-top: 1px dashed var(--line); padding-top: 10px; display: grid; gap: 2px; }
+.expect span { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--plus); font-weight: 600; }
+.setup { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 8px; }
+.setup pre { margin: 0; font-family: var(--mono); font-size: 13px; overflow-x: auto; background: var(--bg); padding: 12px; border-radius: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: 13px; }
+.fgroup { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.fgroup + .fgroup { margin-top: 8px; }
+.fgroup summary { cursor: pointer; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; list-style: none; }
+.fgroup summary::-webkit-details-marker { display: none; }
+.fgroup summary::before { content: "▸"; color: var(--muted); margin-right: 10px; transition: transform .15s; }
+.fgroup[open] summary::before { transform: rotate(90deg); }
+.fgroup summary > span:first-child { flex: 1; }
+.fgroup summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+.tablewrap { overflow-x: auto; border-top: 1px solid var(--line); }
+table.files { width: 100%; border-collapse: collapse; }
+table.files td { padding: 6px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.files tr:last-child td { border-bottom: 0; }
+td.path { word-break: break-all; }
+td.delta { text-align: right; white-space: nowrap; font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.plus { color: var(--plus); } .minus { color: var(--minus); }
+.was { display: block; color: var(--muted); font-size: 12px; }
+.st { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+.st.new { color: var(--plus); background: color-mix(in srgb, var(--plus) 14%, transparent); }
+.st.mod { color: var(--accent); background: var(--accent-soft); }
+.st.del { color: var(--minus); background: color-mix(in srgb, var(--minus) 14%, transparent); }
+.st.ren { color: var(--med); background: var(--med-bg); }
+.note { color: var(--muted); font-size: 14px; }
+@media (max-width: 620px) {
+  .issue { grid-template-columns: 1fr; gap: 6px; }
+  .sev { justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<main class="wrap">
+<header class="top">
+  <span class="eyebrow">Code audit · 14 Oct 2026</span>
+  <h1>aditya → backend_auth</h1>
+  <p class="lede">Everything that changed between the <code>aditya</code> branch and the current local code: what was fixed, how to check it by hand, and every file touched. <code>aditya</code> is fully contained in <code>backend_auth</code>, so this is a straight list of additions with no conflicts.</p>
+  <!--REFS-->
+</header>
+
+<!--STATS-->
+
+<!--VERDICT-->
+
+<section class="block" id="issues">
+  <div class="sectionhead">
+    <h2>What was fixed</h2>
+    <p>Grouped by area, most severe first. The code on the right is the commit to look at.</p>
+  </div>
+<!--ROUND2-->
+  <section class="igroup"><h3>Security <span class="count">9</span></h3><ul class="issues"><li class="issue"><span class="sev critical">Critical</span><div class="ibody"><h4>Cross-account access (IDOR)</h4><p>Vendors could list another vendor&#x27;s ticket holders (customer names and contacts), claim any event, and read another event&#x27;s cancellation contact list. Any logged-in user could open a child&#x27;s student record. A paid Stripe payment from one order could be replayed to mark a different, pricier order as paid. Galleries, reviews, certificates and uploads had similar gaps.</p></div><code class="commit">ace00e7</code></li><li class="issue"><span class="sev critical">Critical</span><div class="ibody"><h4>Public default password TempPass123!</h4><p>Accounts created by an admin with a blank password got TempPass123!, which the admin screen displayed. Anyone could log into them. A password of 8+ characters is now required, and that literal is rejected.</p></div><code class="commit">c1f769e</code></li><li class="issue"><span class="sev high">High</span><div class="ibody"><h4>Health check leaked internal data</h4><p>/health and /api/health showed user and order counts and Redis details to the public. /health/redis needed no login. Both now show only up/down to the public; Redis details are admin-only.</p></div><code class="commit">af16cb3</code></li><li class="issue"><span class="sev high">High</span><div class="ibody"><h4>Email library vulnerabilities</h4><p>nodemailer 7 had SMTP and header injection, SSRF and credential-leak flaws on every email sent. Upgraded to version 10.</p></div><code class="commit">7d62620</code></li><li class="issue"><span class="sev high">High</span><div class="ibody"><h4>Security headers missing on web pages</h4><p>nginx dropped X-Frame-Options, nosniff and HSTS on every HTML page and static file, so clickjacking and HTTPS-downgrade protection were off.</p></div><code class="commit">6df68a6</code></li><li class="issue"><span class="sev medium">Medium</span><div class="ibody"><h4>Content-Security-Policy (report-only)</h4><p>Added a CSP to the frontend in report-only mode, with violation reports logged by nginx. It blocks nothing yet; enforce it after about a week of clean reports.</p></div><code class="commit">a54efb2</code></li><li class="issue"><span class="sev medium">Medium</span><div class="ibody"><h4>Oversized request bodies</h4><p>The API accepted 10 MB JSON bodies on every route. Now 1 MB, with bulk imports kept at 10 MB.</p></div><code class="commit">a531948</code></li><li class="issue"><span class="sev medium">Medium</span><div class="ibody"><h4>Employees with no real vendor</h4><p>An admin-created employee without a vendor was linked to itself and couldn&#x27;t scan any ticket. Now refused with a clear error.</p></div><code class="commit">c1f769e</code></li><li class="issue"><span class="sev low">Low</span><div class="ibody"><h4>Phantom &#x27;superadmin&#x27; role</h4><p>Role checks referenced a role that doesn&#x27;t exist. Removed; no change in access.</p></div><code class="commit">873d1cb</code></li></ul></section><section class="igroup"><h3>Payments <span class="count">4</span></h3><ul class="issues"><li class="issue"><span class="sev critical">Critical</span><div class="ibody"><h4>Paid orders cancelled by the seat-expiry sweep</h4><p>The 15-minute sweep cancelled every pending order without asking Stripe. If the confirmation was missed, a customer who paid lost their booking. It now checks Stripe first and confirms paid orders instead.</p></div><code class="commit">6f29526</code></li><li class="issue"><span class="sev high">High</span><div class="ibody"><h4>Failed Stripe webhooks were never retried</h4><p>The webhook told Stripe &quot;received&quot; before processing and marked the event done up front, so a database blip lost the event. It now processes first and answers 500 on failure, so Stripe retries.</p></div><code class="commit">1650ae4</code></li><li class="issue"><span class="sev high">High</span><div class="ibody"><h4>Pasted Stripe secret keys charged customers with no booking</h4><p>With a pasted key the payment is created on the vendor&#x27;s own Stripe account, but confirmation looks it up on the platform account. Saving a pasted key is now blocked (409); Stripe Connect is unaffected.</p></div><code class="commit">f3745b5</code></li><li class="issue"><span class="sev medium">Medium</span><div class="ibody"><h4>Webhooks could be rate-limited</h4><p>Stripe webhooks counted toward the API rate limit, and Stripe retries on 429. Webhooks and health checks are now exempt, and the general limit rose from 100 to 600 per minute per IP.</p></div><code class="commit">3789168</code></li></ul></section><section class="igroup"><h3>Reliability &amp; operations <span class="count">7</span></h3><ul class="issues"><li class="issue"><span class="sev critical">Critical</span><div class="ibody"><h4>Background jobs never ran</h4><p>Every BullMQ job (emails, QR codes, tickets) failed with &quot;pipeline[functionName] is not a function&quot;. Fixed by disabling ioredis auto-pipelining.</p></div><code class="commit">4b792f2</code></li><li class="issue"><span class="sev high">High</span><div class="ibody"><h4>Seed scripts could wipe production</h4><p>Seven destructive seed scripts would run against any database. They now refuse production and non-local databases unless ALLOW_DESTRUCTIVE_SEED=yes.</p></div><code class="commit">4b792f2</code></li><li class="issue"><span class="sev high">High</span><div class="ibody"><h4>Deploys left the worker on old code, with no database backup</h4><p>deploy.sh reloaded only the API and backed up only built files. It now reloads the worker too and takes a mongodump first.</p></div><code class="commit">e2a58ac</code></li><li class="issue"><span class="sev medium">Medium</span><div class="ibody"><h4>No automatic post-deploy check</h4><p>Added scripts/smoke.sh. deploy.sh runs it and fails the deploy if health, auth protection, the events API or the frontend are broken.</p></div><code class="commit">49dcb2b</code></li><li class="issue"><span class="sev medium">Medium</span><div class="ibody"><h4>No pre-deploy safety check</h4><p>Added npm run check:predeploy (read-only). It flags seed passwords, broken vendor links, lost payments, staff still on TempPass123! and pasted Stripe keys.</p></div><code class="commit">a27a5d6 · f3745b5</code></li><li class="issue"><span class="sev medium">Medium</span><div class="ibody"><h4>Logs grew without limit</h4><p>Logs now rotate daily and are gzipped (15 days, 30 for errors), with a separate file per PM2 app.</p></div><code class="commit">4b792f2</code></li><li class="issue"><span class="sev low">Low</span><div class="ibody"><h4>Unreadable SMTP errors and a shared Redis</h4><p>SMTP failures were logged one character at a time. QUEUE_PREFIX now lets queues share a Redis server safely.</p></div><code class="commit">af0c2af · 8db3444</code></li></ul></section><section class="igroup"><h3>Bugs &amp; user experience <span class="count">6</span></h3><ul class="issues"><li class="issue"><span class="sev high">High</span><div class="ibody"><h4>Wrong password wiped the login form</h4><p>A failed login blanked the whole app while loading, so the form reset and the error message never showed.</p></div><code class="commit">aeffc8e</code></li><li class="issue"><span class="sev medium">Medium</span><div class="ibody"><h4>Registration and editor crashes</h4><p>Registration data was unwrapped twice. The blog editor crashed and lost the form when switching from HTML to Visual.</p></div><code class="commit">aeffc8e</code></li><li class="issue"><span class="sev medium">Medium</span><div class="ibody"><h4>Every visitor saw the server&#x27;s currency</h4><p>Currency was detected from the server&#x27;s IP, not the visitor&#x27;s, and burned the shared lookup quota. Now uses the visitor&#x27;s IP, cached per IP.</p></div><code class="commit">b415d6f</code></li><li class="issue"><span class="sev medium">Medium</span><div class="ibody"><h4>Online events without a location returned a 500</h4><p>Vendors couldn&#x27;t create online events that have no physical location.</p></div><code class="commit">1095f1f</code></li><li class="issue"><span class="sev low">Low</span><div class="ibody"><h4>Inaccurate public teacher stats</h4><p>Removed a &quot;Students Taught&quot; total that double-counted, and an always-&quot;Flexible&quot; duration label.</p></div><code class="commit">a2c343b</code></li><li class="issue"><span class="sev low">Low</span><div class="ibody"><h4>SEO and accessibility</h4><p>Event cards are real links (open in a new tab works). The home page has a single h1.</p></div><code class="commit">3ceda63 · f0cc944</code></li></ul></section><section class="igroup"><h3>Performance <span class="count">2</span></h3><ul class="issues"><li class="issue"><span class="sev medium">Medium</span><div class="ibody"><h4>First page load</h4><p>JavaScript on first load fell from about 768 KB to 302 KB gzipped: Firebase loads on demand, the vendor-libs grab-bag chunk is gone, and the admin chat widget loads only on admin pages.</p></div><code class="commit">bb9c302 · 9774499</code></li><li class="issue"><span class="sev medium">Medium</span><div class="ibody"><h4>Images and offline cache</h4><p>Eight large PNG/JPG images were converted to WebP (7.9 MB to 504 KB). The service worker no longer precaches every PNG (16.2 MB to 7.6 MB per new visitor).</p></div><code class="commit">257abaf</code></li></ul></section>
+  <p class="note">Also added: an admin "Platform Highlights" PDF report (56dca46, d25c24a), a Playwright end-to-end suite (202ca51), a local Docker stack (2092796, 96d1474), and new backend tests covering ownership, payments, the webhook and body limits.</p>
+</section>
+
+<section class="block" id="testing">
+  <div class="sectionhead">
+    <h2>How to test manually</h2>
+    <p>Use the local Docker stack for most checks. The production checks need the deploy done first.</p>
+  </div>
+  <div class="setup">
+    <h4>Local setup</h4>
+    <pre>docker compose up -d
+docker compose exec -T backend npx ts-node src/scripts/seed.ts
+# Frontend http://localhost:3000 · API http://localhost:5001 · Mailpit http://localhost:8025
+# Accounts: admin@gema.com / admin123 · vendor@gema.com / vendor123 · customer@gema.com / customer123</pre>
+    <!--AUTONOTE-->
+  </div>
+<!--TESTS2-->
+  <div class="tests"><article class="test"><header><h4>Cross-account access</h4><span class="where">Local</span></header>
+<ol><li>Log in as vendor@gema.com / vendor123 and note one of your event IDs.</li><li>Register a second vendor at /vendor/register and log in as them.</li><li>In the browser, open /api/tickets/event/&lt;first vendor's event id&gt; and /api/events/&lt;id&gt;/affected-orders on the API.</li><li>Log in as customer@gema.com and open /api/students/&lt;a child id that isn't yours&gt;.</li></ol><p class="expect"><span>Expected</span>The second vendor and the stranger get 404 or 403. The owner and an admin still see the data.</p></article><article class="test"><header><h4>Default password removed</h4><span class="where">Local</span></header>
+<ol><li>As admin@gema.com / admin123, open Admin → Users → Create user.</li><li>Leave the password blank, then try TempPass123!.</li><li>Create an employee with no vendor selected.</li></ol><p class="expect"><span>Expected</span>All three are refused with a clear message. A user with a real 8+ character password is created.</p></article><article class="test"><header><h4>Health check privacy</h4><span class="where">Local + production</span></header>
+<ol><li>curl https://api.kidrove.com/api/health</li><li>curl -o /dev/null -w '%{http_code}' https://api.kidrove.com/health/redis</li></ol><p class="expect"><span>Expected</span>The first shows status only, with no metrics or counts. The second returns 401.</p></article><article class="test"><header><h4>Real paid booking and refund</h4><span class="where">Production</span></header>
+<ol><li>Book a cheap event with your own card.</li><li>In Stripe → Developers → Webhooks, check that payment_intent.succeeded was delivered with 200.</li><li>Check My Bookings shows the ticket with a QR code, and that the confirmation email arrived.</li><li>Refund the payment in Stripe.</li></ol><p class="expect"><span>Expected</span>The order goes to confirmed/paid, then to refunded after the refund.</p></article><article class="test"><header><h4>Webhook retry</h4><span class="where">Local (Docker, with STRIPE_API_KEY set)</span></header>
+<ol><li>Make a test-card booking, but run docker compose stop mongo just before paying.</li><li>Check the stripe container log: the webhook delivery got 500.</li><li>docker compose start mongo, then resend the event: stripe events resend &lt;evt_id from the log&gt;.</li></ol><p class="expect"><span>Expected</span>The resend gets 200 and the order becomes confirmed with its tickets. In production, Stripe resends automatically.</p></article><article class="test"><header><h4>Pasted Stripe key blocked</h4><span class="where">Local</span></header>
+<ol><li>As vendor@gema.com, open Payment settings and paste a Stripe secret key.</li></ol><p class="expect"><span>Expected</span>Saving is refused with a message to use Stripe Connect. Connect onboarding still works.</p></article><article class="test"><header><h4>Paid orders survive the seat sweep</h4><span class="where">Local</span></header>
+<ol><li>docker compose stop stripe, so no webhook reaches the backend.</li><li>Book with a test card and close the tab before the confirmation page loads.</li><li>Wait 20 minutes (seats are held 15 minutes; the sweep runs every 5).</li></ol><p class="expect"><span>Expected</span>The order is confirmed, not cancelled. The worker log says it was reconciled.</p></article><article class="test"><header><h4>Background jobs and email</h4><span class="where">Local</span></header>
+<ol><li>Register a new account, then open Mailpit at http://localhost:8025.</li><li>Book a free event as a customer.</li></ol><p class="expect"><span>Expected</span>The verification email arrives, and the ticket email arrives with a QR code.</p></article><article class="test"><header><h4>Login and forms</h4><span class="where">Local</span></header>
+<ol><li>On /login, enter a wrong password.</li><li>In Admin → Blogs → Create, switch the editor from HTML to Visual and back.</li><li>As a vendor, create an online event with no location.</li></ol><p class="expect"><span>Expected</span>The error shows and the form keeps its values. The editor doesn&#x27;t crash. The event saves.</p></article><article class="test"><header><h4>Request size limit</h4><span class="where">Local</span></header>
+<ol><li>Send a 2 MB JSON body to POST /api/auth/login.</li><li>Upload a booking CSV via the vendor booking import.</li></ol><p class="expect"><span>Expected</span>The login request gets 413. The import still works.</p></article><article class="test"><header><h4>Security headers and CSP</h4><span class="where">Production, after the nginx change</span></header>
+<ol><li>curl -sI https://kidrove.com | grep -iE 'x-frame|strict-transport|content-security'</li><li>Browse a few pages, then on the server: tail /var/log/nginx/csp-reports.log</li></ol><p class="expect"><span>Expected</span>All three headers are present. Reports appear in the log; nothing on the site is blocked.</p></article><article class="test"><header><h4>Speed</h4><span class="where">Production</span></header>
+<ol><li>Open kidrove.com in a private window with DevTools → Network.</li></ol><p class="expect"><span>Expected</span>No vendor-libs file loads. About 300 KB of JS gzipped on first load. Banners load as .webp.</p></article><article class="test"><header><h4>Deploy checks</h4><span class="where">Server</span></header>
+<ol><li>npm run check:predeploy in backend/ against the production database.</li><li>./deploy.sh, then ./scripts/smoke.sh.</li></ol><p class="expect"><span>Expected</span>The pre-deploy check lists anything needing attention. The deploy ends with all smoke checks passed.</p></article></div>
+</section>
+
+<!--FILES-->
+</main>
+
+</body></html>
