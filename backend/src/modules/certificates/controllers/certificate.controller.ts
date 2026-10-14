@@ -245,10 +245,25 @@ export const rollbackTemplate = async (req: AuthRequest, res: Response, next: Ne
 
 // ─── Certificate Generation ───────────────────────────────────────────────────
 
+// Vendors may only issue certificates for their own events (admins: any).
+async function assertCanIssueFor(req: AuthRequest, eventId: string, next: NextFunction): Promise<boolean> {
+  const event = await Event.findById(eventId).select("vendorId").lean();
+  if (!event) {
+    next(new AppError("Event not found", 404));
+    return false;
+  }
+  if (!(await canStaffAccessVendor(req, event.vendorId))) {
+    next(new AppError("Not authorized to issue certificates for this event", 403));
+    return false;
+  }
+  return true;
+}
+
 export const triggerGeneration = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (!validate(req, next)) return;
     const { templateId, recipient, data, eventId, userId, reviewId, options, certificateTypeSlug } = req.body;
+    if (!(await assertCanIssueFor(req, eventId, next))) return;
 
     const certificate = await certificateService.issueForEvent({
       templateId,
@@ -479,6 +494,7 @@ export const bulkGenerate = async (req: AuthRequest, res: Response, next: NextFu
   try {
     if (!validate(req, next)) return;
     const { templateId, eventId, inputs, options = {} } = req.body;
+    if (!(await assertCanIssueFor(req, eventId, next))) return;
 
     if (inputs.length > 500) {
       return next(new AppError("Maximum 500 certificates per bulk request", 400));
@@ -503,6 +519,7 @@ export const bulkImportCSV = async (req: AuthRequest, res: Response, next: NextF
   try {
     if (!validate(req, next)) return;
     const { eventId, certificateTypeSlug, templateId, sendEmail = false, csv } = req.body;
+    if (!(await assertCanIssueFor(req, eventId, next))) return;
     const issuedBy = (req.user?._id || req.user?.id)?.toString();
 
     const result = await certificateService.importCSV({
