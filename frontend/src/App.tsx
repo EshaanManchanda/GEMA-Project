@@ -1,6 +1,6 @@
 import React, { Suspense, useEffect } from 'react';
 import { usePageTracking } from './hooks/usePageTracking';
-import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate, useParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 // Stripe Elements are handled by StripeElementsWrapper in payment components
 // No need for global Elements provider
@@ -229,6 +229,12 @@ import { useDispatch } from 'react-redux';
 import { fetchSocialSettings, fetchUISettings } from '@/store/slices/settingsSlice';
 import { AppDispatch } from '@/store';
 import logger from '@/utils/logger';
+
+// <Navigate to="/booking/:eventId"> doesn't fill in params; it sent users to a literal ":eventId".
+function LegacyBookRedirect() {
+  const { eventId } = useParams();
+  return <Navigate to={`/booking/${eventId}`} replace />;
+}
 
 function AppContent() {
   const location = useLocation();
@@ -636,7 +642,7 @@ function AppContent() {
             </ProtectedRoute>
           } />
           {/* Legacy route redirect */}
-          <Route path="book/:eventId" element={<Navigate to="/booking/:eventId" replace />} />
+          <Route path="book/:eventId" element={<LegacyBookRedirect />} />
 
           {/* Payment Routes */}
           <Route path="payment/success" element={
