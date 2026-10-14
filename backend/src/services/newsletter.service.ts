@@ -102,20 +102,10 @@ export class NewsletterService {
       });
 
       if (subscriber) {
+        // This endpoint is anonymous: it must not rewrite an existing
+        // subscriber's profile (anyone could change a stranger's name/city).
+        // Subscribers edit their details through the authenticated endpoints.
         if (subscriber.isActive) {
-          // Already subscribed - update fields if provided
-          if (name) subscriber.name = name;
-          if (city) subscriber.city = city;
-          if (ageOfChildren) subscriber.ageOfChildren = ageOfChildren;
-          if (Object.keys(preferences).length > 0) {
-            subscriber.preferences = {
-              ...subscriber.preferences,
-              ...preferences,
-            };
-          }
-          await subscriber.save();
-          await this.syncContactToProvider(subscriber);
-
           const result: SubscriptionResult = subscriber;
           result.wasReactivated = false;
           return result;
@@ -124,17 +114,6 @@ export class NewsletterService {
           subscriber.isActive = true;
           subscriber.unsubscribeDate = undefined;
           subscriber.unsubscribeReason = undefined;
-
-          // Update fields
-          if (name) subscriber.name = name;
-          if (city) subscriber.city = city;
-          if (ageOfChildren) subscriber.ageOfChildren = ageOfChildren;
-          if (Object.keys(preferences).length > 0) {
-            subscriber.preferences = {
-              ...subscriber.preferences,
-              ...preferences,
-            };
-          }
 
           await subscriber.save();
           await this.syncContactToProvider(subscriber);

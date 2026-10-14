@@ -74,7 +74,7 @@ describe("public newsletter endpoints", () => {
     expect((await request(app).get("/api/newsletter/unsubscribe/short")).status).toBe(400);
   });
 
-  it.failing("BUG: an anonymous subscribe call cannot overwrite an existing subscriber's profile", async () => {
+  it("an anonymous subscribe call cannot overwrite an existing subscriber's profile", async () => {
     await insertSubscriber("victim@example.com", { name: "Victim", city: "Dubai" });
 
     await request(app).post("/api/newsletter/subscribe").send({ email: "victim@example.com", name: "Hacked Name", city: "Nowhere" });

@@ -6,6 +6,7 @@ import { NewsletterService } from "../services/newsletter.service";
 import { emailService } from "../services/email.service";
 import logger from "../config/logger";
 import { escapeRegex } from "../utils/regexHelpers";
+import { escapeHtml } from "../utils/htmlHelpers";
 
 const newsletterService = new NewsletterService();
 
@@ -46,7 +47,7 @@ export const subscribe = async (
       subject: subscriber.wasReactivated
         ? "Welcome back to our newsletter!"
         : "Welcome to our newsletter!",
-      html: `<p>Hi${subscriber.name ? ` ${subscriber.name}` : ""},</p>
+      html: `<p>Hi${subscriber.name ? ` ${escapeHtml(subscriber.name)}` : ""},</p>
 <p>You are now subscribed to our newsletter.</p>
 <p><a href="${process.env.FRONTEND_URL}/newsletter/unsubscribe/${(subscriber as any).unsubscribeToken}">Unsubscribe</a></p>`,
     }).catch((err: Error) => logger.error("Newsletter welcome email failed:", err));
