@@ -343,6 +343,15 @@ export const disconnectTeacherStripeConnect = async (
  * Save manual Stripe key (legacy / optional)
  */
 export const updateTeacherStripeKey = async (req: Request, res: Response) => {
+  // Disabled: payments made with a manually pasted key live on the teacher's own
+  // Stripe account, but order confirmation and webhooks look them up on the
+  // platform account, so customers get charged with no booking confirmed.
+  // Stripe Connect (the supported path) is unaffected. Re-enable once
+  // confirmation retrieves the intent with the same key that created it.
+  return res.status(409).json({
+    message:
+      "Manual Stripe keys are temporarily unavailable. Please connect your account with Stripe Connect instead.",
+  });
   try {
     const userId = req.user?.id;
     const { manualStripeKey, isTestMode } = req.body;

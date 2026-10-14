@@ -8,6 +8,8 @@
  *    lock those vendors out of their own events; run migrateEventVendorIds first.
  * 3. Orders paid in Stripe but not marked paid     → customers charged without a
  *    booking; reconcile/refund by hand.
+ * 4. Vendors/teachers on custom Stripe with a pasted secret key → their
+ *    payments can't be confirmed; move them to Stripe Connect or platform mode.
  *
  * Exit code 1 when anything needs attention.
  */
@@ -17,9 +19,11 @@ import { config } from "../config/index";
 import { stripe } from "../config/stripe";
 import User from "../models/User";
 import Vendor from "../models/Vendor";
+import Teacher from "../models/Teacher";
 import { Event, Ticket, Employee, Order } from "../models/index";
 
-const SEED_PASSWORDS = ["admin123", "vendor123", "customer123", "password123"];
+// TempPass123! was the admin UI's visible "default password" for new accounts.
+const SEED_PASSWORDS = ["admin123", "vendor123", "customer123", "password123", "TempPass123!"];
 const STAFF_ROLES = ["admin", "vendor", "employee", "teacher"];
 
 async function seedPasswordAccounts(): Promise<string[]> {
@@ -72,6 +76,21 @@ async function paidButNotMarked(): Promise<string[]> {
   return hits;
 }
 
+async function manualStripeKeyAccounts(): Promise<string[]> {
+  const filter = {
+    "paymentSettings.paymentMode": "custom_stripe",
+    "paymentSettings.stripeSettings.stripeSecretKey": { $exists: true, $nin: [null, ""] },
+  };
+  const [vendors, teachers] = await Promise.all([
+    Vendor.find(filter).select("businessName email").lean(),
+    Teacher.find(filter).select("fullName email").lean(),
+  ]);
+  return [
+    ...(vendors as any[]).map((v) => `vendor ${v.businessName} <${v.email}>`),
+    ...(teachers as any[]).map((t) => `teacher ${t.fullName} <${t.email}>`),
+  ];
+}
+
 async function main() {
   await mongoose.connect(config.mongodbUri);
   let problems = 0;
@@ -98,6 +117,11 @@ async function main() {
   console.log(`\n[3] Orders paid in Stripe but not marked paid: ${lost.length}`);
   lost.forEach((s) => console.log(`  - ${s}`));
   problems += lost.length;
+
+  const manualKeys = await manualStripeKeyAccounts();
+  console.log(`\n[4] Custom-Stripe accounts using a pasted secret key: ${manualKeys.length}`);
+  manualKeys.forEach((s) => console.log(`  - ${s}`));
+  problems += manualKeys.length;
 
   console.log(problems ? `\nNEEDS ATTENTION (${problems})` : "\nAll checks passed");
   await mongoose.disconnect();
