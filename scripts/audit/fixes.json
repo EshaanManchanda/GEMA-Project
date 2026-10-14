@@ -1,5 +1,5 @@
 {
- "testsPassing": "862 / 896",
+ "testsPassing": "873 / 898",
  "issues": [
   {
    "area": "Security",
@@ -168,6 +168,34 @@
    "commit": "c69d1e6",
    "title": "Seeded test data broke every vendor check",
    "text": "The local seed never created vendor profiles, so seeded events and employees pointed at nothing and vendor features couldn't be tested locally. Seeded vendors now get verified profiles."
+  },
+  {
+   "area": "Testing & CI",
+   "sev": "high",
+   "commit": "6be20aa",
+   "title": "CI never ran the browser tests or enforced coverage and audits",
+   "text": "Playwright tests existed but never ran in CI, coverage thresholds were never checked, and npm audit couldn't fail. Every PR now runs the browser tests against a real seeded backend, a ZAP security scan, CodeQL, a blocking dependency audit (reviewed exceptions only) and a coverage gate. scripts/verify.sh runs the same checks locally."
+  },
+  {
+   "area": "Testing & CI",
+   "sev": "medium",
+   "commit": "c5bf55c",
+   "title": "Nothing caught a route that forgot its login check",
+   "text": "Tests now mount the real route table and call every API route without login (and every admin route as a customer). Any route that isn't on the reviewed public list must refuse, so a new public route fails CI until reviewed."
+  },
+  {
+   "area": "Testing & CI",
+   "sev": "medium",
+   "commit": "e77087e",
+   "title": "Payment and booking code paths couldn't be tested",
+   "text": "The test database couldn't run transactions, which 27 code paths use. Tests now run on a replica set like production."
+  },
+  {
+   "area": "Bugs & user experience",
+   "sev": "low",
+   "commit": "cf82c46",
+   "title": "Old /book/<id> links went to a broken page",
+   "text": "The redirect sent visitors to the literal path /booking/:eventId. It now uses the real event id."
   }
  ],
  "tests": [
@@ -236,6 +264,15 @@
     "As admin, open the competition submissions list."
    ],
    "expect": "The entry shows as paid, and exactly one confirmation email is in Mailpit."
+  },
+  {
+   "title": "Full pre-deploy check",
+   "where": "Local",
+   "steps": [
+    "From the repo root, with Docker running: ./scripts/verify.sh",
+    "Open the report: cd frontend && npx playwright show-report"
+   ],
+   "expect": "It ends with \"All checks passed\". Any failure stops it with the failing step named."
   }
  ]
 }
