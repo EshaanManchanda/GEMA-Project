@@ -25,6 +25,7 @@ import {
   NotificationTemplateKey,
 } from "../models/index";
 import { decryptField } from "../utils/encryption";
+import { activatePaidSubmission } from "./competition.service";
 
 export interface CreatePaymentIntentParams {
   amount: number;
@@ -578,6 +579,16 @@ export class PaymentService {
         session.metadata?.type === "vendor_subscription"
       ) {
         await this.activateVendorSubscriptionFromSession(session);
+        return;
+      }
+
+      // ── AI art competition entry fee ─────────────────────────────────────
+      // Finalizes the entry even if the parent closed the tab before Stripe
+      // redirected back (the browser finalize step then finds it done).
+      if (session.metadata?.submissionId) {
+        if (session.payment_status === "paid") {
+          await activatePaidSubmission(session.metadata.submissionId, session.id);
+        }
         return;
       }
 
