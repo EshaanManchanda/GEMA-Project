@@ -4,7 +4,6 @@ import { useInView } from 'react-intersection-observer';
 import { FaMapMarkerAlt, FaChild, FaCalendar, FaClock, FaEye, FaStar, FaHeart, FaRegHeart } from 'react-icons/fa';
 import { getPlaceholderUrl } from '../../utils/placeholderImage';
 import { getCloudinaryWebP, generateSrcSet } from '@/utils/cloudinaryHelpers';
-import { generateEventUrl } from '@/utils/urlHelper';
 
 
 // Render prop function types
@@ -702,9 +701,9 @@ const EventCard: React.FC<EventCardProps> = (props) => {
       if (event.customLink) {
         navigate(event.customLink);
       } else {
-        // Construct URL using helper for consistency
-        const targetUrl = generateEventUrl(eventSlug);
-        navigate(targetUrl);
+        // In-app path: an absolute URL (VITE_APP_URL) made
+        // every card a full reload to that host instead of SPA navigation.
+        navigate(`/events/${eventSlug}`);
       }
     }
   }, [onClick, event, disableNavigation, eventSlug, navigate]);
@@ -1156,7 +1155,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
   return (
     <Link
       ref={ref}
-      to={event.customLink || generateEventUrl(eventSlug)}
+      to={event.customLink || `/events/${eventSlug}`}
       className={`${cardClasses} ${className} block`}
       onClick={onClick ? handleLinkClick : undefined}
       aria-label={label}
