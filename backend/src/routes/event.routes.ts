@@ -56,8 +56,9 @@ router.get("/:id/also-booked", getPeopleAlsoBooked);
 // ahead of the authenticate gate below, otherwise anonymous visitor clicks 401
 // silently and never persist (this router owns "/events" ahead of
 // event.affiliate.routes, which shadows those handlers entirely).
-router.post("/:id/track-click", trackAffiliateClick);
-router.get("/:id/analytics", getEventAnalytics);
+// ObjectId-only, so "/vendor/analytics" below is not swallowed as an event id.
+router.post("/:id([0-9a-fA-F]{24})/track-click", trackAffiliateClick);
+router.get("/:id([0-9a-fA-F]{24})/analytics", getEventAnalytics);
 router.get(
   "/:slug",
   [param("slug").notEmpty().withMessage("Event slug is required")],
