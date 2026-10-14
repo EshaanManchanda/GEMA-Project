@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer, { type Mail } from "nodemailer";
 import { config } from "../config/index";
 import {
   getBrandConfig,
@@ -242,7 +242,7 @@ export interface CompetitionSubmissionEmailOptions {
 }
 
 class EmailService {
-  private transporter: nodemailer.Transporter;
+  private transporter: Mail;
 
   constructor() {
     this.transporter = this.buildTransporter({
@@ -258,7 +258,7 @@ class EmailService {
     port: number;
     username: string;
     password: string;
-  }): nodemailer.Transporter {
+  }): Mail {
     return nodemailer.createTransport({
       host: cfg.host,
       port: cfg.port,
