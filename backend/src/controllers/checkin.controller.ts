@@ -1,15 +1,25 @@
 import { Request, Response, NextFunction } from "express";
-import { Ticket, CheckinLog, Employee } from "../models/index";
+import mongoose from "mongoose";
+import { Ticket, CheckinLog, Employee, Event } from "../models/index";
 import { AppError } from "../middleware/error";
 import logger from "../config/logger";
+import { AuthRequest } from "../types/index";
+import { canStaffAccessVendor, resolveStaffVendorId } from "../utils/vendorResolve";
+
+const isId = (v: unknown) => typeof v === "string" && mongoose.isValidObjectId(v);
 
 export const checkInTicket = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
-  const { ticketNumber, employeeId, location, deviceInfo, geoLocation, notes } =
-    req.body;
+  // The scanning employee is the logged-in user; a body employeeId used to be
+  // trusted, letting anyone check in as (and with the rights of) a colleague.
+  const { location, deviceInfo, geoLocation, notes } = req.body;
+  const ticketNumber = req.body.ticketNumber ?? req.body.ticketCode;
+  if (typeof ticketNumber !== "string" || !ticketNumber) {
+    return next(new AppError("ticketNumber is required", 400));
+  }
 
   try {
     const ticket = await Ticket.findOne({ ticketNumber });
@@ -26,20 +36,15 @@ export const checkInTicket = async (
       return next(new AppError(`Ticket status is ${ticket.status}`, 403));
     }
 
-    // Check if the employee is authorized to check in tickets for this event/venue
-    const employee = await Employee.findById(employeeId);
+    const employee = await Employee.findOne({ userId: (req as AuthRequest).user?._id });
     if (!employee) {
-      return next(new AppError("Employee not found", 404));
+      return next(new AppError("No employee profile for this account", 403));
     }
+    const employeeId = employee._id;
 
-    // Basic authorization check (can be expanded)
-    const isAuthorized =
-      employee.assignedEvents.includes(ticket.eventId) ||
-      employee.assignedVenues.some((venueId) => {
-        // This would require populating venue details to check gates, or a more complex query
-        // For now, a simple check if the employee is assigned to the event
-        return true; // Placeholder, actual logic needed
-      });
+    // Only employees assigned to the ticket's event. (A venue assignment used
+    // to authorize every event via a placeholder that always returned true.)
+    const isAuthorized = employee.assignedEvents.some((id) => String(id) === String(ticket.eventId));
 
     if (!isAuthorized) {
       return next(
@@ -89,13 +94,25 @@ export const getCheckinLogs = async (
   next: NextFunction,
 ) => {
   const { eventId, employeeId, scanResult } = req.query;
+  if ((eventId && !isId(eventId)) || (employeeId && !isId(employeeId))) {
+    return next(new AppError("Invalid eventId or employeeId", 400));
+  }
   const filter: any = {};
 
   if (eventId) filter.eventId = eventId;
   if (employeeId) filter.employeeId = employeeId;
-  if (scanResult) filter.scanResult = scanResult;
+  if (scanResult) filter.scanResult = String(scanResult);
 
   try {
+    // Admins see everything; vendors and employees only their vendor's events.
+    const staffVendorId = await resolveStaffVendorId(req as AuthRequest);
+    if (staffVendorId !== null) {
+      const ownIds = [staffVendorId, String((req as AuthRequest).user?._id)].filter(Boolean);
+      const ownEvents = staffVendorId === undefined ? [] : await Event.find({ vendorId: { $in: ownIds } }).distinct("_id");
+      const own = ownEvents.map(String);
+      filter.eventId = eventId ? (own.includes(String(eventId)) ? eventId : { $in: [] }) : { $in: ownEvents };
+    }
+
     const logs = await CheckinLog.find(filter)
       .populate("ticketId", "ticketNumber ticketType")
       .populate("eventId", "name")
@@ -119,8 +136,15 @@ export const getCheckinSummary = async (
   next: NextFunction,
 ) => {
   const { eventId } = req.query;
+  if (!isId(eventId)) {
+    return next(new AppError("A valid eventId is required", 400));
+  }
 
   try {
+    const event = await Event.findById(eventId).select("vendorId").lean();
+    if (event && !(await canStaffAccessVendor(req as AuthRequest, event.vendorId))) {
+      return next(new AppError("Not authorized for this event", 403));
+    }
     const totalTickets = await Ticket.countDocuments({ eventId });
     const checkedInTickets = await Ticket.countDocuments({
       eventId,

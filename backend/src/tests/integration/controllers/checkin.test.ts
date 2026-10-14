@@ -116,18 +116,19 @@ describe("POST /api/checkin", () => {
 
     const res = await post(emp, { employeeId });
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(400);
     expect((await Ticket.findById(t.id).lean())!.status).toBe("active");
   });
 
-  it.failing("BUG: malformed employeeId returns 400, not 500", async () => {
-    const { eventId, emp } = await setup();
+  it("ignores a body employeeId: the check-in is attributed to the caller", async () => {
+    const { eventId, emp, employeeId } = await setup();
     const t = await insertTicket(eventId);
 
-    expect((await post(emp, { ticketNumber: t.ticketNumber, employeeId: "not-an-id" })).status).toBe(400);
+    expect((await post(emp, { ticketNumber: t.ticketNumber, employeeId: "not-an-id" })).status).toBe(200);
+    expect(String((await CheckinLog.findOne({ ticketId: t.id }).lean())!.employeeId)).toBe(employeeId);
   });
 
-  it.failing("BUG: an employee cannot check in by passing another employee's id", async () => {
+  it("an employee cannot check in by passing another employee's id", async () => {
     const { eventId, vendorId, employeeId } = await setup();
     const t = await insertTicket(eventId);
     const other = await signUpAs(app, "employee");
@@ -138,7 +139,7 @@ describe("POST /api/checkin", () => {
     expect(res.status).toBe(403);
   });
 
-  it.failing("BUG: an employee assigned to any venue is not authorized for unrelated events", async () => {
+  it("an employee assigned to any venue is not authorized for unrelated events", async () => {
     const { eventId, vendorId } = await setup();
     const t = await insertTicket(eventId);
     const other = await signUpAs(app, "employee");
@@ -178,7 +179,7 @@ describe("GET /api/checkin/logs and /summary", () => {
     expect((await get(emp, "/api/checkin/summary")).status).toBe(403);
   });
 
-  it.failing("BUG: a vendor cannot read another vendor's check-in logs", async () => {
+  it("a vendor cannot read another vendor's check-in logs", async () => {
     const { eventId, emp, employeeId } = await setup();
     const t = await insertTicket(eventId);
     await post(emp, { ticketNumber: t.ticketNumber, employeeId });
@@ -189,7 +190,7 @@ describe("GET /api/checkin/logs and /summary", () => {
     expect(res.body.data ?? []).toHaveLength(0);
   });
 
-  it.failing("BUG: malformed eventId on summary returns 400, not 500", async () => {
+  it("malformed eventId on summary returns 400, not 500", async () => {
     const { vendor } = await setup();
     expect((await get(vendor, "/api/checkin/summary?eventId=bad")).status).toBe(400);
   });
