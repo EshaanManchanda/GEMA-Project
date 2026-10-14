@@ -1,21 +1,17 @@
 /**
- * In-memory MongoDB setup for integration tests.
- * Uses mongodb-memory-server so no real DB is needed and each test suite
- * starts with a clean, isolated database.
+ * In-memory MongoDB setup for integration tests: one replica set per jest
+ * run (jest.globalSetup.js), an isolated database per test file.
  */
 import mongoose from "mongoose";
-import { MongoMemoryServer } from "mongodb-memory-server";
-
-let mongod: MongoMemoryServer;
 
 /**
- * Start the in-memory MongoDB instance and connect Mongoose.
- * Call this in beforeAll().
+ * Connect Mongoose to a fresh database. Call this in beforeAll().
  */
 export const connectTestDB = async (): Promise<void> => {
-  mongod = await MongoMemoryServer.create();
-  const uri = mongod.getUri();
-  await mongoose.connect(uri);
+  // Shared replica set from jest.globalSetup.js; a fresh database per file.
+  const uri = process.env.MONGO_TEST_URI;
+  if (!uri) throw new Error("MONGO_TEST_URI not set: run tests through jest (jest.globalSetup.js)");
+  await mongoose.connect(uri, { dbName: `test_${process.pid}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}` });
 };
 
 /**
@@ -30,11 +26,9 @@ export const clearTestDB = async (): Promise<void> => {
 };
 
 /**
- * Disconnect and stop the in-memory server.
- * Call this in afterAll().
+ * Drop this file's database and disconnect. Call this in afterAll().
  */
 export const closeTestDB = async (): Promise<void> => {
   await mongoose.connection.dropDatabase();
   await mongoose.connection.close();
-  await mongod.stop();
 };

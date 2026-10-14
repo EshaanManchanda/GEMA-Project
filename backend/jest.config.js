@@ -35,7 +35,9 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   setupFilesAfterEnv: ['<rootDir>/src/tests/setup.ts'],
-  testTimeout: 10000,
+  globalSetup: '<rootDir>/jest.globalSetup.js',
+  globalTeardown: '<rootDir>/jest.globalTeardown.js',
+  testTimeout: 30000, // integration tests share one replica set under parallel load
   verbose: true,
   forceExit: true,
   clearMocks: true,
