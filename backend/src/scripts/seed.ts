@@ -9,7 +9,10 @@ import {
   Review,
   Employee,
   CheckinLog,
+  Vendor,
 } from "../models/index";
+import { VerificationStatus } from "../models/Vendor";
+import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
 import { UserRole, UserStatus } from "../models/User";
 // Venue imports removed
 import { ReviewType, ReviewStatus } from "../models/Review";
@@ -1483,6 +1486,7 @@ async function clearData() {
     Review.deleteMany({}),
     Employee.deleteMany({}),
     CheckinLog.deleteMany({}),
+    Vendor.deleteMany({}),
   ]);
   logger.info("Existing data cleared");
 }
@@ -1506,11 +1510,25 @@ async function seedUsers() {
   return users;
 }
 
+// Vendor profiles (Vendor._id), not vendor Users: Event/Employee.vendorId
+// ref Vendor, and every ownership check compares Vendor ids.
+let vendorProfiles: any[] = [];
+
+async function seedVendorProfiles(users: any[]) {
+  vendorProfiles = [];
+  for (const user of users.filter((u) => u.role === UserRole.VENDOR)) {
+    const profile = await getOrCreateVendorProfile(user._id);
+    profile.verificationStatus = VerificationStatus.VERIFIED; // seeded vendors may create events
+    vendorProfiles.push(await profile.save());
+  }
+  logger.info(`${vendorProfiles.length} vendor profiles created`);
+}
+
 /**
  * Seed venues
  */
 async function seedVenues(users: any[]) {
-  const vendors = users.filter((user) => user.role === UserRole.VENDOR);
+  const vendors = vendorProfiles;
   const venues = [];
 
   for (let i = 0; i < sampleVenues.length; i++) {
@@ -1534,7 +1552,7 @@ async function seedVenues(users: any[]) {
  * Seed events
  */
 async function seedEvents(users: any[], venues: any[]) {
-  const vendors = users.filter((user) => user.role === UserRole.VENDOR);
+  const vendors = vendorProfiles;
   const events = [];
 
   for (let i = 0; i < sampleEvents.length; i++) {
@@ -2126,7 +2144,7 @@ async function seedReviews(
  * Seed employees
  */
 async function seedEmployees(users: any[], venues: any[]) {
-  const vendors = users.filter((user) => user.role === UserRole.VENDOR);
+  const vendors = vendorProfiles;
   const employees: mongoose.Document[] = [];
 
   const employeeData = [
@@ -2766,6 +2784,7 @@ async function seed() {
 
     // Seed data in order (respecting dependencies)
     const users = await seedUsers();
+    await seedVendorProfiles(users);
     const venues = await seedVenues(users);
     const events = await seedEvents(users, venues);
     const { orders, tickets } = await seedOrdersAndTickets(users, events);
