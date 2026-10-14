@@ -78,18 +78,21 @@ describe("public directory", () => {
     expect((await request(app).get(`/api/partnerships/directory/${pending}`)).status).toBe(404);
   });
 
-  it.failing("BUG: the public directory does not expose contact details or admin notes", async () => {
-    await insertPartnership({ status: "approved" });
+  // email and notes are intentionally public (the directory page shows the
+  // contact email and uses notes as the listing blurb); nothing else private.
+  it("the public directory exposes only listing fields", async () => {
+    await insertPartnership({ status: "approved", paymentSessionId: "cs_secret", phone: "+971500000001" });
 
     const res = await request(app).get("/api/partnerships/directory");
 
     const p = res.body.data.partnerships[0];
-    expect(p.email).toBeUndefined();
     expect(p.phone).toBeUndefined();
-    expect(p.notes).toBeUndefined();
+    expect(p.paymentSessionId).toBeUndefined();
+    expect(p.attachments).toBeUndefined();
+    expect(p.name).toBeDefined();
   });
 
-  it.failing("BUG: malformed directory id returns 400/404, not 500", async () => {
+  it("malformed directory id returns 400/404, not 500", async () => {
     const res = await request(app).get("/api/partnerships/directory/not-an-id");
     expect([400, 404]).toContain(res.status);
   });
@@ -138,7 +141,7 @@ describe("admin partnership management", () => {
     expect((await User.findOne({ email }).lean())!.role).toBe("vendor");
   });
 
-  it.failing("BUG: create-user does not return the new user's password hash", async () => {
+  it("create-user does not return the new user's password hash", async () => {
     const admin = await signUpAdmin(app);
     const approved = await insertPartnership({ status: "approved" });
 

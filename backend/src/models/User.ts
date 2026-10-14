@@ -521,6 +521,20 @@ const UserSchema = new Schema<IUser>(
   },
   {
     timestamps: true,
+    // Secrets are select:false, but a freshly created/saved document still
+    // holds them in memory; never let res.json() serialize them.
+    toJSON: {
+      transform: (_doc, ret: Record<string, any>) => {
+        delete ret.passwordHash;
+        for (const key of ["passwordResetOTP", "emailVerification", "phoneVerification"]) {
+          if (ret[key]) {
+            delete ret[key].otpHash;
+            delete ret[key].otp;
+          }
+        }
+        return ret;
+      },
+    },
   },
 );
 

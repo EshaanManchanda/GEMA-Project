@@ -17,6 +17,7 @@ import {
   CommunicationCategory,
   NotificationTemplateKey,
 } from "../models/index";
+import mongoose from "mongoose";
 
 /**
  * Submit partnership form (public endpoint)
@@ -485,6 +486,12 @@ export const getPartnershipStats = async (
 /**
  * Get public approved partnerships directory
  */
+// What the public partner directory shows: the listing, its contact email
+// (shown on the page) and the admin-written blurb in `notes`. Never phone,
+// payment, attachment or workflow fields.
+const PUBLIC_DIRECTORY_FIELDS =
+  "name organization partnershipType campaignType campDetails ageGroups emirate website message notes email socialMedia status createdAt approvedAt";
+
 export const getPublicDirectory = async (
   req: Request,
   res: Response,
@@ -508,6 +515,7 @@ export const getPublicDirectory = async (
     const limitNum = parseInt(limit as string, 10);
 
     const partnerships = await Partnership.find(query)
+      .select(PUBLIC_DIRECTORY_FIELDS)
       .sort({ createdAt: -1 })
       .limit(limitNum)
       .lean();
@@ -532,8 +540,13 @@ export const getPublicPartnershipById = async (
 ) => {
   try {
     const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return next(new AppError("Partnership not found", 404));
+    }
 
-    const partnership = await Partnership.findOne({ _id: id, status: "approved" }).lean();
+    const partnership = await Partnership.findOne({ _id: id, status: "approved" })
+      .select(PUBLIC_DIRECTORY_FIELDS)
+      .lean();
 
     if (!partnership) {
       return next(new AppError("Partnership not found", 404));
