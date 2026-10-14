@@ -92,7 +92,7 @@ const GiftCardPromo: React.FC<GiftCardPromoProps> = ({ activityCount = 100 }) =>
             <div className="flex justify-center lg:justify-end relative">
               <div style={{ zIndex: 100 }}>
                 <img
-                  src="/assets/images/kidrove-card.png"
+                  src="/assets/images/kidrove-card.webp"
                   alt="Kidrove Gift Card - over 100 activities for kids like workshops and competitions"
                   className="transform rotate-6 rounded-xl transition-transform duration-300 hover:rotate-3 hover:scale-105"
                   loading="lazy"

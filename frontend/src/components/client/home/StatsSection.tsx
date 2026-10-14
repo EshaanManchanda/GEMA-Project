@@ -20,7 +20,7 @@ const StatsSection: React.FC<StatsProps> = ({ stats }) => {
             {/* Background image with WebP support */}
             <picture className="absolute inset-0 -z-10">
                 <img
-                    src="/assets/images/trust-with-kidrove.png"
+                    src="/assets/images/trust-with-kidrove.webp"
                     alt=""
                     className="w-full h-full object-cover object-bottom"
                     loading="lazy"

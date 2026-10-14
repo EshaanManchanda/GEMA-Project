@@ -269,7 +269,7 @@ const TeachersListingPage: React.FC = () => {
       <div className="relative overflow-hidden pt-0 pb-0">
         <div className="absolute inset-0 bg-[#fdfbf6]">
           <img
-            src="/assets/teacherbanner.png"
+            src="/assets/teacherbanner.webp"
             alt="Teachers Header"
             className="w-full h-full object-cover object-top sm:object-center"
           />

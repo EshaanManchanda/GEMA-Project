@@ -410,7 +410,7 @@ const BlogDetailPage: React.FC = () => {
           className="w-full max-h-[50vh] sm:max-h-[60vh] lg:max-h-[70vh] object-contain rounded-lg shadow-lg"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            target.src = '/assets/images/placeholder.jpg';
+            target.src = '/assets/images/placeholder.webp';
           }}
         />
       </div>

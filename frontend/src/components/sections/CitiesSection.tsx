@@ -59,7 +59,7 @@ const CitiesSection: React.FC = () => {
                   loading="lazy"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    target.src = '/assets/images/placeholder.jpg';
+                    target.src = '/assets/images/placeholder.webp';
                   }}
                 />
               </div>

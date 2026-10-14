@@ -467,7 +467,7 @@ const SummerPartnersDirectoryPage: React.FC = () => {
                   <div className="h-56 w-full relative overflow-hidden bg-slate-50 flex items-center justify-center p-4">
                     <div
                       className="absolute inset-0 bg-cover bg-no-repeat bg-center transition-transform duration-500 group-hover:scale-105"
-                      style={{ backgroundImage: `url('${event.image || '/assets/images/placeholder.jpg'}')` }}
+                      style={{ backgroundImage: `url('${event.image || '/assets/images/placeholder.webp'}')` }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-6">
                       <div className="px-4 py-2 rounded-xl bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/25 shadow-sm transform translate-y-2 group-hover:translate-y-0 transition-all duration-350">

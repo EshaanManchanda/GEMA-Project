@@ -890,7 +890,7 @@ export default function AiArtCompetitionPage() {
             }}
           >
             <img
-              src="/assets/dubb.png"
+              src="/assets/dubb.webp"
               alt="Futuristic UAE AI Artwork"
               className="w-full h-full object-cover object-left-top scale-[1.15]"
             />
@@ -960,7 +960,7 @@ export default function AiArtCompetitionPage() {
             {/* Mobile Illustration Image (Hidden on Desktop) */}
             <div className="w-full lg:hidden relative mt-10">
               <img
-                src="/assets/dubb.png"
+                src="/assets/dubb.webp"
                 alt="Futuristic UAE AI Artwork"
                 className="w-full aspect-square sm:aspect-video object-cover rounded-[2rem] shadow-2xl border border-slate-700/30"
               />

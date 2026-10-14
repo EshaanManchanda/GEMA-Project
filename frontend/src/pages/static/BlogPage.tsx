@@ -27,13 +27,13 @@ const BlogCard: React.FC<BlogCardProps> = ({ blog, getCategoryName, formatDate }
       <div className="h-48 overflow-hidden">
         {inView ? (
           <img
-            src={blog.featuredImage || '/assets/images/placeholder.jpg'}
+            src={blog.featuredImage || '/assets/images/placeholder.webp'}
             alt={blog.title}
             className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
             loading="lazy"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = '/assets/images/placeholder.jpg';
+              target.src = '/assets/images/placeholder.webp';
             }}
           />
         ) : (

@@ -503,7 +503,7 @@ const TeacherPublicProfilePage: React.FC = () => {
       <section className="relative h-[420px] overflow-hidden pt-10 pb-20">
         {cover
           ? <img src={cover} alt={teacherName} className="absolute inset-0 w-full h-full object-cover object-center" />
-          : <img src="/assets/defbanner.png" alt="Banner" className="absolute inset-0 w-full h-full object-cover object-center" />
+          : <img src="/assets/defbanner.webp" alt="Banner" className="absolute inset-0 w-full h-full object-cover object-center" />
         }
         {!cover && <div className="absolute inset-0 bg-gray-600/30" />}
         <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/30" />

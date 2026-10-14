@@ -39,7 +39,9 @@ export default defineConfig({
       },
       workbox: {
         // SEO Optimization: Exclude HTML from precaching - always fetch fresh
-        globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
+        // No png: images are cached on first view by the CacheFirst rule below.
+        // Precaching them made every new visitor download ~8.6 MB of PNGs.
+        globPatterns: ['**/*.{js,css,ico,svg,woff,woff2}'],
         globIgnores: ['**/*.html', '**/index.html', '**/offline.html'],
         runtimeCaching: [
           {

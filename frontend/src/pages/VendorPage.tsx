@@ -501,7 +501,7 @@ const VendorPage: React.FC = () => {
       {/* ══════ SECTION 1: HERO ══════ */}
       <section className="relative h-[420px] overflow-hidden pt-10 pb-20">
         <img 
-          src={cover || "/assets/defbanner.png"} 
+          src={cover || "/assets/defbanner.webp"} 
           alt={vendorName} 
           className="absolute inset-0 w-full h-full object-cover object-center" 
         />

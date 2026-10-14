@@ -81,7 +81,7 @@ const BlogCommentManagement: React.FC<BlogCommentManagementProps> = ({ blogId, i
       <CardContent className="p-4">
         <div className="flex items-start space-x-3">
           <img
-            src={comment.author?.avatar || '/assets/images/placeholder-avatar.png'}
+            src={comment.author?.avatar || '/assets/images/placeholder-avatar.webp'}
             alt={comment.author?.name || 'Unknown User'}
             className="w-8 h-8 rounded-full object-cover"
           />

@@ -140,7 +140,7 @@ const VendorsPage: React.FC = () => {
         {/* Background Image & Overlay */}
         <div className="absolute inset-0 bg-[#fff5f5]">
           <img
-            src="/assets/vendbanner.png"
+            src="/assets/vendbanner.webp"
             alt="Vendors Header"
             className="w-full h-full object-cover object-top sm:object-center"
           />
