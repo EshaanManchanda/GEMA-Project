@@ -240,17 +240,23 @@ export const transferTicket = async (
       return next(new AppError("Unauthorized to transfer this ticket", 403));
     }
 
-    // Find or create the recipient user
-    let toUser = await User.findOne({ email: toEmail });
+    // Only a live ticket can change hands: transferring must never turn a
+    // used, refunded, checked-in or expired ticket back into a valid one.
+    if (
+      ticket.status !== "active" ||
+      ticket.checkInDetails?.isCheckedIn ||
+      (ticket.validUntil && ticket.validUntil < new Date())
+    ) {
+      return next(new AppError("Only an active, unused ticket can be transferred", 400));
+    }
+
+    // The recipient needs an account; creating one here never worked (the
+    // User model requires a password) and would squat arbitrary emails.
+    const toUser = await User.findOne({ email: String(toEmail).toLowerCase().trim() });
     if (!toUser) {
-      toUser = await User.create({
-        email: toEmail,
-        firstName: toEmail.split("@")[0] || "Guest",
-        lastName: "",
-        role: "customer",
-        status: "ACTIVE",
-        isEmailVerified: false,
-      });
+      return next(
+        new AppError("The recipient needs a kidrove account. Ask them to sign up, then transfer again.", 400),
+      );
     }
 
     // Update ticket ownership and add to transfer history
@@ -266,7 +272,6 @@ export const transferTicket = async (
     ticket.userId = toUser._id; // Assign new owner
     ticket.attendeeEmail = toEmail; // Update attendee email
     ticket.attendeeName = toUser.firstName + " " + toUser.lastName; // Update attendee name
-    ticket.status = "active"; // Reset status to active if it was used or cancelled
 
     // Regenerate QR code for the new owner (optional, but good for security)
     const newQrCodeData = JSON.stringify({
