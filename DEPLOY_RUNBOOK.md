@@ -20,8 +20,9 @@ What the check prints, and what to do about it:
 
 | Check | If non-zero |
 |---|---|
-| **[1] Staff accounts using a seed password** | Change those passwords **before** launch. |
+| **[1] Staff accounts using a seed password** (incl. the old admin-UI default `TempPass123!`) | Change those passwords **before** launch. |
 | **[2] vendorId not pointing at a Vendor profile** | Take a `mongodump`, then run `npx ts-node src/scripts/migrateEventVendorIds.ts` and re-run the check. Otherwise the new ownership checks lock those vendors out of their legacy events (cancel, galleries, certificates). Employees with a bad vendorId already can't scan tickets today; this deploy doesn't change that. |
+| **[4] Custom-Stripe accounts using a pasted secret key** | Their payments can't be confirmed. Before launch, move each one to Stripe Connect or platform mode (Admin → Vendors/Teachers → payment mode). Saving new manual keys is now blocked. |
 | **[3] Orders paid in Stripe but not marked paid** | **Customers were charged without a booking.** For each one, refund it in the Stripe dashboard or reinstate the order. After the deploy, the seat-expiry sweep reconciles these automatically for new orders. |
 
 Also look at the "Orders by status" summary. Production showed 53 orders and 0 paid.
@@ -66,6 +67,6 @@ Also look at the "Orders by status" summary. Production showed 53 orders and 0 p
 - Only events explicitly open for claiming can be claimed. Inviting an employee with an email that belongs to a customer, vendor or admin account is now refused (409).
 
 ## Known issues (not blockers)
-- Admin "create user" with role employee and no vendor selected stores the user's own id as the employee's vendor (`admin.user.controller.ts`, around line 452).
-- Vendors on "custom Stripe" mode with their own secret key: booking confirmation verifies on the platform account, so those payments can't be confirmed. Check whether any vendor uses this mode before enabling it.
+- Manual Stripe secret keys (custom-Stripe mode without Connect) are disabled (409) until confirmation retrieves the PaymentIntent with the key that created it. Stripe Connect is unaffected.
+- Admin-created accounts now require an explicit password; the old `TempPass123!` default is rejected.
 - 38 frontend TypeScript errors; `vendor.employee.controller` unit tests are skipped until they're rewritten against `vendor.service`.
