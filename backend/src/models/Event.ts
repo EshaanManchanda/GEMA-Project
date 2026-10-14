@@ -55,7 +55,7 @@ export interface IEvent extends Document {
   | "Class"
   | "Bootcamp"
   | "Masterclass";
-  venueType: "Indoor" | "Outdoor" | "Online" | "Offline";
+  venueType: "Indoor" | "Outdoor" | "Online" | "Offline" | "Hybrid";
   customCSS?: string;
 
   // Educational Content (for Course, Class, etc.)
@@ -399,7 +399,7 @@ const eventSchema = new Schema<IEvent>(
     },
     venueType: {
       type: String,
-      enum: ["Indoor", "Outdoor", "Online", "Offline"],
+      enum: ["Indoor", "Outdoor", "Online", "Offline", "Hybrid"], // Hybrid: venues
       required: [true, "Venue type is required"],
     },
     meetingLink: {

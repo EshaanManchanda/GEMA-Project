@@ -45,7 +45,7 @@ async function vendorWithVenue(extra: Record<string, unknown> = {}) {
 }
 
 describe("vendor venue endpoints", () => {
-  it.failing("BUG: creating a venue with a validator-approved payload succeeds (venueType casing / required Event fields)", async () => {
+  it("creates a venue from a validator-approved payload", async () => {
     const vendor = await signUp(app, "vendor");
 
     const res = await send(vendor, "post", "/api/venues", venueBody);
@@ -104,7 +104,7 @@ describe("vendor venue endpoints", () => {
     expect((await send(customer, "delete", `/api/venues/${venueId}`)).status).toBe(403);
   });
 
-  it.failing("BUG: a vendor cannot self-approve a venue through the update body", async () => {
+  it("a vendor cannot self-approve a venue through the update body", async () => {
     const { vendor, venueId } = await vendorWithVenue({ isApproved: false, status: "pending" });
 
     await send(vendor, "put", `/api/venues/${venueId}`, { isApproved: true });

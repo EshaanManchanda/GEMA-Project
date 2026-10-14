@@ -4,6 +4,7 @@ import { Event, IEvent, User } from "../models/index";
 import { AppError } from "../middleware/index";
 import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
 import { escapeRegex } from "../utils/regexHelpers";
+import { omitProtectedEventFields } from "../validators/vendor.event.validator";
 
 // ==================== INTERFACES ====================
 
@@ -101,10 +102,18 @@ class VenueService {
     data: CreateVenueInput | UpdateVenueInput,
     vendorId?: Types.ObjectId,
   ) {
-    const mapped: any = { ...data };
+    // Never take ownership, approval, promotion or rating fields from the
+    // body (a vendor could approve their own venue with isApproved: true).
+    const mapped: any = omitProtectedEventFields({ ...(data as Record<string, unknown>) });
 
     // Set type explicitly
     mapped.type = "Venue";
+
+    // The validator takes lowercase venue types; Event's enum is capitalised,
+    // so every create used to fail validation.
+    if (typeof mapped.venueType === "string") {
+      mapped.venueType = mapped.venueType.charAt(0).toUpperCase() + mapped.venueType.slice(1).toLowerCase();
+    }
 
     // Map address to location
     if (data.address) {
@@ -164,6 +173,13 @@ class VenueService {
     // category is required
     if (!mapped.category) {
       mapped.category = "Venue";
+    }
+    // price and shortDescription are required on Event too (create only)
+    if (vendorId) {
+      if (mapped.price === undefined) mapped.price = 0;
+      if (!mapped.shortDescription) {
+        mapped.shortDescription = String(mapped.description || mapped.title || "Venue").slice(0, 150);
+      }
     }
 
     return mapped;
