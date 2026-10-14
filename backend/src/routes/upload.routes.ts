@@ -25,6 +25,7 @@ import uploadService from "../services/upload.service";
 import mediaService from "../services/media.service";
 import { getOptimizedImageUrl, extractPublicId } from "../config/cloudinary";
 import logger from "../config/logger";
+import { sandboxIfActiveContent } from "../utils/activeContent";
 
 const router = Router();
 
@@ -81,8 +82,9 @@ router.use("/files", (req: Request, res: Response, next: NextFunction) => {
   res.setHeader("Access-Control-Allow-Origin", "*"); // Allow all origins for public media
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"); // Allow cross-origin access
 
-  // Disable Content-Security-Policy and other Helmet security headers for static files so PDFs can render in-browser
-  res.removeHeader("Content-Security-Policy");
+  // Disable Content-Security-Policy and other Helmet security headers for static files so PDFs can render in-browser,
+  // except for active content (SVG etc.), which gets a sandboxing CSP instead.
+  if (!sandboxIfActiveContent(res, mimeType)) res.removeHeader("Content-Security-Policy");
   res.removeHeader("X-Download-Options");
   res.removeHeader("X-Frame-Options");
   res.removeHeader("Cross-Origin-Opener-Policy");

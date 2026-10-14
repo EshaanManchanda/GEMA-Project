@@ -299,7 +299,6 @@ const bookingAttachmentFilter = (
     "image/tiff",
     "image/heic",
     "image/heif",
-    "image/svg+xml",
     "application/pdf",
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

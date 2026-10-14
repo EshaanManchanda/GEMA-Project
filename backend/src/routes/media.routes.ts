@@ -16,6 +16,7 @@ import { config } from "../config/env";
 import { CloudinaryProvider } from "../services/storage/CloudinaryProvider";
 import { LocalProvider } from "../services/storage/LocalProvider";
 import logger from "../config/logger";
+import { sandboxIfActiveContent } from "../utils/activeContent";
 
 const router = Router();
 
@@ -144,6 +145,7 @@ router.get(
             imageUpstream.headers.get("content-type") || asset.mimeType;
 
           res.setHeader("Content-Type", upstreamContentType);
+          sandboxIfActiveContent(res, upstreamContentType);
           res.setHeader("Content-Length", imageBuffer.length.toString());
           res.setHeader("Access-Control-Allow-Origin", "*");
           res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
@@ -188,6 +190,7 @@ router.get(
 
         // Set content type and CORS headers
         res.setHeader("Content-Type", asset.mimeType);
+        sandboxIfActiveContent(res, asset.mimeType);
         res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year cache
         res.setHeader("Access-Control-Allow-Origin", "*"); // Allow all origins for public media
         res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"); // Allow cross-origin access
