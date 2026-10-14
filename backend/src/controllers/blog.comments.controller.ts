@@ -24,12 +24,10 @@ export const getComments = async (
 ) => {
   try {
     const { postId } = req.params;
-    const {
-      page = 1,
-      limit = 10,
-      sort = "newest",
-      status = "active",
-    } = req.query;
+    const { page = 1, limit = 10, sort = "newest" } = req.query;
+    // Public endpoint: only published comments. (?status=pending used to list
+    // unmoderated comments to anyone; admins use getCommentsForAdmin.)
+    const status = "active";
 
     // Check if blog post exists
     const blogPost = await Blog.findById(postId);
@@ -217,6 +215,11 @@ export const deleteComment = async (
       userRole !== "admin"
     ) {
       return next(new AppError("You can only delete your own comments", 403));
+    }
+
+    // Already deleted: nothing to do (deleting twice drove commentsCount negative).
+    if (comment.status === "deleted") {
+      return res.status(200).json({ success: true, message: "Comment deleted successfully" });
     }
 
     // Soft delete: mark as deleted instead of removing from database

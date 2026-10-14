@@ -109,7 +109,7 @@ it("requires login to comment and admin to approve", async () => {
   expect((await Comment.findById(id).lean())!.status).toBe("pending");
 });
 
-it.failing("BUG: anonymous visitors cannot list unmoderated comments via ?status=pending", async () => {
+it("anonymous visitors cannot list unmoderated comments via ?status=pending", async () => {
   const postId = await insertPost();
   const me = await signUp(app, "customer");
   await postComment(me, postId, "unmoderated text");
@@ -119,7 +119,7 @@ it.failing("BUG: anonymous visitors cannot list unmoderated comments via ?status
   expect(JSON.stringify(res.body)).not.toContain("unmoderated text");
 });
 
-it.failing("BUG: deleting an already-deleted comment does not decrement commentsCount again", async () => {
+it("deleting an already-deleted comment does not decrement commentsCount again", async () => {
   const postId = await insertPost();
   const me = await signUp(app, "customer");
   const id = await postComment(me, postId);
