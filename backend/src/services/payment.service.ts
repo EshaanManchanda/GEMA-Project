@@ -894,6 +894,10 @@ export class PaymentService {
       // Keep order as pending, but log the failure
       logger.info(`Payment failed for order ${orderId}`);
 
+      // A failed earlier attempt can arrive after a later one succeeded (or
+      // after a refund); don't tell that customer their payment failed.
+      if (["paid", "refunded", "free"].includes(order.paymentStatus)) return;
+
       // P1.3: Send payment failure in-app notification
       if (order.userId) {
         await Notification.create({
@@ -1148,11 +1152,15 @@ export class PaymentService {
    * Period end is tracked via invoice.period_end in handleInvoicePaid instead.
    */
   private static async handleSubscriptionUpdated(
-    subscription: Stripe.Subscription,
+    eventSubscription: Stripe.Subscription,
   ): Promise<void> {
     try {
-      const vendorId = subscription.metadata?.vendorId;
+      const vendorId = eventSubscription.metadata?.vendorId;
       if (!vendorId) return; // Not a vendor subscription
+
+      // Events arrive out of order (an old "incomplete" after "active"), so
+      // apply Stripe's current state rather than this event's snapshot.
+      const subscription = await stripe.subscriptions.retrieve(eventSubscription.id);
 
       const vendor = await Vendor.findById(vendorId);
       if (!vendor) {
@@ -1218,6 +1226,7 @@ export class PaymentService {
       }
     } catch (error) {
       logger.error("Error handling customer.subscription.updated:", error);
+      throw error; // non-2xx: Stripe retries
     }
   }
 
@@ -1278,6 +1287,7 @@ export class PaymentService {
       );
     } catch (error) {
       logger.error("Error handling customer.subscription.deleted:", error);
+      throw error; // non-2xx: Stripe retries
     }
   }
 
@@ -1390,6 +1400,7 @@ ${invoice.hosted_invoice_url ? `<p><a href="${invoice.hosted_invoice_url}">View 
       );
     } catch (error) {
       logger.error("Error handling invoice.paid:", error);
+      throw error; // non-2xx: Stripe retries
     }
   }
 
