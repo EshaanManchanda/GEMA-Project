@@ -235,6 +235,10 @@ const EmployeeManagement: React.FC = () => {
         toast.error('Please fill in all required fields');
         return;
       }
+      if (formData.password.trim().length < 8) {
+        toast.error('Password must be at least 8 characters');
+        return;
+      }
 
       setActionLoading({ ...actionLoading, create: true });
       const response = await adminAPI.createEmployee(formData);
@@ -494,9 +498,11 @@ const EmployeeManagement: React.FC = () => {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Leave blank for default password"
+                  placeholder="Set a password for this employee"
+                  required
+                  minLength={8}
                 />
-                <p className="text-xs text-gray-500 mt-1">Default: TempPass123!</p>
+                <p className="text-xs text-gray-500 mt-1">At least 8 characters. Share it with the employee securely.</p>
               </div>
             )}
             <div>

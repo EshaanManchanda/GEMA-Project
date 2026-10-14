@@ -9,6 +9,21 @@ import { validateEmail, validatePhone } from "./common.validator";
 export const PASSWORD_REGEX = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])/;
 export const PASSWORD_MIN_LENGTH = 8;
 
+// The old admin UI shipped this as a visible "default password"; never accept it.
+const KNOWN_DEFAULT_PASSWORDS = new Set(["TempPass123!"]);
+
+/** Error message for a password an admin sets on someone's account, or null if acceptable. */
+export const adminSetPasswordError = (password: unknown): string | null => {
+  const pw = typeof password === "string" ? password.trim() : "";
+  if (pw.length < PASSWORD_MIN_LENGTH) {
+    return `Password is required and must be at least ${PASSWORD_MIN_LENGTH} characters`;
+  }
+  if (KNOWN_DEFAULT_PASSWORDS.has(pw)) {
+    return "This is a publicly known default password; choose a different one";
+  }
+  return null;
+};
+
 /**
  * Registration validation
  */

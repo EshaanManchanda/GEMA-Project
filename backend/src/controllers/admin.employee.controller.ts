@@ -5,6 +5,7 @@ import { AppError } from "../middleware/index";
 import { ApiResponse } from "../types/index";
 import * as bcrypt from "bcryptjs";
 import mongoose from "mongoose";
+import { adminSetPasswordError } from "../validators/auth.validator";
 
 /**
  * Interface for employee query parameters
@@ -407,6 +408,11 @@ export const createEmployee = async (
       );
     }
 
+    const passwordError = adminSetPasswordError(password);
+    if (passwordError) {
+      return next(new AppError(passwordError, 400));
+    }
+
     // Validate vendor ID
     if (!mongoose.Types.ObjectId.isValid(vendorId)) {
       return next(new AppError("Invalid vendor ID", 400));
@@ -433,11 +439,8 @@ export const createEmployee = async (
     // Clean up phone field
     const cleanPhone = phone && phone.trim() !== "" ? phone.trim() : undefined;
 
-    // Generate password if not provided
-    const defaultPassword =
-      password && password.trim() !== "" ? password.trim() : "TempPass123!";
     const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(defaultPassword, salt);
+    const passwordHash = await bcrypt.hash(password!.trim(), salt);
 
     // Create user account first
     const user = await User.create({

@@ -1346,8 +1346,10 @@ const AdminUsersPage: React.FC = () => {
 
                 const password = (formData.get('password') as string || '').trim();
                 const isCreating = true; // this modal is for create
-                if (isCreating && password) {
-                  if (password.length < 8) {
+                if (isCreating) {
+                  if (!password) {
+                    newErrors.password = 'Password is required';
+                  } else if (password.length < 8) {
                     newErrors.password = 'Password must be at least 8 characters long';
                   } else if (!/[A-Z]/.test(password)) {
                     newErrors.password = 'Password must contain at least one uppercase letter';
@@ -1371,7 +1373,7 @@ const AdminUsersPage: React.FC = () => {
 
                   const createData = {
                     ...userData,
-                    password: password || 'TempPass123!'
+                    password
                   };
                   const response = await adminAPI.createUser(createData);
                   if (response.success) {
@@ -1503,13 +1505,15 @@ const AdminUsersPage: React.FC = () => {
                               <input
                                 type="password"
                                 name="password"
-                                placeholder="Leave empty for default password"
+                                placeholder="Set a password for this account"
+                                required
+                                minLength={8}
                                 className={`w-full px-3 py-2 border ${formErrors.password ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900`}
                               />
                               {formErrors.password ? (
                                 <p className="text-sm text-red-500 mt-1">{formErrors.password}</p>
                               ) : (
-                                <p className="text-xs text-gray-500 mt-1">Default: TempPass123!</p>
+                                <p className="text-xs text-gray-500 mt-1">Share it with the user securely; they can change it after signing in.</p>
                               )}
                             </div>
                           )}

@@ -12,6 +12,7 @@ import Vendor from "../models/Vendor";
 import Teacher from "../models/Teacher";
 import Employee from "../models/Employee";
 import { cacheService } from "../services/cache.service";
+import { adminSetPasswordError } from "../validators/auth.validator";
 import { getAuth, logger } from "../config/index";
 
 /**
@@ -397,6 +398,21 @@ export const createUser = async (
       );
     }
 
+    const passwordError = adminSetPasswordError(password);
+    if (passwordError) {
+      return next(new AppError(passwordError, 400));
+    }
+
+    // An employee belongs to a Vendor profile; without one they can't scan any tickets.
+    if (role === UserRole.EMPLOYEE) {
+      if (!vendorId || !mongoose.Types.ObjectId.isValid(vendorId)) {
+        return next(new AppError("A valid vendor is required for employees", 400));
+      }
+      if (!(await Vendor.exists({ _id: vendorId }))) {
+        return next(new AppError("Vendor not found", 404));
+      }
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -406,9 +422,8 @@ export const createUser = async (
     // Clean up phone field - convert empty string to undefined
     const cleanPhone = phone && phone.trim() !== "" ? phone.trim() : undefined;
 
-    // Set password or use default - will be hashed by pre-save hook
-    const plainPassword =
-      password && password.trim() !== "" ? password.trim() : "TempPass123!";
+    // Hashed by the pre-save hook
+    const plainPassword = password.trim();
 
     // Auto-verify phone for admin-created vendors (bypasses PhoneVerificationGate)
     const resolvedPhoneVerified = role === UserRole.VENDOR ? true : (isPhoneVerified ?? false);
@@ -449,7 +464,7 @@ export const createUser = async (
 
       // Create employee record
       await Employee.create({
-        vendorId: vendorId || user._id, // Use provided vendorId or user's own ID as fallback
+        vendorId,
         userId: user._id,
         employeeId: generatedEmployeeId,
         firstName: user.firstName,
