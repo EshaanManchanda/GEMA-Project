@@ -786,6 +786,20 @@ export const confirmBooking = async (
         );
       }
 
+      // The intent must have been created for THIS order; an amount match alone
+      // lets one paid intent confirm every other pending order of the same price.
+      if (
+        paymentIntent.id !== order.paymentIntentId &&
+        paymentIntent.metadata?.orderId !== order._id.toString()
+      ) {
+        logger.warn("Payment intent does not belong to this order", {
+          orderId: order._id,
+          paymentIntentId: paymentIntent.id,
+          ip: req.ip,
+        });
+        return next(new AppError("Payment does not belong to this order. Please contact support.", 400));
+      }
+
       // Verify the amount and currency match the order to prevent short-pay
       const expectedAmountMinorUnits = Math.round(order.total * 100);
       const piCurrency = (paymentIntent.currency || "").toLowerCase();

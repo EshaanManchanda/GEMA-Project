@@ -328,6 +328,15 @@ export const confirmRegistrationPayment = async (
       return next(new AppError("Registration not found", 404));
     }
 
+    // Only the intent created for this registration can pay for it; otherwise
+    // one succeeded intent could be replayed against any number of registrations.
+    if (
+      !registration.payment.stripePaymentIntentId ||
+      paymentIntentId !== registration.payment.stripePaymentIntentId
+    ) {
+      return next(new AppError("Payment does not belong to this registration", 400));
+    }
+
     // Verify payment with Stripe
     const paymentIntent =
       await PaymentService.getPaymentIntent(paymentIntentId);
