@@ -564,6 +564,9 @@ affiliateSchema.methods.recordConversion = async function (
   orderId: mongoose.Types.ObjectId,
   orderAmount: number,
 ): Promise<IAffiliate> {
+  // Payment webhooks can be redelivered; count each order once.
+  if (this.commissions.some((c) => c.orderId?.equals(orderId))) return this;
+
   // Find the click that led to this conversion (within cookie expiry period)
   const expiryDate = new Date();
   expiryDate.setDate(expiryDate.getDate() - this.cookieExpiryDays);

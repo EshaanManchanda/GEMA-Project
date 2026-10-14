@@ -106,6 +106,7 @@ export interface IOrder extends Document {
   refundReason?: string;
   refundedAt?: Date;
   confirmedAt?: Date;
+  postPaymentNotifiedAt?: Date;
   cancelledAt?: Date;
 
   // Enhanced refund tracking
@@ -532,6 +533,7 @@ const orderSchema = new Schema<IOrder>(
     },
     refundedAt: Date,
     confirmedAt: Date,
+    postPaymentNotifiedAt: Date,
     cancelledAt: Date,
 
     // Enhanced refund tracking

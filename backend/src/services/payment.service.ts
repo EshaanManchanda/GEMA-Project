@@ -684,6 +684,14 @@ export class PaymentService {
         return;
       }
 
+      // Stripe retries and redelivers for days; a late copy must not revive a
+      // refunded order. (Already-confirmed orders still run: the client confirm
+      // endpoint confirms first and leaves affiliate + notifications to us.)
+      if (order.paymentStatus === "refunded" || order.status === "refunded") {
+        logger.warn(`Order ${orderId} already refunded, ignoring replayed payment success`);
+        return;
+      }
+
       // Update order status and generate tickets
       await order.markAsPaid(paymentIntent.id, "stripe");
       await order.confirm(); // This will automatically generate tickets
@@ -709,7 +717,7 @@ export class PaymentService {
       if (order.affiliateCode) {
         try {
           const affiliate = await Affiliate.findOne({
-            code: order.affiliateCode,
+            affiliateCode: order.affiliateCode.toUpperCase(),
           });
           if (affiliate) {
             await affiliate.recordConversion(
@@ -725,9 +733,16 @@ export class PaymentService {
         }
       }
 
-      // Send confirmation + ticket emails (fire-and-forget)
+      // Send confirmation + ticket emails (fire-and-forget), once per order:
+      // the atomic claim stops webhook redeliveries from re-notifying.
       (async () => {
         try {
+          const claim = await Order.updateOne(
+            { _id: order._id, postPaymentNotifiedAt: null },
+            { $set: { postPaymentNotifiedAt: new Date() } },
+          );
+          if (claim.modifiedCount === 0) return;
+
           const user = await User.findById(order.userId)
             .select("email firstName phone")
             .lean();

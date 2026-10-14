@@ -11,6 +11,7 @@ import { Application } from "express";
 import { Types } from "mongoose";
 import Stripe from "stripe";
 import Order from "../../../models/Order";
+import Affiliate from "../../../models/Affiliate";
 import Ticket from "../../../models/Ticket";
 import Event from "../../../models/Event";
 import User from "../../../models/User";
@@ -313,5 +314,41 @@ describe("POST /api/payments/webhook (retry semantics)", () => {
 
     expect(res.status).toBe(500);
     expect((await Order.findById(order._id).lean())?.paymentStatus).toBe("paid");
+  });
+});
+
+describe("payment success replays (no Redis dedup)", () => {
+  beforeEach(() => {
+    fakeRedis = null; // Redis down, or the seat-expiry reconcile path: no event-id dedup
+  });
+
+  it("a late success event does not revive a refunded order", async () => {
+    const order = await pendingOrder();
+    await PaymentService.processWebhookEvent(succeeded(String(order._id)));
+    await PaymentService.processWebhookEvent(
+      event("charge.refunded", { id: "ch_full", object: "charge", refunded: true, amount_refunded: 10000, metadata: { orderId: String(order._id) } }),
+    );
+
+    await PaymentService.processWebhookEvent(succeeded(String(order._id)));
+
+    const after = await Order.findById(order._id).lean();
+    expect(after?.status).toBe("refunded");
+    expect(after?.paymentStatus).toBe("refunded");
+  });
+
+  it("counts the affiliate conversion and claims notifications once", async () => {
+    const order = await pendingOrder();
+    await Order.updateOne({ _id: order._id }, { affiliateCode: "PARTNER1" });
+    await Affiliate.create({ userId: new Types.ObjectId(), affiliateCode: "PARTNER1", defaultCommissionRate: 10, paymentMethod: "stripe" });
+
+    await PaymentService.processWebhookEvent(succeeded(String(order._id)));
+    await PaymentService.processWebhookEvent(succeeded(String(order._id)));
+
+    const affiliate = await Affiliate.findOne({ affiliateCode: "PARTNER1" }).lean();
+    expect(affiliate?.commissions).toHaveLength(1);
+    expect(affiliate?.totalConversions).toBe(1);
+    // Claim is written by the fire-and-forget notifier; give it a tick.
+    await new Promise((r) => setTimeout(r, 200));
+    expect((await Order.findById(order._id).lean())?.postPaymentNotifiedAt).toBeInstanceOf(Date);
   });
 });
