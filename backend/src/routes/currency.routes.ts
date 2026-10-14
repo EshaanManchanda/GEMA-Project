@@ -3,6 +3,8 @@ import { catchAsync } from "../middleware/index";
 import currencyService from "../services/currency.service";
 import { Request, Response, NextFunction } from "express";
 import { detectCurrency } from "../controllers/currency.controller";
+import { authenticate, authorize } from "../middleware/auth";
+import { UserRole } from "../models/User";
 
 const router = express.Router();
 
@@ -116,11 +118,13 @@ router.get(
 
 /**
  * @route   POST /api/currency/refresh
- * @desc    Force refresh of exchange rates (admin only in production)
- * @access  Public (should be protected in production)
+ * @desc    Force refresh of exchange rates (calls the paid FX API)
+ * @access  Admin
  */
 router.post(
   "/refresh",
+  authenticate,
+  authorize([UserRole.ADMIN]),
   catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const rates = await currencyService.refreshRates();
 
