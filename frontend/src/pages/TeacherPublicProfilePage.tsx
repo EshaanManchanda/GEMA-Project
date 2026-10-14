@@ -6,7 +6,6 @@ import {
   FaBookOpen,
   FaCalendarAlt,
   FaChalkboardTeacher,
-  FaClock,
   FaFacebook,
   FaGlobe,
   FaGraduationCap,
@@ -20,10 +19,7 @@ import {
   FaCheckCircle,
   FaBullseye,
   FaMapMarkerAlt,
-  FaCheck,
-  FaQuoteLeft,
   FaChevronDown,
-  FaAward,
   FaHeart,
 } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
@@ -133,31 +129,7 @@ const REVIEWER_GRADIENTS = [
 ];
 
 /* ─── Default teaching philosophy principles ── */
-const DEFAULT_PHILOSOPHY = [
-  {
-    title: 'Concept First',
-    desc: 'I never rush to formulas — students understand why before they learn how.',
-  },
-  {
-    title: 'Personalized Pace',
-    desc: 'Every student learns differently; I adapt my approach to match each individual.',
-  },
-  {
-    title: 'Real-World Application',
-    desc: 'Every lesson connects to practical examples that make abstract ideas click.',
-  },
-];
-
 /* ─── Default "What You'll Gain" outcomes ── */
-const DEFAULT_OUTCOMES = [
-  'Solve problems from first principles',
-  'Build exam confidence',
-  'Get personalized feedback',
-  'Understand concepts, not just memorize',
-  'Improve speed and accuracy',
-  'Prepare for competitive exams',
-];
-
 /* ─── Default FAQ items ── */
 const DEFAULT_FAQS = [
   { q: 'Do you teach beginners?', a: 'Absolutely! I welcome learners at all levels and tailor each session to your starting point.' },
@@ -168,26 +140,6 @@ const DEFAULT_FAQS = [
 ];
 
 /* ─── StarRow ─────────────────────────────── */
-const StarRow: React.FC<{ rating: number; interactive?: boolean; onRate?: (n: number) => void }> = ({
-  rating, interactive, onRate,
-}) => {
-  const [hover, setHover] = useState(0);
-  return (
-    <span className="inline-flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <FaStar
-          key={n}
-          className={`${interactive ? 'cursor-pointer text-base transition-transform hover:scale-110' : 'text-xs'} ${n <= (hover || Math.round(rating)) ? 'text-amber-400' : 'text-gray-300'}`}
-          onMouseEnter={() => interactive && setHover(n)}
-          onMouseLeave={() => interactive && setHover(0)}
-          onClick={() => interactive && onRate?.(n)}
-        />
-      ))}
-      {!interactive && <span className="ml-1 text-xs text-gray-700 font-semibold">{rating.toFixed(1)}</span>}
-    </span>
-  );
-};
-
 /* ─── FAQItem with smooth animation ─────────────────────────────── */
 const FAQItem: React.FC<{ q: string; a: string; defaultOpen?: boolean; index: number }> = ({ q, a, defaultOpen }) => {
   const [open, setOpen] = useState(!!defaultOpen);
@@ -473,20 +425,10 @@ const TeacherPublicProfilePage: React.FC = () => {
   const classCards = teachingEvents.slice(0, 3);
   const visibleReviews = allReviews.filter((r) => (r.comment || '').trim().length > 0).slice(0, 8);
   const activeSocialLinks = SOCIAL_ITEMS.filter((s) => !!social[s.key]);
-  const coreValues = DEFAULT_PHILOSOPHY;
 
-  const certifications: Array<{ name: string; issuer?: string; year?: string | number }> =
-    (teacher as any).certifications || [];
-  const hasCertifications = certifications.length > 0;
 
   const faqItems: Array<{ q: string; a: string }> =
     (teacher as any).faq?.length ? (teacher as any).faq : DEFAULT_FAQS;
-
-  const philosophyPrinciples: Array<{ title: string; desc: string }> =
-    (teacher as any).teachingPhilosophy?.length ? (teacher as any).teachingPhilosophy : DEFAULT_PHILOSOPHY;
-
-  const outcomes: string[] =
-    (teacher as any).learningOutcomes?.length ? (teacher as any).learningOutcomes : DEFAULT_OUTCOMES;
 
   return (
     <div className="min-h-screen bg-[#f4f5f9] font-sans overflow-x-hidden">

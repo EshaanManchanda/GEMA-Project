@@ -6,7 +6,6 @@ import {
   FaBookOpen,
   FaCalendarAlt,
   FaStore,
-  FaClock,
   FaFacebook,
   FaGlobe,
   FaGraduationCap,
@@ -20,11 +19,8 @@ import {
   FaCheckCircle,
   FaBullseye,
   FaMapMarkerAlt,
-  FaCheck,
-  FaQuoteLeft,
   FaChevronDown,
   FaHeart,
-  FaAward,
 } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import vendorAPI from '@/services/api/vendorAPI';
@@ -132,31 +128,7 @@ const REVIEWER_GRADIENTS = [
 ];
 
 /* ─── Default teaching philosophy principles ── */
-const DEFAULT_VALUES = [
-  {
-    title: 'Exceptional Quality',
-    desc: 'We prioritize delivering the highest standard of service to ensure every event is memorable.',
-  },
-  {
-    title: 'Customer Focus',
-    desc: 'Your satisfaction is our top priority; we tailor our services to meet your specific needs.',
-  },
-  {
-    title: 'Seamless Execution',
-    desc: 'From planning to completion, we guarantee a smooth and flawlessly executed experience.',
-  },
-];
-
 /* ─── Default "What to Expect" outcomes ── */
-const DEFAULT_OUTCOMES = [
-  'Memorable Experiences',
-  'Professional Event Management',
-  'Dedicated Support',
-  'Seamless Ticketing & Entry',
-  'Top-tier Services',
-  'Secure Booking',
-];
-
 /* ─── Default FAQ items ── */
 const DEFAULT_FAQS = [
   { q: 'How do I book an event?', a: 'Simply find an event you love, select your tickets, and proceed to checkout securely.' },
@@ -167,26 +139,6 @@ const DEFAULT_FAQS = [
 ];
 
 /* ─── StarRow ─────────────────────────────── */
-const StarRow: React.FC<{ rating: number; interactive?: boolean; onRate?: (n: number) => void }> = ({
-  rating, interactive, onRate,
-}) => {
-  const [hover, setHover] = useState(0);
-  return (
-    <span className="inline-flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <FaStar
-          key={n}
-          className={`${interactive ? 'cursor-pointer text-base transition-transform hover:scale-110' : 'text-xs'} ${n <= (hover || Math.round(rating)) ? 'text-amber-400' : 'text-gray-300'}`}
-          onMouseEnter={() => interactive && setHover(n)}
-          onMouseLeave={() => interactive && setHover(0)}
-          onClick={() => interactive && onRate?.(n)}
-        />
-      ))}
-      {!interactive && <span className="ml-1 text-xs text-gray-700 font-semibold">{rating.toFixed(1)}</span>}
-    </span>
-  );
-};
-
 /* ─── FAQItem with smooth animation ─────────────────────────────── */
 const FAQItem: React.FC<{ q: string; a: string; defaultOpen?: boolean; index: number }> = ({ q, a, defaultOpen }) => {
   const [open, setOpen] = useState(!!defaultOpen);
@@ -474,18 +426,9 @@ const VendorPage: React.FC = () => {
   const visibleReviews = allReviews.filter((r) => (r.comment || '').trim().length > 0).slice(0, 8);
   const activeSocialLinks = SOCIAL_ITEMS.filter((s) => !!social[s.key]);
 
-  const certifications: Array<{ name: string; issuer?: string; year?: string | number }> =
-    (vendor as any).certifications || [];
-  const hasCertifications = certifications.length > 0;
 
   const faqItems: Array<{ q: string; a: string }> =
     (vendor as any).faq?.length ? (vendor as any).faq : DEFAULT_FAQS;
-
-  const coreValues: Array<{ title: string; desc: string }> =
-    (vendor as any).coreValues?.length ? (vendor as any).coreValues : DEFAULT_VALUES;
-
-  const outcomes: string[] =
-    (vendor as any).learningOutcomes?.length ? (vendor as any).learningOutcomes : DEFAULT_OUTCOMES;
 
   return (
     <div className="min-h-screen bg-[#f4f5f9] font-sans overflow-x-hidden">
@@ -863,7 +806,6 @@ const VendorPage: React.FC = () => {
                     event.images?.[0]?.url || event.images?.[0] || event.coverImage || event.image
                   );
                   const typeLabel = event.type || 'Event';
-                  const duration = event.duration || 'Flexible';
                   
                   return (
                     <Link

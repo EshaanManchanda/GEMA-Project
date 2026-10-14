@@ -17,7 +17,6 @@ import { PageErrorBoundary } from '@components/common/ErrorBoundary';
 // Skeleton Components for better perceived performance
 import {
   HomePageSkeleton,
-  EventsPageSkeleton,
   EventDetailSkeleton,
   AdminDashboardSkeleton,
   GenericPageSkeleton
@@ -25,7 +24,6 @@ import {
 
 // Page Components (Lazy loaded for better performance)
 const HomePage = React.lazy(() => import(/* webpackChunkName: "home" */ './pages/HomePage'));
-const EventsPage = React.lazy(() => import(/* webpackChunkName: "events" */ './pages/EventsPage'));
 const EventDetailPage = React.lazy(() => import(/* webpackChunkName: "events" */ './pages/EventDetailPage'));
 
 

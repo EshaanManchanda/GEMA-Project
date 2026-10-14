@@ -6,7 +6,6 @@ import {
   FaLaptop, FaMapMarkerAlt, FaCheckCircle, FaTimes,
 } from 'react-icons/fa';
 import { MdOutlineSort } from 'react-icons/md';
-import { useQuery } from '@tanstack/react-query';
 import { useEventsQuery } from '@/hooks/queries/useEventsQuery';
 import teacherAPI from '@/services/api/teacherAPI';
 import { API_BASE_URL } from '@/config/api';

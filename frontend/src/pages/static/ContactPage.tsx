@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import seoContentAPI from '@/services/api/seoContentAPI';
 import contactAPI from '@/services/api/contactAPI';
 import { selectSocialSettings } from '@/store/slices/settingsSlice';
-import { getAppNameFull, getContactEmail, getContactPhone, getCompanyAddress, getSupportEmail } from '../../utils/brandConfig';
+import { getAppNameFull, getContactEmail, getContactPhone, getCompanyAddress } from '../../utils/brandConfig';
 
 const ContactPage: React.FC = () => {
   const socialSettings = useSelector(selectSocialSettings);

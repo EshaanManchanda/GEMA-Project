@@ -317,7 +317,7 @@ const AdminStudentsPage: React.FC = () => {
 
   const handlePerformDelete = async (permanent: boolean) => {
     if (!deleteConfirmModal) return;
-    const { id, name } = deleteConfirmModal;
+    const { id } = deleteConfirmModal;
     setDeleting(id);
     setDeleteConfirmModal(null);
     try {

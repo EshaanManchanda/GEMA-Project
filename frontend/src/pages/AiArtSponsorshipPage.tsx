@@ -1,6 +1,4 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { FiCheck, FiChevronRight, FiArrowLeft, FiBookOpen, FiAward, FiBriefcase, FiGlobe, FiStar } from 'react-icons/fi';
+import { FiCheck, FiChevronRight, FiBookOpen, FiAward, FiBriefcase, FiGlobe, FiStar } from 'react-icons/fi';
 import SEO from '@/components/common/SEO';
 
 export default function AiArtSponsorshipPage() {

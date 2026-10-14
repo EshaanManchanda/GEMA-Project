@@ -3,21 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiUser, FiUpload,
   FiCheck, FiChevronRight, FiChevronLeft, FiAlertCircle,
-  FiAward, FiStar, FiImage, FiTrash2, FiChevronDown, FiX, FiMail, FiEdit2, FiPlay, FiCreditCard, FiDownload
+  FiAward, FiImage, FiTrash2, FiChevronDown, FiX, FiEdit2, FiCreditCard, FiDownload
 } from 'react-icons/fi';
-import { SiCanva, SiGoogle, SiOpenai, SiFigma, SiAdobe, SiGooglegemini, SiClaude } from 'react-icons/si';
+import { SiOpenai, SiFigma, SiAdobe, SiGooglegemini, SiClaude } from 'react-icons/si';
 import { HiOutlineSparkles } from 'react-icons/hi2';
 import SEO from '@/components/common/SEO';
 import competitionAPI, { CompetitionSubmitPayload } from '@/services/api/competitionAPI';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
-import StripeElementsWrapper from '@/components/payment/StripeElementsWrapper';
-import StripePaymentElement from '@/components/payment/StripePaymentElement';
-import { ApiService } from '@/services/api';
-import { getRegionalPaymentMethods, getPreferredPaymentMethod } from '@/utils/paymentConfig';
-import { getEnvironmentInfo, getPaymentMethodAvailability } from '@/utils/environmentUtils';
-import { isRealStripeClientSecret } from '@/utils/stripeConfig';
-import { CreditCard, CheckCircle, Shield, ChevronLeft } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -37,20 +31,6 @@ const AT_A_GLANCE: any[] = [
   { icon: '🖼️', label: 'Submission', value: '1 AI-generated artwork' },
   { icon: '📝', label: 'Optional', value: '100-word description' },
   { icon: '🤖', label: 'AI Tools', value: 'Any Generative AI tool' },
-];
-
-const IMPORTANT_DATES = [
-  { label: 'Competition Opens', date: '1st September 2026', icon: '🚀' },
-  { label: 'Registration Deadline', date: '15th October 2026', icon: '📋' },
-  { label: 'Submission Deadline', date: '20th October 2026', icon: '🎨' },
-  { label: 'Results Announcement', date: '1st November 2026', icon: '🏆' },
-];
-
-const COHORTS = [
-  { label: 'AI Dreamers 🌟', grades: 'Grades 1–3', color: 'from-purple-500/20 to-indigo-500/10 border-purple-500/30' },
-  { label: 'AI Creators 🎨', grades: 'Grades 4–6', color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30' },
-  { label: 'AI Explorers 🚀', grades: 'Grades 7–9', color: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30' },
-  { label: 'AI Visionaries 💡', grades: 'Grades 10–12', color: 'from-amber-500/20 to-orange-500/10 border-amber-500/30' },
 ];
 
 const JUDGING_CRITERIA = [
@@ -268,216 +248,6 @@ function getToolIcon(tool: string) {
 
 // ─── Competition Payment Step ─────────────────────────────────────────────────
 
-interface CompetitionPaymentStepProps {
-  clientSecret: string;
-  paymentIntentId: string;
-  isSubmitting: boolean;
-  onPaymentSuccess: (paymentIntentId: string) => void;
-  onError: (error: string) => void;
-  onBack: () => void;
-}
-
-function CompetitionPaymentStep({ clientSecret, paymentIntentId, isSubmitting, onPaymentSuccess, onError, onBack }: CompetitionPaymentStepProps) {
-  const regionalMethods = getRegionalPaymentMethods();
-  const environmentInfo = getEnvironmentInfo();
-  const paymentAvailability = getPaymentMethodAvailability();
-
-  const paymentMethods = [
-    {
-      id: 'test',
-      name: 'Test Payment',
-      description: environmentInfo.isDevelopment
-        ? 'Recommended for development - automatically succeeds and processes your entry normally'
-        : 'Safe test payment option - processes your entry normally without charging your card',
-      icon: CheckCircle,
-      recommended: regionalMethods.test.recommended || !paymentAvailability.stripeElements,
-      reliable: true,
-      enabled: regionalMethods.test.enabled,
-    },
-    {
-      id: 'stripe',
-      name: 'Credit/Debit Card',
-      description: paymentAvailability.stripeElements
-        ? 'Visa, Mastercard, American Express - Secure payment processing'
-        : 'Credit/Debit Card payments may have limitations in current environment',
-      icon: CreditCard,
-      recommended: regionalMethods.stripe.recommended && paymentAvailability.stripeElements,
-      reliable: paymentAvailability.stripeElements,
-      enabled: regionalMethods.stripe.enabled,
-    },
-  ].filter(m => m.enabled);
-
-  const [selectedMethod, setSelectedMethod] = React.useState(getPreferredPaymentMethod());
-  const [testProcessing, setTestProcessing] = React.useState(false);
-
-  const handleTestPayment = async () => {
-    setTestProcessing(true);
-    try {
-      // Just call onPaymentSuccess with the already-created paymentIntentId
-      // On the backend, submitCompetition will verify if it's paid or accept test payments
-      await new Promise(r => setTimeout(r, 800)); // Brief delay for UX
-      onPaymentSuccess(paymentIntentId);
-    } catch (e: any) {
-      onError(e.message || 'Test payment failed');
-    } finally {
-      setTestProcessing(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-white mb-2">Payment</h2>
-        <p className="text-slate-400 text-sm">
-          Secure payment processing with 256-bit SSL encryption
-        </p>
-      </div>
-
-      {/* Payment Methods */}
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-          <CreditCard className="w-5 h-5 text-gray-600" />
-          <span className="font-semibold text-gray-900">Select Payment Method</span>
-        </div>
-        <div className="p-4 space-y-3">
-          {paymentMethods.map((method) => (
-            <div
-              key={method.id}
-              onClick={() => setSelectedMethod(method.id)}
-              className={`relative border rounded-xl p-4 cursor-pointer transition-all duration-200 ${selectedMethod === method.id
-                ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200'
-                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-            >
-              <div className="flex items-center gap-3">
-                <input
-                  type="radio"
-                  name="competitionPaymentMethod"
-                  value={method.id}
-                  checked={selectedMethod === method.id}
-                  onChange={() => setSelectedMethod(method.id)}
-                  className="text-teal-500 focus:ring-teal-500"
-                />
-                <method.icon className="w-6 h-6 text-gray-600" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-gray-900">{method.name}</span>
-                    {method.recommended && (
-                      <span className="px-2 py-0.5 text-xs bg-green-600 text-white rounded-full">Recommended</span>
-                    )}
-                    {method.reliable && method.id === 'test' && (
-                      <span className="px-2 py-0.5 text-xs bg-blue-500 text-white rounded-full">Reliable</span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-500 mt-0.5">{method.description}</p>
-                </div>
-                <Shield className="w-5 h-5 text-green-500 flex-shrink-0" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Stripe Card Form */}
-      {selectedMethod === 'stripe' && (
-        <>
-          {clientSecret && isRealStripeClientSecret(clientSecret) ? (
-            <StripeElementsWrapper clientSecret={clientSecret}>
-              {(isReady) => isReady ? (
-                <StripePaymentElement
-                  onSuccess={() => onPaymentSuccess(paymentIntentId)}
-                  onError={onError}
-                  isProcessing={isSubmitting}
-                  amount={50}
-                  currency="AED"
-                />
-              ) : (
-                <div className="bg-white rounded-2xl p-8 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
-                  <span className="ml-3 text-gray-500">Loading card form...</span>
-                </div>
-              )}
-            </StripeElementsWrapper>
-          ) : (
-            <div className="bg-white rounded-2xl p-8 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
-              <span className="ml-3 text-gray-500">Loading payment form...</span>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Payment Summary */}
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <span className="font-semibold text-gray-900">Payment Summary</span>
-        </div>
-        <div className="p-6 space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Competition Entry Fee</span>
-            <span className="font-medium">AED 50.00</span>
-          </div>
-          <div className="border-t pt-3 flex justify-between text-base font-bold">
-            <span>Total Amount</span>
-            <span>AED 50.00</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Security Notice */}
-      <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-        <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-        <div className="text-sm">
-          <p className="font-medium text-green-800">Secure Payment</p>
-          <p className="text-green-700 mt-0.5">
-            Your payment information is encrypted and secure. We never store your credit card details.
-            All transactions are processed through our certified payment partners.
-          </p>
-        </div>
-      </div>
-
-      {/* Action Buttons */}
-      {selectedMethod === 'test' && (
-        <div className="flex justify-between items-center">
-          <button
-            type="button"
-            onClick={onBack}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-500 text-white text-sm font-medium hover:bg-slate-700 transition-all"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back to Consent
-          </button>
-          <button
-            type="button"
-            onClick={handleTestPayment}
-            disabled={testProcessing || isSubmitting}
-            className="px-7 py-3 rounded-xl bg-white hover:bg-white text-slate-900 text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-wait"
-          >
-            {testProcessing || isSubmitting ? (
-              <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Processing…</>
-            ) : (
-              <>Pay AED 50.00</>
-            )}
-          </button>
-        </div>
-      )}
-
-      {selectedMethod === 'stripe' && (
-        <div className="flex justify-start">
-          <button
-            type="button"
-            onClick={onBack}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-500 text-white text-sm font-medium hover:bg-slate-700 transition-all"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back to Consent
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 
@@ -486,7 +256,6 @@ export default function AiArtCompetitionPage() {
   const [form, setForm] = useState<FormState>(initialFormState);
   const [errors, setErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [rulesExpanded, setRulesExpanded] = useState(false);
   const [showDeclarationsModal, setShowDeclarationsModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -580,7 +349,7 @@ export default function AiArtCompetitionPage() {
               { date: '15 Oct', year: '2026', title: 'Registration closes', copy: 'Make sure your name and route into the competition are in.' },
               { date: '20 Oct', year: '2026', title: 'Artwork submission closes', copy: 'One final artwork, uploaded as a JPG or PNG.' },
               { date: '1 Nov', year: '2026', title: 'Results announced', copy: 'We reveal the students who made us see the UAE differently.' },
-            ].map((item, index) => (
+            ].map((item) => (
               <div key={item.date} className="relative grid grid-cols-[32px_1fr] gap-4 md:block">
                 <div className="relative z-10 mt-0.5 h-4 w-4 rounded-full border-4 border-amber-500 bg-[#0E1525] md:mb-8 shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
                 <div>
