@@ -45,9 +45,8 @@ Also look at the "Orders by status" summary. Production showed 53 orders and 0 p
 
 ## 3. After deploying (smoke test, ~10 min)
 
-- `curl -s https://api.kidrove.com/api/health`: `status: ok`, and **no** `metrics`/counts in the public output.
-- `curl -s -o /dev/null -w '%{http_code}' https://api.kidrove.com/health/redis` returns `401`.
-- Home page, `/events`, an event page and login all load.
+- `deploy.sh` runs `scripts/smoke.sh` automatically and fails the deploy if it fails. It checks health (no public metrics), `/health/redis` returns 401, the events API, the home page and `/events`. Rerun it anytime with `./scripts/smoke.sh`.
+- An event page and login both load.
 - **One real booking** with your own card on a cheap event. Check that:
   - Stripe shows `payment_intent.succeeded` delivered with `200`;
   - the order becomes `confirmed/paid` and appears under My Bookings with a ticket and QR;

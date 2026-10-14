@@ -280,17 +280,6 @@ deploy_backend() {
     else
         warning "gema-worker is not running in PM2 - emails, tickets and seat expiry will NOT process"
     fi
-
-    # Wait for backend to be ready
-    log "Waiting for backend to be ready..."
-    sleep 3
-
-    # Health check
-    if curl -f http://localhost:5000/health > /dev/null 2>&1; then
-        success "Backend health check passed"
-    else
-        warning "Backend health check failed - check PM2 logs: pm2 logs $PM2_APP_NAME"
-    fi
 }
 
 ###############################################################################
@@ -400,6 +389,13 @@ main() {
     # Deploy frontend
     if [ "$DEPLOY_FRONTEND" = true ]; then
         deploy_frontend
+    fi
+
+    # No auto-rollback: new code may already have written data, so it's a human call.
+    log "Running smoke tests..."
+    if ! (set -o pipefail; bash "$PROJECT_ROOT/scripts/smoke.sh" 2>&1 | tee -a "$LOG_FILE"); then
+        error "Smoke test failed - check pm2 logs $PM2_APP_NAME, consider ./deploy.sh --rollback"
+        exit 1
     fi
 
     # Post-deployment tasks
