@@ -1,6 +1,8 @@
 import { Router, Request, Response } from "express";
 import LeadPage from "../models/LeadPage";
-import { createResourceLimiter } from "../middleware/rateLimiter";
+import { createResourceLimiter, publicFormLimiter } from "../middleware/rateLimiter";
+import { body } from "express-validator";
+import { validateRequest } from "../middleware/validation";
 
 const router = Router();
 
@@ -210,7 +212,17 @@ router.post(
  * @desc    Submit a lead for an event
  * @access  Public
  */
-router.post("/:eventId/lead", async (req: Request, res: Response) => {
+router.post(
+  "/:eventId/lead",
+  publicFormLimiter("event-lead"),
+  [
+    body("name").isString().trim().notEmpty().isLength({ max: 100 }),
+    body("email").optional({ values: "falsy" }).isEmail().isLength({ max: 254 }),
+    body("phone").optional({ values: "falsy" }).isString().isLength({ max: 30 }),
+    body("message").optional({ values: "falsy" }).isString().isLength({ max: 2000 }),
+  ],
+  validateRequest,
+  async (req: Request, res: Response) => {
   try {
     const { eventId } = req.params;
     const { name, email, phone, message } = req.body;

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth";
 import { validateRequest } from "../middleware/validation";
+import { publicFormLimiter } from "../middleware/rateLimiter";
 import {
   submitContact,
   getAllContacts,
@@ -22,7 +23,7 @@ import {
 const router = Router();
 
 // Public route - Submit contact form
-router.post("/", submitContactValidation, validateRequest, submitContact);
+router.post("/", publicFormLimiter("contact"), submitContactValidation, validateRequest, submitContact);
 
 // Protected admin routes
 router.use(authenticate); // All routes below require authentication

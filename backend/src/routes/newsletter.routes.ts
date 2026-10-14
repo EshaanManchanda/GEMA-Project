@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth";
 import { validateRequest } from "../middleware/validation";
+import { publicFormLimiter } from "../middleware/rateLimiter";
 import {
   subscribe,
   unsubscribe,
@@ -22,7 +23,7 @@ import {
 const router = Router();
 
 // Public route - Subscribe to newsletter
-router.post("/subscribe", subscribeValidation, validateRequest, subscribe);
+router.post("/subscribe", publicFormLimiter("newsletter"), subscribeValidation, validateRequest, subscribe);
 
 // Public route - Unsubscribe by token
 router.get(

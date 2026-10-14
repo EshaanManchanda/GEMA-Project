@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middleware/auth";
 import { UserRole } from "../models/index";
+import { publicFormLimiter } from "../middleware/rateLimiter";
 import { handleUploadError, uploadFields } from "../middleware/upload";
 import {
   createPaymentIntent,
@@ -32,6 +33,7 @@ router.post("/create-payment-intent", createPaymentIntent);
  */
 router.post(
   "/save-draft",
+  publicFormLimiter("competition-draft"), // before the upload is accepted
   uploadFields([{ name: "artwork", maxCount: 1 }]),
   handleUploadError,
   saveDraftSubmission,

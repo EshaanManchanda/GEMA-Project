@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth";
 import { validateRequest } from "../middleware/validation";
+import { publicFormLimiter } from "../middleware/rateLimiter";
 import {
   submitPartnership,
   getAllPartnerships,
@@ -27,6 +28,7 @@ const router = Router();
 // Public route - Submit partnership form
 router.post(
   "/",
+  publicFormLimiter("partnership"),
   submitPartnershipValidation,
   validateRequest,
   submitPartnership,

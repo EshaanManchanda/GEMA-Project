@@ -56,7 +56,7 @@ router.get(
 
 router.get(
   "/public/by-email",
-  publicFormLimiter, // may send an email
+  publicFormLimiter("certificate-lookup"), // may send an email
   authenticateOptional, // the logged-in owner sees the list directly
   [query("email").isEmail().withMessage("Valid email required")],
   listCertificatesByEmail,

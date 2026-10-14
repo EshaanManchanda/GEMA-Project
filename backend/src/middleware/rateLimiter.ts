@@ -364,9 +364,10 @@ export default {
  * partnership, newsletter, lead capture, student signup, competition draft).
  * 60/hour per IP: a class on one school network can still sign up.
  */
-export const publicFormLimiter: RateLimitRequestHandler = createCustomLimiter({
-  windowMs: 60 * 60 * 1000,
-  max: 60,
-  keyPrefix: "public-form",
-  message: "Too many submissions from this network. Please try again later.",
-});
+export const publicFormLimiter = (form: string): RateLimitRequestHandler =>
+  createCustomLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 60,
+    keyPrefix: `form-${form}`, // own counter per form
+    message: "Too many submissions from this network. Please try again later.",
+  });

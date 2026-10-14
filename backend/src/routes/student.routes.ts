@@ -20,7 +20,7 @@ const router = Router();
 
 router.post(
   "/public-register",
-  publicFormLimiter,
+  publicFormLimiter("student-register"),
   authenticateOptional, // a logged-in parent may add a child to their own account
   [
     body("studentName").trim().notEmpty().isLength({ max: 100 }).withMessage("Student name is required"),
