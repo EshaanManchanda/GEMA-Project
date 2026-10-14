@@ -91,6 +91,9 @@ export const generateTickets = async (
     if (!event) {
       return next(new AppError("Event not found", 404));
     }
+    if (!(await canStaffAccessVendor(req as AuthRequest, event.vendorId))) {
+      return next(new AppError("Not authorized to issue tickets for this event", 403));
+    }
 
     const createdTickets = [];
 
@@ -872,7 +875,7 @@ export const getTicketsByOrder = async (
 
     // Find tickets by order ID and populate event data
     const tickets = await Ticket.find({ orderId: resolvedOrderId })
-      .populate("eventId", "title dateSchedule location images description")
+      .populate("eventId", "title dateSchedule location images description vendorId")
       .populate("userId", "firstName lastName email")
       .populate("vendorId", "firstName lastName email businessName")
       .sort({ createdAt: -1 });
@@ -893,7 +896,10 @@ export const getTicketsByOrder = async (
       (ticket) => ticket.userId._id.toString() === req.user!._id?.toString(),
     );
 
-    if (!userOwnsTickets && !["admin", "vendor"].includes(req.user.role)) {
+    // Vendors (and their staff) only for orders of their own events.
+    const staffOwnsEvent = await canStaffAccessVendor(req, (normalizedTickets[0].eventId as any)?.vendorId);
+
+    if (!userOwnsTickets && !staffOwnsEvent) {
       return next(
         new AppError("Unauthorized to view tickets for this order", 403),
       );

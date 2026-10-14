@@ -168,7 +168,7 @@ describe("tickets (staff side)", () => {
   });
 
   // ticket.controller.ts getTicketsByOrder: `!["admin","vendor"].includes(role)` — any vendor passes.
-  it.failing("BUG: any vendor can list the tickets (attendee PII) of any order", async () => {
+  it("a vendor cannot list the tickets (attendee PII) of another vendor's order", async () => {
     const [a, b] = await twoVendors();
     const customer = await signUp(app, "customer");
     const eventId = await vendorEvent(a);
@@ -179,7 +179,7 @@ describe("tickets (staff side)", () => {
   });
 
   // ticket.controller.ts generateTickets: no check that the caller owns eventId.
-  it.failing("BUG: a vendor can mint valid tickets for another vendor's event", async () => {
+  it("a vendor cannot mint tickets for another vendor's event", async () => {
     const [a, b] = await twoVendors();
     const accomplice = await signUp(app, "customer");
     const email = (await User.findById(accomplice.userId).lean())!.email;
