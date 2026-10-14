@@ -34,6 +34,7 @@ import { maintenanceModeGuard } from "./middleware/maintenance.middleware";
 import { verifyCsrfToken } from "./middleware/csrf";
 import routes from "./routes/index";
 import healthRoutes from "./routes/health.routes";
+import { applyBodyParsers } from "./middleware/bodyParsers";
 import currencyRoutes from "./routes/currency.routes";
 import { scheduleTicketJobs, stopTicketJobs } from "./utils/ticketExpiration";
 import { ensureDefaultCommissionConfig } from "./scripts/seedCommissions";
@@ -272,11 +273,8 @@ app.use("/api/admin/analytics", heavyEndpointsLimiter);
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 
-// Body parsing middleware with special handling for Stripe webhooks
-app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
-app.use("/api/webhooks/cunnekt", express.raw({ type: "application/json" }));
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+// Body parsing (raw for webhooks, 1 MB JSON cap; see middleware/bodyParsers.ts)
+applyBodyParsers(app);
 // Must run AFTER body parsers — mongoSanitize/hpp need req.body populated to sanitize it
 app.use(mongoSanitize());
 app.use(hpp());

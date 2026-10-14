@@ -30,6 +30,7 @@ import vendorPaymentRoutes from "../../../routes/vendor.payment.routes";
 import { maintenanceModeGuard } from "../../../middleware/maintenance.middleware";
 import { errorHandler, notFound } from "../../../middleware/index";
 import { verifyCsrfToken } from "../../../middleware/csrf";
+import { applyBodyParsers } from "../../../middleware/bodyParsers";
 
 // Ensure required env vars exist before middleware imports try to read them
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-jwt-secret-key-32chars!!";
@@ -58,10 +59,8 @@ export const createTestApp = (): Application => {
   app.use(mongoSanitize());
   app.use(hpp());
 
-  // Body parsing (Stripe webhook needs the raw body, as in server.ts)
-  app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
-  app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ extended: true }));
+  // Same body parsers as server.ts (raw webhooks, 1 MB JSON cap)
+  applyBodyParsers(app);
   app.use(cookieParser());
   app.use(verifyCsrfToken);
 
