@@ -3,8 +3,7 @@
  * Runs before all tests to configure the test environment
  */
 
-// Increase timeout for integration tests
-jest.setTimeout(10000);
+// Test timeout lives in jest.config.js (testTimeout).
 
 // Mock environment variables
 process.env.NODE_ENV = "test";

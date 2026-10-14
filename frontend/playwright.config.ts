@@ -52,13 +52,15 @@ export default defineConfig({
     { name: 'api', dependencies: ['setup'], testMatch: /api\/.*\.spec\.ts/ },
   ],
   webServer: [
-    {
+    // E2E_EXTERNAL_API=1: the backend is already running (CI starts it in
+    // docker compose with E2E_RELAX_RATE_LIMITS), so don't start another.
+    ...(process.env.E2E_EXTERNAL_API ? [] : [{
       command: 'npm --prefix ../backend run dev',
       url: API_READY,
       env: { E2E_RELAX_RATE_LIMITS: 'true' },
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
-    },
+    }]),
     {
       // :5173 is on the backend's dev CORS allowlist; preview reuses the dev /api proxy.
       command: 'npm run build && npx vite preview --port 5173 --strictPort',

@@ -1,7 +1,18 @@
 # Deploy runbook: `backend_auth` → production
 
 For whoever has server access. `backend_auth` is a **fast-forward** of the live `aditya` branch
-(0 commits behind), with **no schema changes, no data migrations and no new required env vars**.
+(0 commits behind), with **no schema changes and no new required env vars**. One data step may be
+needed: if the pre-deploy check reports vendor links, run `migrateEventVendorIds` (see below).
+Shared review links must be regenerated after the deploy (they now carry a secret token).
+
+## 0. Before pushing (your machine)
+
+```bash
+./scripts/verify.sh     # typecheck, lint, backend tests + coverage gate, frontend tests,
+                        # dependency audit, then the Docker stack + Playwright browser tests
+```
+
+Don't deploy unless it ends with "All checks passed". CI runs the same checks on every PR.
 
 ## 1. Before deploying (server, read-only)
 

@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -47,9 +48,9 @@ jobs:
         working-directory: ./backend
         run: npm run typecheck
 
-      - name: Test
+      - name: Test (with coverage gate)
         working-directory: ./backend
-        run: npm run test
+        run: npm run test:coverage
 
   # ── Frontend quality ─────────────────────────────────────────────────
   frontend-quality:
@@ -126,6 +127,83 @@ jobs:
           path: frontend/dist
           retention-days: 1
 
+  # ── Browser tests + passive security scan ────────────────────────────
+  # Real backend (docker compose: Mongo replica set, Redis, Mailpit), seeded,
+  # driven through a production build of the frontend. Stripe is not called:
+  # the suite uses the non-production test payment paths.
+  e2e:
+    name: Browser tests (Playwright) + ZAP baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Start backend stack
+        run: |
+          echo "E2E_RELAX_RATE_LIMITS=true" > docker/backend.local.env
+          docker compose up -d --build --wait mongo redis mailpit
+          docker compose up -d backend worker
+          for i in $(seq 1 120); do
+            curl -sf "http://localhost:5001/api/events?limit=1" > /dev/null && break
+            sleep 5
+          done
+          curl -sf "http://localhost:5001/api/events?limit=1" > /dev/null
+
+      - name: Seed test data
+        run: |
+          docker compose exec -T backend npx ts-node src/scripts/seed.ts
+          docker compose exec -T backend npm run db:seed-blogs
+
+      - name: Install frontend + browser
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Playwright
+        working-directory: ./frontend
+        env:
+          E2E_EXTERNAL_API: '1'
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 7
+
+      # Passive scan of the running API. Warnings only for now; make it
+      # blocking (fail_action: true) once the first report is triaged.
+      - name: ZAP baseline scan (API)
+        if: always()
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: 'http://localhost:5001/api'
+          fail_action: false
+          allow_issue_writing: false
+
+      - name: Backend logs (on failure)
+        if: failure()
+        run: docker compose logs --no-color backend worker > backend-logs.txt
+
+      - name: Upload backend logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-logs
+          path: backend-logs.txt
+          retention-days: 7
+
   # ── Security ─────────────────────────────────────────────────────────
   security:
     name: Security Scan
@@ -146,19 +224,17 @@ jobs:
             backend/package-lock.json
             frontend/package-lock.json
 
-      # Phase 1: non-blocking (`|| true`) until baseline is reviewed and
-      # documented, then remove `|| true` from both steps to make blocking.
-      - name: Backend npm audit (high+)
-        working-directory: ./backend
+      # Blocking: any high/critical advisory in production dependencies fails
+      # unless it's on the reviewed exception list in scripts/audit-deps.js.
+      - name: Backend dependency audit (high+)
         run: |
-          npm ci
-          npm audit --audit-level=high || true
+          npm ci --prefix backend
+          node scripts/audit-deps.js backend
 
-      - name: Frontend npm audit (high+)
-        working-directory: ./frontend
+      - name: Frontend dependency audit (high+)
         run: |
-          npm ci
-          npm audit --audit-level=high || true
+          npm ci --prefix frontend
+          node scripts/audit-deps.js frontend
 
       - name: Dependency review
         uses: actions/dependency-review-action@v4
