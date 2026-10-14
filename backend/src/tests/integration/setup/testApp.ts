@@ -24,6 +24,9 @@ import studentRoutes from "../../../routes/student.routes";
 import orderRoutes from "../../../routes/order.routes";
 import cancellationRoutes from "../../../routes/event.cancellation.routes";
 import paymentRoutes from "../../../routes/payment.routes";
+import adminUserRoutes from "../../../routes/admin.user.routes";
+import adminEmployeeRoutes from "../../../routes/admin.employee.routes";
+import vendorPaymentRoutes from "../../../routes/vendor.payment.routes";
 import { maintenanceModeGuard } from "../../../middleware/maintenance.middleware";
 import { errorHandler, notFound } from "../../../middleware/index";
 import { verifyCsrfToken } from "../../../middleware/csrf";
@@ -70,6 +73,8 @@ export const createTestApp = (): Application => {
   // Mount routes
   app.use("/api/auth", authRoutes);
   app.use("/api/events", eventRoutes);
+  app.use("/api/admin/users", adminUserRoutes);
+  app.use("/api/admin/employees", adminEmployeeRoutes);
   app.use("/api/admin/events", adminEventRoutes);
   app.use("/api/admin", adminSettingsRoutes);
   app.use("/api/insights", analyticsRoutes);
@@ -78,6 +83,7 @@ export const createTestApp = (): Application => {
   app.use("/api/students", studentRoutes);
   app.use("/api/orders", orderRoutes);
   app.use("/api/payments", paymentRoutes);
+  app.use("/api/vendors/payment-settings", vendorPaymentRoutes);
   app.use("/api", cancellationRoutes); // mounted at "/" under /api in production
 
   // Health check

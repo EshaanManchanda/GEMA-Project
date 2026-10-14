@@ -77,13 +77,19 @@ services:
     container_name: kidrove-worker
     command: ["npx", "nodemon", "-L", "--watch", "src", "--ext", "ts", "src/workers/index.ts"]
 
-  # Opt-in: `docker compose --profile payments up -d`. Needs STRIPE_API_KEY=sk_test_…
-  # in docker/backend.local.env; copy the whsec_… it logs into STRIPE_WEBHOOK_SECRET there.
+  # Forwards Stripe test-mode webhooks to the backend. Needs STRIPE_API_KEY=sk_test_…
+  # in docker/backend.local.env; copy the whsec_… it logs into STRIPE_WEBHOOK_SECRET
+  # there, then `docker compose up -d backend stripe`. Idles until a key is set.
   stripe:
     image: stripe/stripe-cli:v1.21.0
     container_name: kidrove-stripe
-    profiles: [payments]
-    command: ["listen", "--forward-to", "http://backend:5001/api/payments/webhook"]
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        case "$$STRIPE_API_KEY" in sk_test_*) ;;
+        *) echo "kidrove-stripe idle: set STRIPE_API_KEY=sk_test_... in docker/backend.local.env";
+        exec sleep infinity;; esac;
+        exec stripe listen --forward-to http://backend:5001/api/payments/webhook
     env_file:
       - path: docker/backend.local.env
         required: false

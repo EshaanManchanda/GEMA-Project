@@ -14,6 +14,7 @@ import Event from "../../../models/Event";
 import Ticket from "../../../models/Ticket";
 import Order from "../../../models/Order";
 import Student from "../../../models/Student";
+import Employee from "../../../models/Employee";
 import { stripe } from "../../../config/stripe";
 import { createTestApp } from "../setup/testApp";
 import { connectTestDB, clearTestDB, closeTestDB } from "../setup/testDB";
@@ -183,4 +184,55 @@ describe("cross-tenant access", () => {
     const order = await Order.findById(orderId).select("paymentStatus").lean();
     expect(order!.paymentStatus).toBe("pending");
   });
+});
+
+describe("admin-created accounts", () => {
+  const newUser = (extra: Record<string, unknown>) => ({
+    firstName: "New",
+    lastName: "Hire",
+    email: uniqueEmail("hire"),
+    password: "Str0ng!Pass",
+    ...extra,
+  });
+
+  it("refuses a missing password and the old public default", async () => {
+    const admin = await signUpAdmin(app);
+    for (const password of [undefined, "", "TempPass123!"]) {
+      const res = await request(app).post("/api/admin/users").set("Cookie", cookie(admin)).set("X-CSRF-Token", admin.csrfToken)
+        .send(newUser({ role: "customer", password }));
+      expect(res.status).toBe(400);
+    }
+    expect(await User.countDocuments({ firstName: "New" })).toBe(0);
+  });
+
+  it("refuses an employee without a real vendor, and links one that has it", async () => {
+    const admin = await signUpAdmin(app);
+    const post = (body: Record<string, unknown>) =>
+      request(app).post("/api/admin/users").set("Cookie", cookie(admin)).set("X-CSRF-Token", admin.csrfToken).send(body);
+
+    expect((await post(newUser({ role: "employee" }))).status).toBe(400);
+    expect((await post(newUser({ role: "employee", vendorId: String(new Types.ObjectId()) }))).status).toBe(404);
+    expect(await User.countDocuments({ firstName: "New" })).toBe(0);
+
+    const vendorId = await vendorIdOf(await signUp(app, "vendor"));
+    const ok = await post(newUser({ role: "employee", vendorId }));
+    expect(ok.status).toBe(201);
+    const employee = await Employee.findOne({ email: ok.body.data.user.email }).lean();
+    expect(String(employee!.vendorId)).toBe(vendorId);
+  });
+
+  it("admin employee endpoint also refuses the old default password", async () => {
+    const admin = await signUpAdmin(app);
+    const vendorId = await vendorIdOf(await signUp(app, "vendor"));
+    const res = await request(app).post("/api/admin/employees").set("Cookie", cookie(admin)).set("X-CSRF-Token", admin.csrfToken)
+      .send(newUser({ role: "scanner", vendorId, password: "TempPass123!" }));
+    expect(res.status).toBe(400);
+  });
+});
+
+it("vendors can't save a manual Stripe secret key (payments on it can't be confirmed)", async () => {
+  const vendor = await signUp(app, "vendor");
+  const res = await request(app).put("/api/vendors/payment-settings/stripe/keys").set("Cookie", cookie(vendor)).set("X-CSRF-Token", vendor.csrfToken)
+    .send({ publishableKey: "pk_test_x", secretKey: "sk_test_x", testMode: true });
+  expect(res.status).toBe(409);
 });
