@@ -475,12 +475,13 @@ export const getRecentActivity = async (
         .lean(),
 
       // Recent reviews - with user and event info
+      // Review's refs are `user` / `event` (populating userId threw a 500).
       Review.find()
         .sort({ createdAt: -1 })
         .limit(PER_COLLECTION_LIMIT)
-        .populate("userId", "firstName lastName")
-        .populate("eventId", "title")
-        .select("_id rating comment createdAt userId eventId")
+        .populate("user", "firstName lastName")
+        .populate("event", "title")
+        .select("_id rating comment createdAt user event")
         .lean(),
 
       // Recent bookings - with user and event info
@@ -597,16 +598,16 @@ export const getRecentActivity = async (
         id: review._id,
         type: "review_submitted",
         title: "New Review Submitted",
-        description: `${review.rating}/5 stars for "${review.eventId?.title || "Unknown Event"}"`,
+        description: `${review.rating}/5 stars for "${review.event?.title || "Unknown Event"}"`,
         timestamp: review.createdAt,
         priority: review.rating <= 2 ? "high" : "normal",
         metadata: {
           reviewId: review._id,
           rating: review.rating,
-          userName: review.userId
-            ? `${review.userId.firstName} ${review.userId.lastName}`
+          userName: review.user
+            ? `${review.user.firstName} ${review.user.lastName}`
             : "Unknown",
-          eventTitle: review.eventId?.title || "Unknown Event",
+          eventTitle: review.event?.title || "Unknown Event",
           comment: review.comment,
         },
       })),

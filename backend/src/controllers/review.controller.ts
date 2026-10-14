@@ -880,6 +880,33 @@ export const getPendingReviews = async (
 // @desc    Moderate review (approve/reject)
 // @route   PUT /api/reviews/admin/:id/moderate
 // @access  Private (Admin only)
+/**
+ * Set a review's moderation status. Approving an event review for the first
+ * time also issues the reviewer's certificate (catches pending link-reviews).
+ * Shared by /reviews/admin/:id/moderate and /admin/moderation.
+ */
+export async function applyReviewModeration(
+  review: any,
+  moderatorId: unknown,
+  status: ReviewStatus,
+  notes?: string,
+): Promise<void> {
+  const wasNotApproved = review.status !== ReviewStatus.APPROVED;
+  review.moderate(moderatorId, status, notes);
+  await review.save();
+
+  if (
+    status === ReviewStatus.APPROVED &&
+    wasNotApproved &&
+    (review.type === ReviewType.EVENT || review.type === ReviewType.TEACHING_EVENT) &&
+    review.event
+  ) {
+    triggerCertificateForReview(review, review.user).catch((err) =>
+      logger.error("Certificate trigger on moderation failed:", err),
+    );
+  }
+}
+
 export const moderateReview = async (
   req: AuthRequest,
   res: Response,
@@ -899,22 +926,7 @@ export const moderateReview = async (
       return next(new AppError("Review not found", 404));
     }
 
-    const wasNotApproved = review.status !== ReviewStatus.APPROVED;
-    review.moderate(moderatorId, status, notes);
-    await review.save();
-
-    // Trigger certificate for event reviews approved by admin (catches pending link-reviews)
-    if (
-      status === ReviewStatus.APPROVED &&
-      wasNotApproved &&
-      (review.type === ReviewType.EVENT ||
-        review.type === ReviewType.TEACHING_EVENT) &&
-      review.event
-    ) {
-      triggerCertificateForReview(review, review.user).catch((err) =>
-        logger.error("Certificate trigger on moderation failed:", err),
-      );
-    }
+    await applyReviewModeration(review, moderatorId, status, notes);
 
     res.status(200).json({
       success: true,

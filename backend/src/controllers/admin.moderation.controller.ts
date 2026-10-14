@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { Review, Event, User } from "../models/index";
+import { ReviewStatus } from "../models/Review";
+import { AuthRequest } from "../types/index";
+import { applyReviewModeration } from "./review.controller";
 import { AppError } from "../middleware/index";
 import Notification, { NotificationType, NotificationPriority, NotificationChannel } from "../models/Notification";
 
@@ -17,18 +20,15 @@ export const getPendingReviews = async (
     const limitNum = parseInt(limit as string, 10);
     const skip = (pageNum - 1) * limitNum;
 
-    const query = {
-      // Add a status field to Review model or use a flag for pending reviews
-      // For now, we'll fetch all recent reviews
-    };
+    const query = { status: ReviewStatus.PENDING };
 
     const [reviews, total] = await Promise.all([
       Review.find(query)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum)
-        .populate("userId", "firstName lastName email avatar")
-        .populate("eventId", "title type"),
+        .populate("user", "firstName lastName email avatar")
+        .populate("event", "title type"),
       Review.countDocuments(query),
     ]);
 
@@ -67,22 +67,19 @@ export const moderateReview = async (
       return next(new AppError("Review not found", 404));
     }
 
+    // These were commented-out stubs: approve/reject/flag changed nothing.
+    const moderatorId = (req as AuthRequest).user?._id;
     switch (action) {
       case "approve":
-        // Mark as approved (if you have a status field)
-        // review.status = 'approved';
+        await applyReviewModeration(review, moderatorId, ReviewStatus.APPROVED, reason);
         break;
 
       case "reject":
-        // Mark as rejected
-        // review.status = 'rejected';
-        // review.rejectionReason = reason;
+        await applyReviewModeration(review, moderatorId, ReviewStatus.REJECTED, reason);
         break;
 
       case "flag":
-        // Flag for admin review
-        // review.isFlagged = true;
-        // review.flagReason = reason;
+        await applyReviewModeration(review, moderatorId, ReviewStatus.FLAGGED, reason);
         break;
 
       case "delete":
@@ -96,8 +93,6 @@ export const moderateReview = async (
       default:
         return next(new AppError("Invalid moderation action", 400));
     }
-
-    await review.save();
 
     // P2.3: Notify user about moderation action
     if (notifyUser && review.user) {
@@ -150,17 +145,13 @@ export const getFlaggedContent = async (
       case "reviews":
         // Assuming you add isFlagged field to Review model
         [flaggedContent, total] = await Promise.all([
-          Review.find({
-            /* isFlagged: true */
-          })
+          Review.find({ status: ReviewStatus.FLAGGED })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limitNum)
-            .populate("userId", "firstName lastName email")
-            .populate("eventId", "title"),
-          Review.countDocuments({
-            /* isFlagged: true */
-          }),
+            .populate("user", "firstName lastName email")
+            .populate("event", "title"),
+          Review.countDocuments({ status: ReviewStatus.FLAGGED }),
         ]);
         break;
 
@@ -266,10 +257,13 @@ export const bulkModerate = async (
       case "review":
         if (action === "delete") {
           result = await Review.deleteMany({ _id: { $in: contentIds } });
-        } else if (action === "approve") {
-          // result = await Review.updateMany({ _id: { $in: contentIds } }, { status: 'approved' });
-        } else if (action === "reject") {
-          // result = await Review.updateMany({ _id: { $in: contentIds } }, { status: 'rejected', rejectionReason: reason });
+        } else if (action === "approve" || action === "reject") {
+          const status = action === "approve" ? ReviewStatus.APPROVED : ReviewStatus.REJECTED;
+          const reviews = await Review.find({ _id: { $in: contentIds } });
+          for (const r of reviews) {
+            await applyReviewModeration(r, (req as AuthRequest).user?._id, status, reason);
+          }
+          result = { modifiedCount: reviews.length };
         }
         break;
 

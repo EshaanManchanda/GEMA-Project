@@ -46,7 +46,7 @@ describe("admin moderation", () => {
     expect((await get(admin, "/api/admin/moderation/stats")).status).toBe(200);
   });
 
-  it.failing("BUG: the pending-review queue loads (it populates `userId`, but Review's field is `user` -> StrictPopulateError 500)", async () => {
+  it("the pending-review queue loads (it populates `userId`, but Review's field is `user` -> StrictPopulateError 500)", async () => {
     const admin = await signUpAdmin(app);
     const id = await insertReview();
 
@@ -75,7 +75,7 @@ describe("admin moderation", () => {
     expect((await post(admin, `/api/admin/moderation/review/${new Types.ObjectId()}`, { action: "approve" })).status).toBe(404);
   });
 
-  it.failing("BUG: rejecting a review actually changes its status", async () => {
+  it("rejecting a review actually changes its status", async () => {
     const admin = await signUpAdmin(app);
     const id = await insertReview();
 
@@ -106,7 +106,7 @@ describe("admin dashboard", () => {
     expect((await get(admin, "/api/admin/dashboard/top-performers")).status).toBe(200);
   });
 
-  it.failing("BUG: recent activity loads (Review populate of `userId` -> StrictPopulateError 500)", async () => {
+  it("recent activity loads (Review populate of `userId` -> StrictPopulateError 500)", async () => {
     const admin = await signUpAdmin(app);
     await insertReview(); // populate only throws once a Review row exists
     expect((await get(admin, "/api/admin/dashboard/activity")).status).toBe(200);
