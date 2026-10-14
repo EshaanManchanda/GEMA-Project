@@ -161,6 +161,13 @@
    "commit": "1b823a8",
    "title": "Stale Stripe events could mislead customers or downgrade vendors",
    "text": "A late \"payment failed\" event notified customers who had already paid, and an out-of-order subscription event could downgrade a paying vendor. Subscription and invoice errors were also swallowed, losing the update. Now: no notice for paid orders, the subscription's current state is read from Stripe, and failures make Stripe retry."
+  },
+  {
+   "area": "Reliability & operations",
+   "sev": "low",
+   "commit": "c69d1e6",
+   "title": "Seeded test data broke every vendor check",
+   "text": "The local seed never created vendor profiles, so seeded events and employees pointed at nothing and vendor features couldn't be tested locally. Seeded vendors now get verified profiles."
   }
  ],
  "tests": [
