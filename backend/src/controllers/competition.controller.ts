@@ -326,6 +326,13 @@ export const finalizeSubmission = catchAsync(
       if (session.payment_status !== "paid") {
         return next(new AppError("Payment has not been completed. Please complete payment before submitting.", 402));
       }
+
+      // A paid session only pays for the submission it was created for;
+      // otherwise one paid session ID could finalize any number of drafts.
+      if (session.metadata?.submissionId !== submission._id.toString()) {
+        logger.warn(`[competition] Session ${sessionId} was not created for submission ${submissionId}`);
+        return next(new AppError("Payment session mismatch. Please contact support.", 400));
+      }
     }
 
     // Activate submission
