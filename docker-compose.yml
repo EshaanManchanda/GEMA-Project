@@ -77,6 +77,19 @@ services:
     container_name: kidrove-worker
     command: ["npx", "nodemon", "-L", "--watch", "src", "--ext", "ts", "src/workers/index.ts"]
 
+  # Opt-in: `docker compose --profile payments up -d`. Needs STRIPE_API_KEY=sk_test_…
+  # in docker/backend.local.env; copy the whsec_… it logs into STRIPE_WEBHOOK_SECRET there.
+  stripe:
+    image: stripe/stripe-cli:v1.21.0
+    container_name: kidrove-stripe
+    profiles: [payments]
+    command: ["listen", "--forward-to", "http://backend:5001/api/payments/webhook"]
+    env_file:
+      - path: docker/backend.local.env
+        required: false
+    depends_on: [backend]
+    restart: unless-stopped
+
   frontend:
     image: node:22-alpine
     container_name: kidrove-frontend

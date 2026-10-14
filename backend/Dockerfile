@@ -16,6 +16,11 @@ RUN npm ci --only=production
 
 # Development stage
 FROM base AS development
+# Puppeteer's bundled Chrome is glibc-only and can't run on Alpine; use the
+# distro Chromium for certificate/PDF rendering instead.
+RUN apk add --no-cache chromium nss freetype harfbuzz ttf-freefont
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
+    PUPPETEER_SKIP_DOWNLOAD=true
 RUN npm ci
 COPY . .
 EXPOSE 5000
