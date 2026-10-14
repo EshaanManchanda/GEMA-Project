@@ -466,16 +466,19 @@ export class PaymentService {
     try {
       logger.info(`Received Stripe webhook: ${event.type}`);
 
-      // Deduplicate webhook events using Redis
-      if (redisClient) {
-        const dedupKey = `webhook:${event.id}`;
-        const alreadyProcessed = await redisClient.get(dedupKey);
-        if (alreadyProcessed) {
-          logger.info(`Skipping duplicate webhook event: ${event.id}`);
-          return;
-        }
-        // Mark as processed with 24h TTL
-        await redisClient.set(dedupKey, "1", "EX", 86400);
+      // Deduplicate webhook events using Redis. The key is written only AFTER
+      // the handler succeeds, so a failed attempt is retried by Stripe instead
+      // of being skipped as a "duplicate".
+      // ponytail: get-then-set isn't atomic; two concurrent deliveries of one
+      // event can both run. Handlers are idempotent (tickets use skipExisting,
+      // refunds write absolute amounts), so this costs at most a repeat email.
+      const dedupKey = `webhook:${event.id}`;
+      const seen = redisClient
+        ? await redisClient.get(dedupKey).catch(() => null) // Redis down: just process
+        : null;
+      if (seen) {
+        logger.info(`Skipping duplicate webhook event: ${event.id}`);
+        return;
       }
 
       switch (event.type) {
@@ -548,6 +551,13 @@ export class PaymentService {
         default:
           logger.info(`Unhandled webhook event type: ${event.type}`);
       }
+
+      if (redisClient) {
+        // Best effort: if Redis is down, a redelivery just re-runs idempotent handlers.
+        await redisClient.set(dedupKey, "1", "EX", 86400).catch((err: Error) =>
+          logger.warn(`Could not record webhook ${event.id} as processed:`, err),
+        );
+      }
     } catch (error) {
       logger.error("Error processing webhook:", error);
       throw new Error("Failed to process webhook event");
@@ -585,7 +595,9 @@ export class PaymentService {
 
       logger.info(`Checkout session completed (no specific handler): ${session.id}`);
     } catch (error) {
+      // Rethrow for a Stripe retry; activation only sets fields, so it's safe to repeat.
       logger.error("Error handling checkout session completed:", error);
+      throw error;
     }
   }
 
@@ -826,7 +838,11 @@ export class PaymentService {
         }
       })();
     } catch (error) {
+      // Rethrow so the webhook answers 500 and Stripe retries. Only the order
+      // lookup/markAsPaid/confirm can land here (commission, affiliate and
+      // emails catch their own errors), and those are safe to re-run.
       logger.error("Error handling payment succeeded:", error);
+      throw error;
     }
   }
 
@@ -1038,7 +1054,9 @@ export class PaymentService {
         }
       })();
     } catch (error) {
+      // Rethrow for a Stripe retry; the update writes absolute values, so it's safe to repeat.
       logger.error("Error handling charge.refunded:", error);
+      throw error;
     }
   }
 

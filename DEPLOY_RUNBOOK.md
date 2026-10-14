@@ -61,6 +61,7 @@ Also look at the "Orders by status" summary. Production showed 53 orders and 0 p
 - Security: vendors, employees and customers can only see and change their own tickets, orders, events, galleries, certificates and student records (fixes cross-account access).
 - Payments: a paid order can no longer be auto-cancelled after 15 minutes if the confirmation was missed.
 - The API rate limit rises from 100 to 600 requests/min per IP; Stripe webhooks and health checks are exempt.
+- Payments: the Stripe webhook now processes the event before answering. If processing fails it answers `500` and Stripe retries (with backoff, for up to 3 days), so an occasional `500` in the endpoint's delivery log is a retry in progress, not data loss. A run of `500`s means something is broken: check `pm2 logs gema-backend` for `[WEBHOOK] Processing failed`.
 - Event cards are real links (open in new tab works); the home page has an `<h1>`.
 - Currency is detected from the visitor's IP, not the server's.
 - Vendors can create online events without a location (previously a 500 error).

@@ -38,7 +38,12 @@ export const paidOrUnknown = async (order: { _id: unknown; paymentIntentId?: str
   if (intent.status !== "succeeded") return false;
 
   logger.error(`seat-expiry: order ${order._id} was paid but still pending — reconciling (missed webhook?)`);
-  await PaymentService.handlePaymentSucceeded(intent);
+  try {
+    await PaymentService.handlePaymentSucceeded(intent);
+  } catch (err: any) {
+    // Paid, so never release it; try again on the next sweep.
+    logger.error(`seat-expiry: reconcile failed for order ${order._id}, retrying next sweep`, { message: err?.message });
+  }
   return true;
 };
 

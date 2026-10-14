@@ -426,13 +426,17 @@ export const handleWebhook = async (
     return next(new AppError("Invalid Stripe signature", 400));
   }
 
-  // Acknowledge now that the event is verified (must respond < 30s).
+  // Process BEFORE acknowledging: a non-2xx makes Stripe retry (with backoff,
+  // for up to 3 days), so a transient DB failure no longer loses the event.
+  // Handlers are safe to re-run (see PaymentService.processWebhookEvent).
+  try {
+    await PaymentService.processWebhookEvent(event);
+  } catch (err) {
+    logger.error(`[WEBHOOK] Processing failed for ${event.id}, Stripe will retry:`, err);
+    res.status(500).json({ received: false });
+    return;
+  }
   res.status(200).json({ received: true });
-
-  // Process asynchronously — already idempotent via Redis dedup
-  PaymentService.processWebhookEvent(event).catch((err) => {
-    logger.error("[WEBHOOK] Async processing error:", err);
-  });
 };
 
 // @desc    Get Stripe publishable key

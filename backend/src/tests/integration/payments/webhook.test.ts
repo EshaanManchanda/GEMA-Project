@@ -2,9 +2,9 @@
  * Stripe webhook → order state. The money path: a customer is charged, the
  * webhook confirms the order and issues tickets; a refund flips it back.
  *
- * The HTTP handler acks 200 and processes in the background, so the HTTP
- * tests only cover signature checks; state changes are asserted by awaiting
- * PaymentService.processWebhookEvent directly.
+ * The HTTP handler processes the event before answering: 200 once handled,
+ * 500 on failure so Stripe retries. State changes are mostly asserted by
+ * awaiting PaymentService.processWebhookEvent directly.
  */
 import request from "supertest";
 import { Application } from "express";
@@ -53,6 +53,16 @@ jest.mock("../../../services/queue.service", () => ({
 }));
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET as string;
+
+// Signed POST to the real webhook route.
+const postSigned = (evt: Stripe.Event) => {
+  const payload = JSON.stringify(evt);
+  return request(app)
+    .post("/api/payments/webhook")
+    .set("Content-Type", "application/json")
+    .set("Stripe-Signature", stripe.webhooks.generateTestHeaderString({ payload, secret: WEBHOOK_SECRET }))
+    .send(payload);
+};
 
 const memoryRedis = () => {
   const store = new Map<string, string>();
@@ -249,5 +259,59 @@ describe("PaymentService.processWebhookEvent", () => {
     const after = await Order.findById(order._id).lean();
     expect(after?.paymentStatus).toBe("paid");
     expect(after?.refundAmount).toBe(25);
+  });
+});
+
+describe("POST /api/payments/webhook (retry semantics)", () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it("processes the event before answering 200", async () => {
+    const order = await pendingOrder();
+
+    const res = await postSigned(succeeded(String(order._id)));
+
+    expect(res.status).toBe(200);
+    expect((await Order.findById(order._id).lean())?.paymentStatus).toBe("paid");
+  });
+
+  it("answers 500 when processing fails, and Stripe's retry then succeeds", async () => {
+    const order = await pendingOrder();
+    const evt = succeeded(String(order._id), "evt_retry");
+    jest.spyOn(Order.prototype as any, "markAsPaid").mockRejectedValueOnce(new Error("db blip"));
+
+    const first = await postSigned(evt);
+    expect(first.status).toBe(500);
+    expect((await Order.findById(order._id).lean())?.paymentStatus).toBe("pending");
+    expect(fakeRedis!.set).not.toHaveBeenCalled(); // not marked processed, so the retry isn't skipped
+
+    const retry = await postSigned(evt);
+    expect(retry.status).toBe(200);
+    const after = await Order.findById(order._id).lean();
+    expect(after?.paymentStatus).toBe("paid");
+    expect(after?.status).toBe("confirmed");
+    expect(await Ticket.countDocuments({ orderId: order._id })).toBe(2);
+  });
+
+  it("still processes when the Redis dedup lookup errors", async () => {
+    const order = await pendingOrder();
+    fakeRedis!.get.mockRejectedValueOnce(new Error("redis down"));
+
+    const res = await postSigned(succeeded(String(order._id)));
+
+    expect(res.status).toBe(200);
+    expect((await Order.findById(order._id).lean())?.paymentStatus).toBe("paid");
+  });
+
+  it("a failed refund update answers 500 for a retry", async () => {
+    const order = await pendingOrder();
+    await PaymentService.processWebhookEvent(succeeded(String(order._id)));
+    jest.spyOn(Order, "findByIdAndUpdate").mockRejectedValueOnce(new Error("db blip"));
+
+    const res = await postSigned(
+      event("charge.refunded", { id: "ch_retry", object: "charge", refunded: true, amount_refunded: 10000, metadata: { orderId: String(order._id) } }),
+    );
+
+    expect(res.status).toBe(500);
+    expect((await Order.findById(order._id).lean())?.paymentStatus).toBe("paid");
   });
 });
