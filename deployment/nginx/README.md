@@ -49,13 +49,31 @@ unless the cert is reissued clean).
 ## Snippets
 
 - `ssl-params.conf` — shared TLS protocol/cipher config.
-- `security-headers.conf` — X-Frame-Options, X-Content-Type-Options, etc.
+- `security-headers.conf` — X-Frame-Options, X-Content-Type-Options, HSTS, and a
+  `Content-Security-Policy-Report-Only` header (see below).
+- `csp-report.conf` — `POST /csp-report` location for CSP violation reports, included in
+  each HTTPS frontend block; logs to `/var/log/nginx/csp-reports.log` via the
+  `csp_report` log format and the `127.0.0.1:8099` sink server in `kidrove.conf`.
 - `api-proxy.conf` — standard `proxy_pass http://backend_api` + headers, included by API
   server blocks.
 - `api-proxy-cached.conf` — same, plus `proxy_cache` for cacheable read-only endpoints
   (categories, collections).
 - `kvm1-performance.conf` — single-core VPS tuning (worker settings), include in the
   `http {}` block of the base `/etc/nginx/nginx.conf`, not in a site config.
+
+## CSP rollout
+
+The frontend CSP ships report-only: nothing is blocked, violations are logged. After
+about a week, summarise the log:
+
+```bash
+sed 's/[\]x22/"/g' /var/log/nginx/csp-reports.log   | grep -o '"violated-directive":"[^"]*"\|"blocked-uri":"[^"]*"'   | paste - - | sort | uniq -c | sort -rn | head -40
+```
+
+Add the legitimate origins to the policy in `security-headers.conf` and ignore
+browser-extension noise (`chrome-extension`, `moz-extension`). Once a few quiet days pass,
+rename the header to `Content-Security-Policy` to enforce. Keep `report-uri` so new
+breakage still shows up.
 
 ## Verifying live vs repo
 

@@ -47,6 +47,7 @@ Also look at the "Orders by status" summary. Production showed 53 orders and 0 p
 
 - `deploy.sh` runs `scripts/smoke.sh` automatically and fails the deploy if it fails. It checks health (no public metrics), `/health/redis` returns 401, the events API, the home page and `/events`. Rerun it anytime with `./scripts/smoke.sh`.
 - An event page and login both load.
+- nginx (with the security-headers change): copy **both** `security-headers.conf` and the new `csp-report.conf` into `/etc/nginx/snippets/`, plus `kidrove.conf`, then run `nginx -t && systemctl reload nginx`. Check that `curl -sI https://kidrove.com | grep -i content-security-policy-report-only` prints the header. Reports collect in `/var/log/nginx/csp-reports.log`; see `deployment/nginx/README.md` → CSP rollout.
 - **One real booking** with your own card on a cheap event. Check that:
   - Stripe shows `payment_intent.succeeded` delivered with `200`;
   - the order becomes `confirmed/paid` and appears under My Bookings with a ticket and QR;
