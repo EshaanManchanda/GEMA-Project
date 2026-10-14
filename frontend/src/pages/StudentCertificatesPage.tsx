@@ -58,6 +58,8 @@ const StudentCertificatesPage: React.FC = () => {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
+  // Not logged in as that email: the server emails the list instead of showing it.
+  const [emailedTo, setEmailedTo] = useState('');
 
   const fetchCerts = useCallback(async (emailAddr: string) => {
     if (!emailAddr.trim()) return;
@@ -65,12 +67,17 @@ const StudentCertificatesPage: React.FC = () => {
     setError('');
     setCerts(null);
     setSearched(false);
+    setEmailedTo('');
     try {
       const res = await api.get('/certificates/public/by-email', {
         params: { email: emailAddr.trim().toLowerCase() },
       });
-      setCerts(res.data?.data?.certificates || []);
-      setSearched(true);
+      if (res.data?.data?.emailed) {
+        setEmailedTo(emailAddr.trim().toLowerCase());
+      } else {
+        setCerts(res.data?.data?.certificates || []);
+        setSearched(true);
+      }
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Failed to load certificates. Please try again.');
     } finally {
@@ -164,6 +171,18 @@ const StudentCertificatesPage: React.FC = () => {
           <div className="text-center py-10 text-gray-400">
             <RefreshCw className="w-8 h-8 mx-auto animate-spin mb-2 opacity-40" />
             <p className="text-sm">Looking up certificates…</p>
+          </div>
+        )}
+
+        {!loading && emailedTo && (
+          <div className="text-center py-10 text-gray-500">
+            <Award className="w-12 h-12 mx-auto mb-3 opacity-25" />
+            <p className="font-medium text-gray-700">Check your inbox</p>
+            <p className="text-sm mt-1">
+              If any certificates were issued to <span className="font-mono">{emailedTo}</span>, we've emailed
+              the list with download links.
+            </p>
+            <p className="text-xs mt-2 text-gray-400">Log in with that email to see them here instead.</p>
           </div>
         )}
 

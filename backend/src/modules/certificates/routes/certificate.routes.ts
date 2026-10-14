@@ -27,8 +27,8 @@ import {
   deleteCertificate,
   purgeAllCertificates,
 } from "../controllers/certificate.controller";
-import { authenticate, authorize } from "../../../middleware/auth";
-import { createCustomLimiter } from "../../../middleware/rateLimiter";
+import { authenticate, authenticateOptional, authorize } from "../../../middleware/auth";
+import { createCustomLimiter, publicFormLimiter } from "../../../middleware/rateLimiter";
 
 const certGenerateLimiter = createCustomLimiter({
   windowMs: 60 * 60 * 1000,
@@ -56,6 +56,8 @@ router.get(
 
 router.get(
   "/public/by-email",
+  publicFormLimiter, // may send an email
+  authenticateOptional, // the logged-in owner sees the list directly
   [query("email").isEmail().withMessage("Valid email required")],
   listCertificatesByEmail,
 );

@@ -16,6 +16,8 @@ import { renderCertificate } from "../../../workers/certificate.worker";
 import { certificateQueue } from "../../../config/queue";
 import { MediaService } from "../../../services/media.service";
 import logger from "../../../config/logger";
+import { emailService } from "../../../services/email.service";
+import { escapeHtml } from "../../../utils/htmlHelpers";
 import Event from "../../../models/Event";
 import { canStaffAccessVendor, resolveStaffVendorId } from "../../../utils/vendorResolve";
 
@@ -689,6 +691,24 @@ async function cleanupCertificateMedia(pdfUrl?: string): Promise<void> {
   }
 }
 
+async function emailCertificateList(to: string, certificates: any[]): Promise<void> {
+  const rows = certificates
+    .map((c) => {
+      const title = escapeHtml(String((c.eventId as any)?.title ?? "Certificate"));
+      const name = escapeHtml(String(c.recipient?.name ?? ""));
+      const serial = escapeHtml(String(c.serialNumber ?? ""));
+      const link = c.pdfUrl ? ` - <a href="${escapeHtml(String(c.pdfUrl))}">Download PDF</a>` : "";
+      return `<li>${title} - ${name} (${serial})${link}</li>`;
+    })
+    .join("");
+  await emailService.sendEmail({
+    to,
+    subject: "Your Kidrove certificates",
+    html: `<p>Here are the certificates issued to this email address:</p><ul>${rows}</ul>
+<p>If you didn't request this, you can ignore this email.</p>`,
+  });
+}
+
 export const listCertificatesByEmail = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!validate(req, next)) return;
@@ -702,6 +722,18 @@ export const listCertificatesByEmail = async (req: Request, res: Response, next:
       .select("serialNumber recipient status issuedAt pdfUrl certificateTypeSlug eventId createdAt")
       .sort({ createdAt: -1 })
       .limit(100);
+
+    // Only the address's logged-in owner sees the list here; anyone else gets
+    // the same answer either way and the list goes to that inbox instead.
+    const viewerEmail = (req as AuthRequest).user?.email?.toLowerCase();
+    if (viewerEmail !== email) {
+      if (certificates.length > 0) {
+        await emailCertificateList(email, certificates).catch((err) =>
+          logger.error("Failed to email certificate list", { error: err?.message }),
+        );
+      }
+      return res.status(200).json({ success: true, data: { emailed: true } });
+    }
 
     res.status(200).json({
       success: true,
