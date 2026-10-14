@@ -987,6 +987,29 @@ export const getGoogleReviews = async (
 
 // ─── Review Link System ───────────────────────────────────────────────────────
 
+// The shared link carries the event's secret reviewToken; an event id alone
+// is not enough to create accounts or post reviews.
+async function reviewLinkEvent(eventId: string, token: unknown, fields = "title") {
+  const event = await Event.findById(eventId).select(`${fields} +reviewToken`);
+  if (!event) return { error: new AppError("Event not found", 404) };
+  const expected = (event as any).reviewToken as string | undefined;
+  const given = typeof token === "string" ? token : "";
+  const ok =
+    !!expected &&
+    given.length === expected.length &&
+    crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));
+  return ok ? { event } : { error: new AppError("This review link is invalid or has expired", 403) };
+}
+
+// Accounts the review link itself created (new, or legacy ones whose password
+// is the random hex placeholder). Any other account is a real user, and the
+// link may act for it only when that user is logged in.
+const isLinkAccount = (u: { signupSource?: string; passwordHash?: string }) =>
+  u.signupSource === "review_link" || /^[0-9a-f]{64}$/.test(u.passwordHash ?? "");
+
+const linkMayActFor = (req: Request, u: any) =>
+  isLinkAccount(u) || (req as AuthRequest).user?._id?.toString() === u._id.toString();
+
 // @route   GET /api/reviews/link/:eventId?email=xxx&firstName=xxx&lastName=xxx&schoolName=xxx
 // @access  Public — find/create user, auto-book, return status (no tokens)
 export const getReviewLink = async (
@@ -1008,15 +1031,22 @@ export const getReviewLink = async (
       schoolName?: string;
     };
 
-    if (!email) return next(new AppError("email query param required", 400));
+    const { event, error } = await reviewLinkEvent(eventId, req.query.t);
+    if (error) return next(error);
 
-    const event = await Event.findById(eventId).select("title");
-    if (!event) return next(new AppError("Event not found", 404));
+    if (!email) return next(new AppError("email query param required", 400));
 
     const emailLower = email.toLowerCase();
 
     // Find or create user
-    let user = await User.findOne({ email: emailLower });
+    let user = await User.findOne({ email: emailLower }).select("+passwordHash");
+    if (user && !linkMayActFor(req, user)) {
+      // A real account: never create records or reviews for it anonymously.
+      return res.status(200).json({
+        success: true,
+        data: { requiresLogin: true, eventTitle: event.title },
+      });
+    }
     if (!user) {
       user = await User.create({
         firstName: rawFirst?.trim() || emailLower.split("@")[0],
@@ -1026,6 +1056,7 @@ export const getReviewLink = async (
         role: "customer",
         isEmailVerified: true,
         status: "active",
+        signupSource: "review_link",
         ...(schoolName ? { schoolName: schoolName.trim() } : {}),
       });
     } else if (schoolName && !user.schoolName) {
@@ -1101,8 +1132,6 @@ export const getReviewLink = async (
       success: true,
       data: {
         alreadyReviewed: false,
-        userId: user._id,
-        studentId: student._id,
         eventId,
         eventTitle: event.title,
       },
@@ -1128,15 +1157,18 @@ export const submitReviewViaLink = async (
     const { eventId } = req.params;
     const { email, rating, title, comment, pros, cons, media } = req.body;
 
-    const event = await Event.findById(eventId).select("title");
-    if (!event) return next(new AppError("Event not found", 404));
+    const { error } = await reviewLinkEvent(eventId, req.body.t ?? req.query.t);
+    if (error) return next(error);
 
     const emailLower = email.toLowerCase();
-    const user = await User.findOne({ email: emailLower });
+    const user = await User.findOne({ email: emailLower }).select("+passwordHash");
     if (!user) {
       return next(
         new AppError("Please open the review link first to register", 400),
       );
+    }
+    if (!linkMayActFor(req, user)) {
+      return next(new AppError("Please log in to review with this email", 403, { code: "LOGIN_REQUIRED" }));
     }
 
     // Look up Student created during getReviewLink (for certificate context)
@@ -1232,8 +1264,8 @@ export const uploadReviewMedia = async (
       return next(new AppError("No files uploaded", 400));
     }
 
-    const event = await Event.findById(eventId).select("_id");
-    if (!event) return next(new AppError("Event not found", 404));
+    const { error } = await reviewLinkEvent(eventId, req.body.t ?? req.query.t, "_id");
+    if (error) return next(error);
 
     let uploadedBy: string | undefined;
     if (email) {
@@ -1485,10 +1517,18 @@ export const generateReviewLink = async (
 ) => {
   try {
     const { eventId } = req.params;
-    const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-    const reviewLink = `${baseUrl}/review/${eventId}`;
+    const event = await Event.findById(eventId).select("vendorId");
+    if (!event) return next(new AppError("Event not found", 404));
+    // Generating rotates the token, so a vendor may only do it for their own event.
+    if (!(await canStaffAccessVendor(req, event.vendorId))) {
+      return next(new AppError("Not authorized to manage this event's review link", 403));
+    }
 
-    await Event.findByIdAndUpdate(eventId, { reviewLink });
+    const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const reviewToken = crypto.randomBytes(24).toString("base64url");
+    const reviewLink = `${baseUrl}/review/${eventId}?t=${reviewToken}`;
+
+    await Event.findByIdAndUpdate(eventId, { reviewLink, reviewToken });
 
     res.status(200).json({ success: true, data: { reviewLink } });
   } catch (error) {

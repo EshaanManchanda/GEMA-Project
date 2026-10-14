@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { reviewLinkAPI, type ReviewLinkContext } from '../services/api/reviewLinkAPI';
 
-type Step = 'details' | 'loading' | 'form' | 'done' | 'already' | 'error';
+type Step = 'details' | 'loading' | 'form' | 'done' | 'already' | 'login' | 'error';
 
 const MAX_MEDIA_FILES = 5;
 const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB, mirrors backend MAX_IMAGE_SIZE default
@@ -35,6 +35,7 @@ const StarRating: React.FC<{ value: number; onChange: (v: number) => void }> = (
 const ReviewLinkPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const [searchParams] = useSearchParams();
+  const token = searchParams.get('t') || '';
 
   const [step, setStep] = useState<Step>('details');
   const [email, setEmail] = useState(searchParams.get('email') || '');
@@ -68,13 +69,17 @@ const ReviewLinkPage: React.FC = () => {
   const resolveContext = async (emailAddr: string) => {
     setStep('loading');
     try {
-      const res = await reviewLinkAPI.getContext(eventId!, emailAddr, { firstName, lastName, schoolName });
+      const res = await reviewLinkAPI.getContext(eventId!, token, emailAddr, { firstName, lastName, schoolName });
       const data = res.data.data;
       setCtx(data);
-      setStep(data.alreadyReviewed ? 'already' : 'form');
-    } catch {
+      setStep(data.requiresLogin ? 'login' : data.alreadyReviewed ? 'already' : 'form');
+    } catch (err: any) {
       setStep('error');
-      setError('Could not load review page. Please try again later.');
+      setError(
+        err?.response?.status === 403
+          ? 'This review link is invalid or has expired. Please ask the organiser for a new link.'
+          : 'Could not load review page. Please try again later.',
+      );
     }
   };
 
@@ -141,6 +146,7 @@ const ReviewLinkPage: React.FC = () => {
       if (pendingFiles.length > 0) {
         const uploadRes = await reviewLinkAPI.uploadMedia(
           eventId!,
+          token,
           email,
           pendingFiles.map((p) => p.file),
         );
@@ -152,7 +158,7 @@ const ReviewLinkPage: React.FC = () => {
         }
       }
 
-      await reviewLinkAPI.submitReview(eventId!, {
+      await reviewLinkAPI.submitReview(eventId!, token, {
         email,
         rating,
         comment: comment.trim() || undefined,
@@ -319,6 +325,21 @@ const ReviewLinkPage: React.FC = () => {
             <p className="text-gray-500 text-sm">
               You have already submitted a review for this event. Thank you!
             </p>
+          </div>
+        )}
+
+        {step === 'login' && (
+          <div className="text-center py-6 space-y-3">
+            <h2 className="text-xl font-semibold text-gray-900">Please log in</h2>
+            <p className="text-gray-500 text-sm">
+              {email} already has a Kidrove account. Log in to leave your review.
+            </p>
+            <a
+              href={`/login?redirect=${encodeURIComponent(`/review/${eventId}?t=${token}&email=${email}`)}`}
+              className="inline-block px-6 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700"
+            >
+              Log in
+            </a>
           </div>
         )}
 

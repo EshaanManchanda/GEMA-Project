@@ -1,8 +1,9 @@
 import api from '../api';
 
 export interface ReviewLinkContext {
-  alreadyReviewed: boolean;
-  userId?: string;
+  alreadyReviewed?: boolean;
+  /** The email belongs to an existing account: the reviewer must log in. */
+  requiresLogin?: boolean;
   eventId?: string;
   eventTitle?: string;
 }
@@ -40,28 +41,32 @@ export interface CertVerifyResult {
 }
 
 export const reviewLinkAPI = {
+  // `token` is the secret `t` from the shared link; the backend requires it.
   getContext: (
     eventId: string,
+    token: string,
     email: string,
     names?: { firstName?: string; lastName?: string; schoolName?: string },
   ) =>
     api.get<{ success: boolean; data: ReviewLinkContext }>(
       `/reviews/link/${eventId}`,
-      { params: { email, ...names } },
+      { params: { t: token, email, ...names } },
     ),
 
   submitReview: (
     eventId: string,
+    token: string,
     payload: {
       email: string;
       rating: number;
       comment?: string;
       media?: Array<{ type: 'image' | 'video'; url: string; order: number }>;
     },
-  ) => api.post(`/reviews/link/${eventId}`, payload),
+  ) => api.post(`/reviews/link/${eventId}`, { ...payload, t: token }),
 
-  uploadMedia: (eventId: string, email: string, files: File[]) => {
+  uploadMedia: (eventId: string, token: string, email: string, files: File[]) => {
     const formData = new FormData();
+    formData.append('t', token);
     formData.append('email', email);
     files.forEach((file) => formData.append('files', file));
     return api.post<{

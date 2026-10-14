@@ -1076,8 +1076,9 @@ const eventSchema = new Schema<IEvent>(
       default: 0,
       min: [0, "Review count cannot be negative"],
     },
-    reviewLink: { type: String },
-    reviewToken: { type: String },
+    reviewLink: { type: String, select: false }, // contains reviewToken
+    // Secret in the shared review link; never sent with the event.
+    reviewToken: { type: String, select: false },
     galleryId: { type: Schema.Types.ObjectId, ref: "Gallery" },
 
     certificateTypes: [

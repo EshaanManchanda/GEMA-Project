@@ -26,7 +26,7 @@ import {
   getHomepageGoogleReviews,
   uploadReviewMedia,
 } from "../controllers/review.controller";
-import { authenticate, authorize } from "../middleware/auth";
+import { authenticate, authenticateOptional, authorize } from "../middleware/auth";
 import { ReviewType, FlagReason, ReviewStatus } from "../models/index";
 import { uploadMultiple, handleUploadError } from "../middleware/upload";
 
@@ -38,6 +38,21 @@ const googleSyncLimiter = rateLimit({
   message: {
     success: false,
     message: "Too many sync requests. Please wait before syncing again.",
+    error: "RATE_LIMIT_EXCEEDED",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Public review-link open/submit. Generous: a whole class often shares one
+// school IP; the link token is the real gate.
+const reviewLinkLimiter = rateLimit({
+  skip: skipInE2E,
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: {
+    success: false,
+    message: "Too many requests. Please wait a few minutes and try again.",
     error: "RATE_LIMIT_EXCEEDED",
   },
   standardHeaders: true,
@@ -111,6 +126,8 @@ router.get(
 // Review link — find/create user, return status (no token)
 router.get(
   "/link/:eventId",
+  reviewLinkLimiter,
+  authenticateOptional, // a logged-in user may review with their own (real) account
   [
     param("eventId").isMongoId().withMessage("Invalid event ID"),
     query("email").isEmail().withMessage("Valid email required"),
@@ -136,6 +153,8 @@ router.get(
 // Submit review via link — public, identified by email
 router.post(
   "/link/:eventId",
+  reviewLinkLimiter,
+  authenticateOptional,
   [
     param("eventId").isMongoId().withMessage("Invalid event ID"),
     body("email").isEmail().withMessage("Valid email required"),
