@@ -23,6 +23,7 @@ import ticketRoutes from "../../../routes/ticket.routes";
 import studentRoutes from "../../../routes/student.routes";
 import orderRoutes from "../../../routes/order.routes";
 import cancellationRoutes from "../../../routes/event.cancellation.routes";
+import paymentRoutes from "../../../routes/payment.routes";
 import { maintenanceModeGuard } from "../../../middleware/maintenance.middleware";
 import { errorHandler, notFound } from "../../../middleware/index";
 import { verifyCsrfToken } from "../../../middleware/csrf";
@@ -54,7 +55,8 @@ export const createTestApp = (): Application => {
   app.use(mongoSanitize());
   app.use(hpp());
 
-  // Body parsing
+  // Body parsing (Stripe webhook needs the raw body, as in server.ts)
+  app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
@@ -75,6 +77,7 @@ export const createTestApp = (): Application => {
   app.use("/api/tickets", ticketRoutes);
   app.use("/api/students", studentRoutes);
   app.use("/api/orders", orderRoutes);
+  app.use("/api/payments", paymentRoutes);
   app.use("/api", cancellationRoutes); // mounted at "/" under /api in production
 
   // Health check
