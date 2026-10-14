@@ -13,20 +13,8 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import mongoSanitize from "express-mongo-sanitize";
 import hpp from "hpp";
-import authRoutes from "../../../routes/auth.routes";
-import eventRoutes from "../../../routes/event.routes";
-import adminEventRoutes from "../../../routes/admin.event.routes";
-import adminSettingsRoutes from "../../../routes/admin.settings.routes";
-import analyticsRoutes from "../../../routes/analytics.routes";
-import adminBusinessReportRoutes from "../../../routes/admin.businessReport.routes";
-import ticketRoutes from "../../../routes/ticket.routes";
-import studentRoutes from "../../../routes/student.routes";
-import orderRoutes from "../../../routes/order.routes";
-import cancellationRoutes from "../../../routes/event.cancellation.routes";
-import paymentRoutes from "../../../routes/payment.routes";
-import adminUserRoutes from "../../../routes/admin.user.routes";
-import adminEmployeeRoutes from "../../../routes/admin.employee.routes";
-import vendorPaymentRoutes from "../../../routes/vendor.payment.routes";
+import routes from "../../../routes/index";
+import currencyRoutes from "../../../routes/currency.routes";
 import { maintenanceModeGuard } from "../../../middleware/maintenance.middleware";
 import { errorHandler, notFound } from "../../../middleware/index";
 import { verifyCsrfToken } from "../../../middleware/csrf";
@@ -69,21 +57,10 @@ export const createTestApp = (): Application => {
   // to false and nothing here flips it unless a test explicitly does so.
   app.use(maintenanceModeGuard);
 
-  // Mount routes
-  app.use("/api/auth", authRoutes);
-  app.use("/api/events", eventRoutes);
-  app.use("/api/admin/users", adminUserRoutes);
-  app.use("/api/admin/employees", adminEmployeeRoutes);
-  app.use("/api/admin/events", adminEventRoutes);
-  app.use("/api/admin", adminSettingsRoutes);
-  app.use("/api/insights", analyticsRoutes);
-  app.use("/api/admin/business-reports", adminBusinessReportRoutes);
-  app.use("/api/tickets", ticketRoutes);
-  app.use("/api/students", studentRoutes);
-  app.use("/api/orders", orderRoutes);
-  app.use("/api/payments", paymentRoutes);
-  app.use("/api/vendors/payment-settings", vendorPaymentRoutes);
-  app.use("/api", cancellationRoutes); // mounted at "/" under /api in production
+  // The real route table, mounted exactly as server.ts does, so every route
+  // (and its mount order) is testable.
+  app.use("/api", routes);
+  app.use("/api/currency", currencyRoutes);
 
   // Health check
   app.get("/api/health", (_req: Request, res: Response) => {

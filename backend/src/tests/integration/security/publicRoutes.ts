@@ -1,0 +1,160 @@
+/**
+ * Routes reviewed as intentionally reachable without login, keyed
+ * "METHOD /api/path" exactly as routeAuthMatrix.test.ts lists them.
+ * Every entry needs a reason. Adding one is a security review, not a chore:
+ * anything here that writes data, sends mail or creates accounts also needs
+ * a rate limiter and its own abuse test.
+ */
+const browse = "public catalogue/content, read-only";
+const seo = "SEO/crawler output, read-only";
+const counter = "anonymous engagement counter, no PII";
+
+export const PUBLIC_ROUTES: Record<string, string> = {
+  "GET /api/": "API index",
+  "GET /api/health": "health stub (testApp only)",
+  "GET /api/homepage/": browse,
+
+  // Auth entry points (authLimiter / otp limiters in server.ts + routes)
+  "POST /api/auth/register": "signup",
+  "POST /api/auth/register-admin": "requires ADMIN_SECRET_KEY in body",
+  "POST /api/auth/login": "login",
+  "POST /api/auth/logout": "clears cookies; harmless anonymously",
+  "GET /api/auth/me": "optional auth: returns guest when anonymous",
+  "POST /api/auth/forgot-password": "password reset request (no enumeration)",
+  "POST /api/auth/reset-password": "OTP-gated",
+  "POST /api/auth/verify-email": "token-gated",
+  "POST /api/auth/resend-verification-email": "rate limited",
+  "POST /api/auth/firebase": "Firebase ID token verified server-side",
+
+  // Catalogue
+  "GET /api/venues/public": browse,
+  "GET /api/venues/public/:slug": browse,
+  "GET /api/events/": browse,
+  "GET /api/events/categories": browse,
+  "GET /api/events/cities": browse,
+  "GET /api/events/trending-near-you": browse,
+  "POST /api/events/ai-search": "public search (body = query)",
+  "GET /api/events/:id/similar": browse,
+  "GET /api/events/:id/organizer-events": browse,
+  "GET /api/events/:id/also-booked": browse,
+  "POST /api/events/:id([0-9a-fA-F]{24})/track-click": "external booking click tracking",
+  "GET /api/events/:id([0-9a-fA-F]{24})/analytics": "aggregate click stats for external-link events",
+  "GET /api/events/:slug": browse,
+  "GET /api/vendors/": browse,
+  "GET /api/vendors/public/:id": browse,
+  "GET /api/vendors/:vendorId/payment-info": "publishable Stripe key only (booking flow)",
+  "GET /api/teachers/public": browse,
+  "GET /api/teachers/public/:id": browse,
+  "GET /api/categories/": browse,
+  "GET /api/categories/roots": browse,
+  "GET /api/categories/search": browse,
+  "GET /api/categories/parent/:parentId": browse,
+  "GET /api/categories/:id": browse,
+  "GET /api/coupons/active": "public promo codes",
+  "GET /api/search/": browse,
+  "GET /api/search/events": browse,
+  "GET /api/search/suggestions": browse,
+  "GET /api/collections/": browse,
+  "GET /api/collections/:id": browse,
+  "GET /api/stats/": "public site stats",
+  "GET /api/registrations/config/:eventId": "event registration form schema",
+  "GET /api/galleries/event/:eventId": browse,
+  "GET /api/partnerships/directory": browse,
+  "GET /api/partnerships/directory/:id": browse,
+  "GET /api/lead-pages/": browse,
+  "GET /api/lead-pages/:eventId": browse,
+  "GET /api/media/file/:uuid": "public media by unguessable uuid",
+
+  // Content
+  "GET /api/blogs/": browse,
+  "GET /api/blogs/featured": browse,
+  "GET /api/blogs/popular": browse,
+  "GET /api/blogs/recent": browse,
+  "GET /api/blogs/categories": browse,
+  "GET /api/blogs/:slug": browse,
+  "GET /api/blogs/:slug/related": browse,
+  "POST /api/blogs/:slug/like": counter,
+  "POST /api/blogs/:slug/share": counter,
+  "GET /api/blog/posts/:postId/comments": browse,
+  "GET /api/blog/comments/:commentId/replies": browse,
+  "GET /api/reels/": browse,
+  "GET /api/reels/:id": browse,
+  "POST /api/reels/:id/view": counter,
+  "POST /api/reels/:id/like": counter,
+  "GET /api/banners/active": browse,
+  "GET /api/seo-content/:page": browse,
+  "GET /api/announcements/active": browse,
+  "POST /api/announcements/:id/impression": counter,
+  "POST /api/announcements/:id/click": counter,
+  "POST /api/announcements/:id/dismiss": counter,
+  "GET /api/popups/active": browse,
+  "POST /api/popups/:id/impression": counter,
+  "POST /api/popups/:id/click": counter,
+  "POST /api/popups/:id/dismiss": counter,
+  "GET /api/public/settings/social": browse,
+  "GET /api/public/settings/ui": browse,
+  "GET /api/reviews/": browse,
+  "GET /api/reviews/by-teacher/:teacherUserId": browse,
+  "GET /api/reviews/google/homepage": browse,
+  "GET /api/reviews/google/:eventId": browse,
+  "GET /api/reviews/:type/:id": browse,
+
+  // Analytics beacons
+  "POST /api/insights/track": "analytics beacon",
+  "POST /api/analytics/track": "analytics beacon",
+  "POST /api/track/pageview": "analytics beacon",
+  "POST /api/affiliates/click/:affiliateCode": "affiliate click beacon",
+
+  // Currency (read-only; /refresh is admin-only)
+  "GET /api/currency/detect": "geo currency detection",
+  "GET /api/currency/rates": browse,
+  "GET /api/currency/supported": browse,
+  "POST /api/currency/convert": "pure computation",
+  "GET /api/currency/info/:code": browse,
+
+  // SEO (seo.routes declares full /api/seo paths and is also mounted under /api)
+  "GET /api/sitemap.xml": seo,
+  "GET /api/sitemap-com.xml": seo,
+  "GET /api/sitemap-in.xml": seo,
+  "GET /api/sitemap-ae.xml": seo,
+  "GET /api/robots.txt": seo,
+  "GET /api/llms.txt": seo,
+  "GET /api/llms-full.txt": seo,
+  "GET /api/api/seo/event/:id/structured-data": seo,
+  "GET /api/api/seo/blog/:slug/structured-data": seo,
+  "GET /api/api/seo/meta-data/event/:id": seo,
+  "GET /api/api/seo/meta-data/blog/:slug": seo,
+  "GET /api/api/seo/meta-data/category/:id": seo,
+  "GET /api/api/seo/organization": seo,
+  "POST /api/api/seo/breadcrumb": "pure computation",
+  "GET /api/api/seo/website": seo,
+  "GET /api/api/seo/faq": seo,
+  "GET /api/api/seo/collection/:id/item-list": seo,
+  "GET /api/api/seo/category/:slug/item-list": seo,
+
+  // Payments
+  "GET /api/payments/config": "publishable Stripe key",
+  "POST /api/payments/webhook": "Stripe signature verified",
+  "POST /api/webhooks/cunnekt/:secret": "WhatsApp provider webhook, secret in path",
+
+  // Public forms that write / send mail — each needs a limiter (Phase 2 #14)
+  "POST /api/contact/": "contact form",
+  "POST /api/partnerships/": "partnership enquiry form",
+  "POST /api/newsletter/subscribe": "newsletter signup",
+  "GET /api/newsletter/unsubscribe/:token": "token-gated unsubscribe",
+  "POST /api/lead-pages/global/lead": "lead capture form",
+  "POST /api/lead-pages/:eventId/lead": "lead capture form",
+  "POST /api/students/public-register": "public student signup",
+  "GET /api/reviews/link/:eventId": "review-by-link (attendees only)",
+  "POST /api/reviews/link/:eventId": "review-by-link (attendees only)",
+  "POST /api/reviews/link/:eventId/media": "review-by-link media (attendees only)",
+  "GET /api/certificates/verify/:serialNumber": "certificate verification by serial",
+  "GET /api/certificates/public/by-email": "certificate lookup",
+
+  // AI art competition: parents enter without an account
+  "POST /api/competition/save-draft": "competition entry (step 1)",
+  "POST /api/competition/create-checkout-session": "competition entry (step 2)",
+  "POST /api/competition/finalize": "competition entry (step 3, session-bound)",
+  "POST /api/competition/submit": "LEGACY: delete after prod access-log check (Phase 2 #3)",
+  "POST /api/competition/create-payment-intent": "LEGACY: delete after prod access-log check (Phase 2 #3)",
+};
