@@ -4,17 +4,18 @@ import {
   invalidateHomepageCache,
 } from "../controllers/homepage.controller";
 import { authenticate, authorize } from "../middleware/auth";
+import { UserRole } from "../models/index";
 
 const router = Router();
 
 // Public route - get all homepage data
 router.get("/", getHomepageData);
 
-// Admin route - invalidate cache (requires admin/superadmin)
+// Admin route - invalidate cache (requires admin)
 router.post(
   "/invalidate-cache",
   authenticate,
-  authorize(["admin", "superadmin"]),
+  authorize([UserRole.ADMIN]),
   invalidateHomepageCache,
 );
 

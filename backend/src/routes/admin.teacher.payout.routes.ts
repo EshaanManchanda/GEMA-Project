@@ -14,6 +14,7 @@ import {
   exportTeacherPayoutData,
 } from "../controllers/admin.teacher.payout.controller";
 import { authenticate, authorize } from "../middleware/auth";
+import { UserRole } from "../models/index";
 import { validateRequest } from "../middleware/validation";
 import { query, param, body } from "express-validator";
 
@@ -176,9 +177,9 @@ const exportPayoutDataValidation = [
     .withMessage("Teacher ID must be valid"),
 ];
 
-// All admin payout routes require authentication and admin/superadmin role
+// All admin payout routes require authentication and admin role
 router.use(authenticate);
-router.use(authorize(["admin", "superadmin"]));
+router.use(authorize([UserRole.ADMIN]));
 
 // Teacher earnings routes
 router.get(

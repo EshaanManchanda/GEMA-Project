@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { body, param, query } from "express-validator";
 import { authenticate, authorize } from "../middleware/auth";
+import { UserRole } from "../models/index";
 import { validateRequest } from "../middleware/validation";
 import {
   createComment,
@@ -138,7 +139,7 @@ router.get(
 router.put(
   "/comments/:commentId/approve",
   authenticate,
-  authorize(["admin", "superadmin"]),
+  authorize([UserRole.ADMIN]),
   [param("commentId").isMongoId().withMessage("Invalid comment ID")],
   validateRequest,
   approveComment,
@@ -148,7 +149,7 @@ router.put(
 router.get(
   "/admin/posts/:postId/comments",
   authenticate,
-  authorize(["admin", "superadmin"]),
+  authorize([UserRole.ADMIN]),
   [
     param("postId").isMongoId().withMessage("Invalid blog post ID"),
     query("page")

@@ -14,6 +14,7 @@ import {
   toggleCategoryStatus,
 } from "../controllers/blog.controller";
 import { authenticate, authorize } from "../middleware/auth";
+import { UserRole } from "../models/index";
 import { validateRequest } from "../middleware/validation";
 import { body, param, query } from "express-validator";
 
@@ -305,9 +306,9 @@ const getAllBlogsValidation = [
     .withMessage("Sort order must be asc or desc"),
 ];
 
-// All admin blog routes require authentication and admin/superadmin role
+// All admin blog routes require authentication and admin role
 router.use(authenticate);
-router.use(authorize(["admin", "superadmin"]));
+router.use(authorize([UserRole.ADMIN]));
 
 // Blog performance CSV export (must come before /:id catch-all)
 router.get(
