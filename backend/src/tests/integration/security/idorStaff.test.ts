@@ -203,7 +203,7 @@ describe("certificates (vendor side)", () => {
   });
 
   // certificate.controller.ts triggerGeneration/bulkGenerate: no event ownership check.
-  it.failing("BUG: a vendor can issue certificates under another vendor's event", async () => {
+  it("a vendor cannot issue certificates under another vendor's event", async () => {
     const [a, b] = await twoVendors();
     const eventId = await vendorEvent(a);
     const res = await call(b, "post", "/api/certificates/generate", { eventId, recipient: { name: "Forged", email: "forged@example.com" } });
@@ -211,7 +211,7 @@ describe("certificates (vendor side)", () => {
     expect(certificateService.issueForEvent).not.toHaveBeenCalled();
   });
 
-  it.failing("BUG: a vendor can bulk-queue certificates under another vendor's event", async () => {
+  it("a vendor cannot bulk-queue certificates under another vendor's event", async () => {
     const [a, b] = await twoVendors();
     const eventId = await vendorEvent(a);
     const res = await call(b, "post", "/api/certificates/bulk", {
@@ -273,7 +273,7 @@ describe("vendor employees", () => {
 
   // employee.controller.ts updateEmployee: `$set: req.body` (userId/vendorId writable) and then
   // copies body.email onto User(employee.userId) — any vendor can rewrite any account's email.
-  it.failing("BUG: a vendor can change any user's (even an admin's) login email via PUT /api/employees/:id", async () => {
+  it("a vendor cannot change any user's login email via PUT /api/employees/:id", async () => {
     const [vendor, admin] = [await signUp(app, "vendor"), await signUpAdmin(app)];
     const adminEmail = (await User.findById(admin.userId).lean())!.email;
     const id = await employeeOf(vendor.userId);
@@ -283,7 +283,7 @@ describe("vendor employees", () => {
     expect((await User.findById(admin.userId).lean())!.email).toBe(adminEmail);
   });
 
-  it.failing("BUG: a vendor can move their employee onto another vendor and read that vendor's attendees", async () => {
+  it("a vendor cannot move their employee onto another vendor to read its attendees", async () => {
     const [a, b] = await twoVendors();
     const insider = await signUpAs(app, "employee");
     const insiderEmail = (await User.findById(insider.userId).lean())!.email;

@@ -119,6 +119,20 @@ export const getEmployeeDetails = async (
   }
 };
 
+// Login identity (email, userId) and ownership (vendorId) are not editable here.
+const EMPLOYEE_UPDATABLE_FIELDS = [
+  "firstName",
+  "lastName",
+  "phone",
+  "role",
+  "permissions",
+  "assignedEvents",
+  "assignedVenues",
+  "status",
+  "shiftSchedule",
+  "emergencyContact",
+] as const;
+
 export const updateEmployee = async (
   req: Request,
   res: Response,
@@ -129,7 +143,13 @@ export const updateEmployee = async (
   if (!vendorId) {
     return next(new AppError("Unauthorized - vendor ID not found", 401));
   }
-  const updates = req.body;
+  // Allowlist: `$set: req.body` let a vendor rewrite userId/vendorId (move an
+  // employee onto another vendor) and then copied body.email onto that user's
+  // login — taking over any account, even an admin's.
+  const updates: Record<string, unknown> = {};
+  for (const field of EMPLOYEE_UPDATABLE_FIELDS) {
+    if (req.body[field] !== undefined) updates[field] = req.body[field];
+  }
 
   try {
     const employee = await Employee.findOneAndUpdate(
@@ -145,11 +165,6 @@ export const updateEmployee = async (
           404,
         ),
       );
-    }
-
-    // If email is updated, also update the associated User model's email
-    if (updates.email && employee.userId) {
-      await User.findByIdAndUpdate(employee.userId, { email: updates.email });
     }
 
     res.status(200).json({
