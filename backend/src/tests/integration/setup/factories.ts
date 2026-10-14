@@ -3,7 +3,7 @@
  * validation doesn't get in the way — only ownership fields matter.
  */
 import { Application } from "express";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import User from "../../../models/User";
 import Teacher from "../../../models/Teacher";
 import Order from "../../../models/Order";
@@ -43,3 +43,37 @@ export async function insertOrder(userId: string, eventId: string, extra: Record
   });
   return String(_id);
 }
+
+/** Fields that let a raw-inserted Event pass Mongoose validation on .save(). */
+export const savableEventFields = {
+  description: "Desc",
+  shortDescription: "Short",
+  category: "Arts",
+  venueType: "Online",
+  ageRange: [3, 12],
+  price: 0,
+  currency: "AED",
+  isDeleted: false,
+};
+
+/** A bare MediaAsset row, for routes that track image usage. */
+export async function insertMedia(extra: Record<string, unknown> = {}) {
+  const _id = new Types.ObjectId();
+  await mongoose.connection.collection("mediaassets").insertOne({
+    _id,
+    url: `https://res.cloudinary.com/test/${_id}.jpg`,
+    provider: "cloudinary",
+    usedBy: [],
+    usageCount: 0,
+    ...extra,
+  });
+  return String(_id);
+}
+
+/**
+ * Create every model's collection up front. Services that write inside a
+ * transaction otherwise create collections implicitly mid-transaction, which
+ * the shared replica set intermittently rejects under parallel load (500).
+ */
+export const ensureCollections = () =>
+  Promise.all(Object.values(mongoose.models).map((m) => m.createCollection().catch(() => undefined)));
