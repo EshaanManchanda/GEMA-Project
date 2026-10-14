@@ -208,7 +208,7 @@ const TeacherAdvertisingCampaignSchema =
 
       teachingeventId: {
         type: Schema.Types.ObjectId,
-        ref: "TeachingEvent",
+        ref: "Event", // teaching events are Event documents; no TeachingEvent model exists
         sparse: true,
         index: true,
       },

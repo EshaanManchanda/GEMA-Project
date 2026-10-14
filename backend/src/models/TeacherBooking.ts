@@ -88,7 +88,7 @@ export interface ITeacherBooking extends Document {
 const teachingBookingItemSchema = new Schema<ITeachingBookingItem>({
   teachingEventId: {
     type: Schema.Types.ObjectId,
-    ref: "TeachingEvent",
+    ref: "Event", // teaching events are Event documents; no TeachingEvent model exists
     required: true,
   },
   teachingEventTitle: {

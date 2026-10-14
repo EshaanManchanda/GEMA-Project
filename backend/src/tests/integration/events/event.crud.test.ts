@@ -679,7 +679,7 @@ describe("F. Slug Collision", () => {
     expect(res2.status).toBe(201);
 
     // Read both events from DB to compare slugs
-    const events = await Event.find({ vendorId: vendor.userId })
+    const events = await Event.find({}) // only this vendor's two events exist
       .select("slug title")
       .lean();
 
@@ -820,7 +820,7 @@ describe("H. Ownership / Mass Assignment", () => {
   it("blocks mass assignment of vendorId, isApproved, and status via PUT body", async () => {
     const { res: createRes, vendor } = await createEventAsVendor(app);
     const eventId = createRes.body.data.event._id;
-    const originalVendorId = vendor.userId;
+    const originalVendorId = String((await Event.findById(eventId).lean())!.vendorId); // Vendor._id
 
     const otherVendor = await registerAndLogin(app, "vendor", "-other-ma");
 
@@ -846,7 +846,7 @@ describe("H. Ownership / Mass Assignment", () => {
   it("silently drops vendorId/isApproved but applies an allowed field + status in the same PUT", async () => {
     const { res: createRes, vendor } = await createEventAsVendor(app);
     const eventId = createRes.body.data.event._id;
-    const originalVendorId = vendor.userId;
+    const originalVendorId = String((await Event.findById(eventId).lean())!.vendorId); // Vendor._id
 
     const otherVendor = await registerAndLogin(app, "vendor", "-other-ma2");
 

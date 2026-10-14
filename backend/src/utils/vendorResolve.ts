@@ -47,5 +47,8 @@ export async function canStaffAccessVendor(
   const mine = await resolveStaffVendorId(req);
   if (mine === null) return true;
   const target = (vendorId as { _id?: unknown } | null)?._id ?? vendorId;
-  return !!mine && !!target && String(target) === mine;
+  if (!target) return false;
+  // Older events stored the vendor's User id (until migrateEventVendorIds runs).
+  if (req.user?.role === "vendor" && String(target) === String(req.user._id || req.user.id)) return true;
+  return !!mine && String(target) === mine;
 }

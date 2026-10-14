@@ -3,7 +3,7 @@ import { validationResult } from "express-validator";
 import { Event, User, Order, AnalyticsEvent } from "../models/index";
 import Vendor, { VerificationStatus } from "../models/Vendor";
 import Teacher from "../models/Teacher";
-import { canStaffAccessVendor } from "../utils/vendorResolve";
+import { canStaffAccessVendor, resolveVendorId } from "../utils/vendorResolve";
 import MediaAsset from "../models/MediaAsset";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
@@ -690,6 +690,14 @@ export const getEvent = async (
 // @desc    Create new event
 // @route   POST /api/events
 // @access  Private (Vendor only)
+// The caller's own events: Vendor._id, plus the User id that older events
+// created through POST /events stored (see scripts/migrateEventVendorIds.ts).
+const ownEventVendorIds = async (req: AuthRequest) => {
+  const userId = String(req.user?._id || req.user?.id);
+  const vendorId = await resolveVendorId(req);
+  return { $in: vendorId ? [vendorId, userId] : [userId] };
+};
+
 export const createEvent = async (
   req: AuthRequest,
   res: Response,
@@ -736,7 +744,9 @@ export const createEvent = async (
     const autoApprove = await shouldAutoApproveEvents();
     const eventData = {
       ...(omitProtectedEventFields(req.body) as any), // body is untyped
-      vendorId: userId,
+      // Event.vendorId refs Vendor; storing the User id broke every ownership
+      // check that compares Vendor ids (tickets, certificates, galleries...).
+      vendorId: vendorProfile._id,
       isApproved: autoApprove,
       isActive: true, // Set as active by default
       status: autoApprove ? "published" : "pending",
@@ -779,7 +789,7 @@ export const updateEvent = async (
 
     const event = await Event.findOne({
       _id: id,
-      vendorId: userId,
+      vendorId: await ownEventVendorIds(req),
       isDeleted: false,
     });
 
@@ -859,7 +869,7 @@ export const deleteEvent = async (
 
     const event = await Event.findOne({
       _id: id,
-      vendorId: userId,
+      vendorId: await ownEventVendorIds(req),
       isDeleted: false,
     });
 
