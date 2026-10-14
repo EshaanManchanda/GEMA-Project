@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@store/index';
 import { logoutUser } from '@store/slices/authSlice';
 import { getBrandConfig } from '../../utils/brandConfig';
-import AIChatbot from '../admin/AIChatbot';
+// Lazy: react-markdown inside it would otherwise ship in the entry bundle to every visitor.
+const AIChatbot = lazy(() => import('../admin/AIChatbot'));
 
 const AdminLayout: React.FC = () => {
   const location = useLocation();
@@ -489,7 +490,7 @@ const AdminLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
-      <AIChatbot />
+      <Suspense fallback={null}><AIChatbot /></Suspense>
     </div>
   );
 };

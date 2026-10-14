@@ -307,10 +307,10 @@ export default defineConfig({
             return undefined;
           }
 
-          // Everything else from node_modules goes to vendor-libs
-          if (id.includes('node_modules')) {
-            return 'vendor-libs';
-          }
+          // No catch-all: a single vendor-libs grab-bag got modulepreloaded on
+          // every page because the entry needed a few modules in it, dragging
+          // in editor/markdown/phone libs (highlight.js, libphonenumber...)
+          // only lazy routes use. Rollup places the rest with their importers.
         },
         chunkFileNames: 'js/[name]-[hash].js',
         entryFileNames: 'js/[name]-[hash].js',
