@@ -358,3 +358,15 @@ export default {
   paymentLimiter,
   createCustomLimiter,
 };
+
+/**
+ * Public forms that write data or send mail without login (contact,
+ * partnership, newsletter, lead capture, student signup, competition draft).
+ * 60/hour per IP: a class on one school network can still sign up.
+ */
+export const publicFormLimiter: RateLimitRequestHandler = createCustomLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  keyPrefix: "public-form",
+  message: "Too many submissions from this network. Please try again later.",
+});

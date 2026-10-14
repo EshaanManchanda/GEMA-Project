@@ -11,17 +11,23 @@ import {
   bulkImportStudents,
   publicStudentRegistration,
 } from "../controllers/student.controller";
-import { authenticate, authorize } from "../middleware/auth";
+import { authenticate, authenticateOptional, authorize } from "../middleware/auth";
+import { validate } from "../middleware/validation";
+import { publicFormLimiter } from "../middleware/rateLimiter";
 import { uploadCSV } from "../middleware/upload";
 
 const router = Router();
 
 router.post(
   "/public-register",
+  publicFormLimiter,
+  authenticateOptional, // a logged-in parent may add a child to their own account
   [
-    body("studentName").notEmpty().withMessage("Student name is required"),
+    body("studentName").trim().notEmpty().isLength({ max: 100 }).withMessage("Student name is required"),
     body("email").isEmail().withMessage("Valid email is required"),
+    body(["grade", "schoolName", "location", "phone", "interest"]).optional().isString().isLength({ max: 200 }),
   ],
+  validate,
   publicStudentRegistration
 );
 

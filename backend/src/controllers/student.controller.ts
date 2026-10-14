@@ -5,6 +5,8 @@ import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import emailService from "../services/email.service";
 import { config } from "../config/env";
+import crypto from "crypto";
+import { escapeHtml } from "../utils/htmlHelpers";
 import logger from "../config/logger";
 
 function parseCSVRow(line: string): string[] {
@@ -165,12 +167,20 @@ export const publicStudentRegistration = async (req: Request, res: Response, nex
     const parentEmail = email.toLowerCase().trim();
     let parent = await User.findOne({ email: parentEmail });
 
+    // An existing account only gets a child added by its own logged-in owner;
+    // otherwise anyone could plant students on someone else's account.
+    if (parent && (req as AuthRequest).user?._id?.toString() !== parent._id.toString()) {
+      return next(
+        new AppError("This email already has a Kidrove account. Please log in and register the student again.", 409),
+      );
+    }
+
     let isNewUser = false;
     let tempPassword = "";
 
     if (!parent) {
       isNewUser = true;
-      tempPassword = Math.random().toString(36).slice(-8) + "!1A";
+      tempPassword = crypto.randomBytes(9).toString("base64url") + "!1A";
       
       const nameParts = studentName.split(/\s+/);
       const parentFirstName = nameParts[0] || "Parent";
@@ -209,19 +219,19 @@ export const publicStudentRegistration = async (req: Request, res: Response, nex
         subject: "Welcome to the KidRove Student Program!",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-            <h2 style="color: #4f46e5;">Welcome to KidRove, ${firstName}!</h2>
+            <h2 style="color: #4f46e5;">Welcome to KidRove, ${escapeHtml(String(firstName ?? ""))}!</h2>
             <p>Thank you for registering for the KidRove Student Program. We're excited to have you on board!</p>
             <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px; margin: 20px 0;">
               <h3 style="margin-top: 0; color: #111827;">Registration Details:</h3>
-              <p><strong>Student:</strong> ${studentName}</p>
-              <p><strong>Grade:</strong> ${grade}</p>
-              <p><strong>Interest:</strong> ${interest}</p>
+              <p><strong>Student:</strong> ${escapeHtml(String(studentName ?? ""))}</p>
+              <p><strong>Grade:</strong> ${escapeHtml(String(grade ?? ""))}</p>
+              <p><strong>Interest:</strong> ${escapeHtml(String(interest ?? ""))}</p>
             </div>
             ${isNewUser ? `
             <div style="background-color: #eff6ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #bfdbfe;">
               <p style="margin-top: 0;"><strong>Account Created:</strong> A parent account has been created for you.</p>
-              <p><strong>Login Email:</strong> ${parentEmail}</p>
-              <p><strong>Temporary Password:</strong> <code>${tempPassword}</code></p>
+              <p><strong>Login Email:</strong> ${escapeHtml(String(parentEmail ?? ""))}</p>
+              <p><strong>Temporary Password:</strong> <code>${escapeHtml(String(tempPassword ?? ""))}</code></p>
               <p>Please log in at <a href="${config.frontendUrl}/login">${config.frontendUrl}/login</a> and change your password.</p>
             </div>
             ` : ""}
