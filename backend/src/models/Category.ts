@@ -154,8 +154,9 @@ categorySchema.index({ isActive: 1, level: 1 });
 categorySchema.index({ sortOrder: 1 });
 categorySchema.index({ name: "text", description: "text" });
 
-// Pre-save middleware to generate slug and set level
-categorySchema.pre("save", async function (next) {
+// Generate slug and set level before validation: slug is required, and
+// validation runs before "save" hooks, so a category without one never saved.
+categorySchema.pre("validate", async function (next) {
   // Decode HTML entities in name (e.g. &amp; → &)
   if (this.isModified("name") && this.name) {
     this.name = this.name

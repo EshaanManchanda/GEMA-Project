@@ -110,7 +110,7 @@ describe("admin category management", () => {
     expect((await send(admin, "put", "/api/categories/sort-order/bulk", { categories: [{ id, sortOrder: -2 }] })).status).toBe(400);
   });
 
-  it.failing("BUG: creating without a slug auto-generates one instead of failing validation", async () => {
+  it("creating without a slug auto-generates one", async () => {
     const admin = await signUpAdmin(app);
 
     const res = await send(admin, "post", "/api/categories", { name: "Dance Classes" });
