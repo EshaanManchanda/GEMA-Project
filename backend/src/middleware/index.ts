@@ -4,7 +4,7 @@ export {
   authorize,
   authenticateOptional,
 } from "./auth";
-export { errorHandler, notFound, AppError } from "./error";
+export { errorHandler, notFound, AppError, asServerError } from "./error";
 export { default as catchAsync } from "../utils/catchAsync";
 export { validate } from "./validation";
 export { timeoutMiddleware } from "./timeout";

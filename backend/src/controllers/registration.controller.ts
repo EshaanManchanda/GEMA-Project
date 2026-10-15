@@ -7,7 +7,7 @@ import {
   RegistrationStatus,
   RegistrationPaymentStatus,
 } from "../models/index";
-import { AppError } from "../middleware/index";
+import { AppError, asServerError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { PaymentService } from "../services/payment.service";
 import { emailService } from "../services/email.service";
@@ -303,7 +303,7 @@ export const submitRegistration = async (
     });
   } catch (error) {
     logger.error("Error submitting registration:", error);
-    return next(new AppError("Failed to submit registration", 500));
+    return next(asServerError(error, "Failed to submit registration"));
   }
 };
 
@@ -377,7 +377,7 @@ export const confirmRegistrationPayment = async (
     });
   } catch (error) {
     logger.error("Error confirming registration payment:", error);
-    return next(new AppError("Failed to confirm payment", 500));
+    return next(asServerError(error, "Failed to confirm payment"));
   }
 };
 
@@ -428,7 +428,7 @@ export const getRegistrationById = async (
     });
   } catch (error) {
     logger.error("Error fetching registration:", error);
-    return next(new AppError("Failed to fetch registration", 500));
+    return next(asServerError(error, "Failed to fetch registration"));
   }
 };
 
@@ -478,7 +478,7 @@ export const getUserRegistrations = async (
     });
   } catch (error) {
     logger.error("Error fetching user registrations:", error);
-    return next(new AppError("Failed to fetch registrations", 500));
+    return next(asServerError(error, "Failed to fetch registrations"));
   }
 };
 
@@ -563,7 +563,7 @@ export const getEventRegistrations = async (
     });
   } catch (error) {
     logger.error("Error fetching event registrations:", error);
-    return next(new AppError("Failed to fetch registrations", 500));
+    return next(asServerError(error, "Failed to fetch registrations"));
   }
 };
 
@@ -629,7 +629,7 @@ export const updateRegistration = async (
     });
   } catch (error) {
     logger.error("Error updating registration:", error);
-    return next(new AppError("Failed to update registration", 500));
+    return next(asServerError(error, "Failed to update registration"));
   }
 };
 
@@ -681,7 +681,7 @@ export const withdrawRegistration = async (
     });
   } catch (error) {
     logger.error("Error withdrawing registration:", error);
-    return next(new AppError("Failed to withdraw registration", 500));
+    return next(asServerError(error, "Failed to withdraw registration"));
   }
 };
 
@@ -780,7 +780,7 @@ export const reviewRegistration = async (
     });
   } catch (error) {
     logger.error("Error reviewing registration:", error);
-    return next(new AppError("Failed to review registration", 500));
+    return next(asServerError(error, "Failed to review registration"));
   }
 };
 
@@ -823,7 +823,7 @@ export const downloadRegistrationFile = async (
     res.redirect(file.url);
   } catch (error) {
     logger.error("Error downloading file:", error);
-    return next(new AppError("Failed to download file", 500));
+    return next(asServerError(error, "Failed to download file"));
   }
 };
 

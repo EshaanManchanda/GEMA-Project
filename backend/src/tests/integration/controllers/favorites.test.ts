@@ -69,7 +69,7 @@ it("keeps favorites per user", async () => {
   expect((await get(other, "/api/favorites")).body.data.favorites).toEqual([]);
 });
 
-it.failing("BUG: malformed eventId on add returns 400, not 500", async () => {
+it("malformed eventId on add returns 400, not 500", async () => {
   const { me } = await setup();
   expect((await send(me, "post", "/api/favorites/not-an-id")).status).toBe(400);
 });

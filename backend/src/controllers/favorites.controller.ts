@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { User, Event, IUser } from "../models/index";
-import { AppError } from "../middleware/index";
+import { AppError, asServerError } from "../middleware/index";
 import { logger } from "../config/index";
 
 // @desc    Get user's favorite events
@@ -49,7 +49,7 @@ export const getFavoriteEvents = async (
     });
   } catch (error) {
     logger.error("Error fetching favorite events:", error);
-    return next(new AppError("Failed to fetch favorite events", 500));
+    return next(asServerError(error, "Failed to fetch favorite events"));
   }
 };
 
@@ -102,7 +102,7 @@ export const addToFavorites = async (
     });
   } catch (error) {
     logger.error("Error adding event to favorites:", error);
-    return next(new AppError("Failed to add event to favorites", 500));
+    return next(asServerError(error, "Failed to add event to favorites"));
   }
 };
 
@@ -150,7 +150,7 @@ export const removeFromFavorites = async (
     });
   } catch (error) {
     logger.error("Error removing event from favorites:", error);
-    return next(new AppError("Failed to remove event from favorites", 500));
+    return next(asServerError(error, "Failed to remove event from favorites"));
   }
 };
 
@@ -186,6 +186,6 @@ export const checkIfFavorite = async (
     });
   } catch (error) {
     logger.error("Error checking favorite status:", error);
-    return next(new AppError("Failed to check favorite status", 500));
+    return next(asServerError(error, "Failed to check favorite status"));
   }
 };

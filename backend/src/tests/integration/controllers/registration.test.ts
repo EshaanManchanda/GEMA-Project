@@ -89,7 +89,7 @@ describe("POST /api/registrations/submit/:eventId", () => {
     expect([401, 403]).toContain(res.status);
   });
 
-  it.failing("BUG: answers missing fieldLabel/fieldType return 400, not 500", async () => {
+  it("answers missing fieldLabel/fieldType return 400, not 500", async () => {
     const { eventId } = await freeEvent();
     const customer = await signUp(app, "customer");
 
@@ -137,12 +137,12 @@ describe("registration reads", () => {
     expect((await get(otherVendor, `/api/registrations/event/${eventId}`)).status).toBe(403);
   });
 
-  it.failing("BUG: malformed registration id returns 400, not 500", async () => {
+  it("malformed registration id returns 400, not 500", async () => {
     const me = await signUp(app, "customer");
     expect((await get(me, "/api/registrations/not-an-id")).status).toBe(400);
   });
 
-  it.failing("BUG: malformed eventId on event listing returns 400, not 500", async () => {
+  it("malformed eventId on event listing returns 400, not 500", async () => {
     const { vendor } = await freeEvent();
     expect((await get(vendor, "/api/registrations/event/not-an-id")).status).toBe(400);
   });

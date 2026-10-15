@@ -110,3 +110,11 @@ export class AppError extends Error {
     Error.captureStackTrace(this, this.constructor);
   }
 }
+
+/**
+ * For a handler's catch block: a malformed id/value (CastError) or failed
+ * validation is the caller's fault, so let the error handler answer 400;
+ * anything else becomes the handler's generic 500.
+ */
+export const asServerError = (error: any, message: string) =>
+  error?.name === "CastError" || error?.name === "ValidationError" ? error : new AppError(message, 500);
