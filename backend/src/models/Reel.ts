@@ -23,6 +23,7 @@ export interface IReel extends Document {
 
   // Engagement metrics
   likes: number;
+  likedByIPs?: string[]; // hashed client keys, select:false
   viewsCount: number;
   shareCount: number;
 
@@ -138,6 +139,8 @@ const reelSchema = new Schema<IReel>(
       default: 0,
       min: [0, "Likes cannot be negative"],
     },
+    // Hashed client keys that liked this reel: one like per client.
+    likedByIPs: { type: [String], default: [], select: false },
     viewsCount: {
       type: Number,
       default: 0,

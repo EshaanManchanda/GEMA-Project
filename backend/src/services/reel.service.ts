@@ -531,19 +531,24 @@ export class ReelService {
   async toggleLike(
     id: string,
     increment: boolean = true,
+    clientKey: string,
   ): Promise<{ liked: boolean; likes: number }> {
-    const reel = await Reel.findByIdAndUpdate(
-      id,
-      { $inc: { likes: increment ? 1 : -1 } },
-      { new: true },
+    // Once per client: the count only moves when this client's like state
+    // actually changes (anonymous callers used to add likes without limit).
+    await Reel.updateOne(
+      increment ? { _id: id, likedByIPs: { $ne: clientKey } } : { _id: id, likedByIPs: clientKey },
+      increment
+        ? { $addToSet: { likedByIPs: clientKey }, $inc: { likes: 1 } }
+        : { $pull: { likedByIPs: clientKey }, $inc: { likes: -1 } },
     );
 
+    const reel = await Reel.findById(id).select("likes +likedByIPs").lean();
     if (!reel) {
       throw new Error("Reel not found");
     }
 
     return {
-      liked: increment,
+      liked: (reel.likedByIPs || []).includes(clientKey),
       likes: reel.likes,
     };
   }

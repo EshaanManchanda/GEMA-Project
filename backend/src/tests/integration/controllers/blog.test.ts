@@ -100,7 +100,7 @@ describe("public blog endpoints", () => {
     expect(saved.shareCount).toBe(1);
   });
 
-  it.failing("BUG: likes cannot be inflated by spoofing the X-Real-IP header", async () => {
+  it("likes cannot be inflated by spoofing the X-Real-IP header", async () => {
     const cat = await insertCategory();
     const { id, slug } = await insertBlog(cat);
 

@@ -83,7 +83,7 @@ describe("public reels", () => {
     expect((await request(app).post("/api/reels/bad/like")).status).toBe(400);
   });
 
-  it.failing("BUG: one anonymous client cannot inflate a reel's like count without limit", async () => {
+  it("one anonymous client cannot inflate a reel's like count without limit", async () => {
     const admin = await signUpAdmin(app);
     const id = await createReel(admin);
 

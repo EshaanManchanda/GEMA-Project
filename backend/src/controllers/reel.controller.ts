@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { AppError } from "../middleware/index";
 import { reelService } from "../services/reel.service";
 import { validationResult } from "express-validator";
+import crypto from "crypto";
 
 /**
  * Get public reels (visibility='public') with pagination
@@ -160,7 +161,8 @@ export const toggleLike = async (
       throw new AppError("Reel not found", 404);
     }
 
-    const result = await reelService.toggleLike(id, increment !== false);
+    const clientKey = crypto.createHash("sha256").update(req.ip || req.socket.remoteAddress || "unknown").digest("hex");
+    const result = await reelService.toggleLike(id, increment !== false, clientKey);
 
     res.status(200).json({
       success: true,

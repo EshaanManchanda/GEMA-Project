@@ -628,25 +628,10 @@ export const toggleCategoryStatus = catchAsync(
   },
 );
 
-// Helper function to get client IP address
-const getClientIP = (req: Request): string => {
-  // Check for X-Forwarded-For header (proxy/load balancer)
-  const forwardedFor = req.headers["x-forwarded-for"];
-  if (forwardedFor) {
-    const ips =
-      typeof forwardedFor === "string" ? forwardedFor.split(",") : forwardedFor;
-    return ips[0].trim();
-  }
-
-  // Check for X-Real-IP header
-  const realIP = req.headers["x-real-ip"];
-  if (realIP && typeof realIP === "string") {
-    return realIP.trim();
-  }
-
-  // Fall back to req.ip or connection remote address
-  return req.ip || req.socket.remoteAddress || "unknown";
-};
+// Client IP for like de-duplication. req.ip honours X-Forwarded-For only
+// through the trusted proxy (app "trust proxy" setting); reading the raw
+// headers let a client pick any IP and like a post without limit.
+const getClientIP = (req: Request): string => req.ip || req.socket.remoteAddress || "unknown";
 
 // Blog interaction controllers
 export const likeBlog = catchAsync(async (req: Request, res: Response) => {
