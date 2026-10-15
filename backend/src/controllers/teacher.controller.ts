@@ -966,7 +966,7 @@ export const getTeacherProfile = catchAsync(
       // phoneVerification.otpHash is already select:false at the schema level —
       // excluding the parent "phoneVerification" path too causes a MongoDB
       // "Path collision" error (parent + nested-child exclusion on same path).
-      "-passwordHash -twoFactorAuth.secret -passwordReset -emailVerification -loginAttempts",
+      "-twoFactorAuth.secret -passwordReset -loginAttempts", // password/OTP hashes are select:false; excluding their parent too is a Mongo path collision
     );
 
     res.status(200).json({
@@ -1033,7 +1033,7 @@ export const updateTeacherProfile = catchAsync(
       // phoneVerification.otpHash is already select:false at the schema level —
       // excluding the parent "phoneVerification" path too causes a MongoDB
       // "Path collision" error (parent + nested-child exclusion on same path).
-      "-passwordHash -twoFactorAuth.secret -passwordReset -emailVerification -loginAttempts",
+      "-twoFactorAuth.secret -passwordReset -loginAttempts", // password/OTP hashes are select:false; excluding their parent too is a Mongo path collision
     );
 
     if (!user) {

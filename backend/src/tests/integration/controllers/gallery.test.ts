@@ -82,12 +82,12 @@ it("rejects an invalid gallery type", async () => {
   expect(await Gallery.countDocuments()).toBe(0);
 });
 
-it.failing("BUG: malformed eventId on create returns 400, not 500 (validators run but no validateRequest)", async () => {
+it("malformed eventId on create returns 400, not 500 (validators run but no validateRequest)", async () => {
   const { vendor } = await vendorEvent();
   expect((await send(vendor, "post", "/api/galleries", { eventId: "bad", images })).status).toBe(400);
 });
 
-it.failing("BUG: non-array images on update returns 400, not 500", async () => {
+it("non-array images on update returns 400, not 500", async () => {
   const { vendor, eventId } = await vendorEvent();
   const id = (await send(vendor, "post", "/api/galleries", { eventId, images })).body.data.gallery._id;
 

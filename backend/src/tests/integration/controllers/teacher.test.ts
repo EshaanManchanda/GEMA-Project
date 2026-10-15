@@ -41,7 +41,7 @@ async function teacherWithEvent() {
 }
 
 describe("teacher profile", () => {
-  it.failing("BUG: GET /teachers/profile works (select excludes emailVerification + its select:false child -> Mongo 'Path collision' 500)", async () => {
+  it("GET /teachers/profile works (select excludes emailVerification + its select:false child -> Mongo 'Path collision' 500)", async () => {
     const { teacher } = await teacherWithEvent();
     expect((await get(teacher, "/api/teachers/profile")).status).toBe(200);
   });
@@ -91,7 +91,7 @@ describe("teacher events", () => {
     expect((await Event.findById(eventId).lean())!.isDeleted).toBe(false);
   });
 
-  it.failing("BUG: a malformed event id returns 400/404, not 500", async () => {
+  it("a malformed event id returns 400/404, not 500", async () => {
     const { teacher } = await teacherWithEvent();
     expect([400, 404]).toContain((await get(teacher, "/api/teachers/events/not-an-id")).status);
   });

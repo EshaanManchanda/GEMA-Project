@@ -34,6 +34,13 @@ export const errorHandler = (
     return res.status(400).json(errorResponse);
   }
 
+  // Mongoose cast error: a malformed id or value in the request, not a
+  // server fault (every handler that passes it on used to answer 500).
+  if (err.name === "CastError") {
+    errorResponse.message = `Invalid ${err.path || "value"}`;
+    return res.status(400).json(errorResponse);
+  }
+
   // Mongoose duplicate key error
   if (err.code === 11000) {
     errorResponse.message = "Duplicate Field Value";
@@ -74,8 +81,9 @@ export const errorHandler = (
     errorResponse.stack = err.stack;
   }
 
-  // Generic server error
-  errorResponse.message = err.message || "Server Error";
+  // Generic server error. Internal messages (Mongo paths, stack details)
+  // stay out of production responses; they're in the log above.
+  errorResponse.message = config.nodeEnv === "production" ? "Server Error" : err.message || "Server Error";
   res.status(err.statusCode || 500).json(errorResponse);
 };
 

@@ -58,7 +58,7 @@ it("returns 400 for an empty update and 404 for an unknown id", async () => {
   expect((await get(admin, `${BASE}/${new Types.ObjectId()}`)).status).toBe(404);
 });
 
-it.failing("BUG: a malformed template id returns 400, not 500", async () => {
+it("a malformed template id returns 400, not 500", async () => {
   const admin = await signUpAdmin(app);
   expect((await get(admin, `${BASE}/not-an-id`)).status).toBe(400);
 });
