@@ -193,10 +193,11 @@ describe("pure helpers", () => {
 // ─── Aggregation ─────────────────────────────────────────────────────────────
 
 describe("buildTrustReport (DB)", () => {
+  // Index builds for four models can exceed the 30 s default under full-suite load.
   beforeAll(async () => {
     await connectTestDB();
     await Promise.all([User.init(), Student.init(), Event.init(), PageView.init()]).catch(() => {});
-  });
+  }, 120_000);
   beforeEach(() => {
     (gsc.isSearchConsoleConfigured as jest.Mock).mockReturnValue(false);
     (gsc.getConfiguredSites as jest.Mock).mockReturnValue([]);

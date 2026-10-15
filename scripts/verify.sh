@@ -50,6 +50,7 @@ curl -sf "http://localhost:5001/api/events?limit=1" > /dev/null
 step "Seed local test data"
 docker compose exec -T backend npx ts-node src/scripts/seed.ts
 docker compose exec -T backend npm run db:seed-blogs
+docker compose exec -T backend npm run db:seed-categories
 
 step "Browser tests (Playwright, production build)"
 (cd frontend && E2E_EXTERNAL_API=1 npx playwright test)

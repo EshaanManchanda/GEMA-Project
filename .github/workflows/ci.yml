@@ -159,6 +159,7 @@ jobs:
         run: |
           docker compose exec -T backend npx ts-node src/scripts/seed.ts
           docker compose exec -T backend npm run db:seed-blogs
+          docker compose exec -T backend npm run db:seed-categories
 
       - name: Install frontend + browser
         working-directory: ./frontend
