@@ -1,20 +1,15 @@
 import { Router } from "express";
 import {
-  trackAffiliateClick,
   claimAffiliateVenue,
   getClaimedVenues,
   getVenueAffiliateAnalytics,
-  getVenueAnalytics,
 } from "../controllers/venue.affiliate.controller";
 import { authenticate, authorize } from "../middleware/auth";
 
 const router = Router();
 
-/**
- * Public routes
- */
-router.post("/venues/:id/track-click", trackAffiliateClick);
-router.get("/venues/:id/analytics", getVenueAnalytics);
+// Public track-click/analytics live in venue.routes.ts: mounted here they
+// were unreachable, because /venues hits that router's authenticate first.
 
 /**
  * Vendor routes

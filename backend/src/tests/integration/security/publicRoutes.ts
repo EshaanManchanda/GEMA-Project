@@ -29,6 +29,8 @@ export const PUBLIC_ROUTES: Record<string, string> = {
   // Catalogue
   "GET /api/venues/public": browse,
   "GET /api/venues/public/:slug": browse,
+  "POST /api/venues/:id([0-9a-fA-F]{24})/track-click": "external booking click tracking",
+  "GET /api/venues/:id([0-9a-fA-F]{24})/analytics": "aggregate click stats for external-link venues",
   "GET /api/events/": browse,
   "GET /api/events/categories": browse,
   "GET /api/events/cities": browse,

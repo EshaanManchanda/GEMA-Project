@@ -62,7 +62,7 @@ it("restricts global venue-affiliate analytics to admins", async () => {
   expect((await get(vendor, "/api/admin/venue-affiliate-analytics")).status).toBe(403);
 });
 
-it.failing("BUG: anonymous visitors can track a venue click (route is shadowed by /venues authenticate)", async () => {
+it("anonymous visitors can track a venue click", async () => {
   const venueId = await affiliateVenue();
 
   const res = await request(app).post(`/api/venues/${venueId}/track-click`).send({ sessionId: "s1" });

@@ -9,6 +9,7 @@ import {
   getPublicVenues,
 } from "../controllers/venue.controller";
 import { authenticate, authorize } from "../middleware/auth";
+import { trackAffiliateClick, getVenueAnalytics } from "../controllers/venue.affiliate.controller";
 import { validate } from "../middleware/validation";
 import { UserRole } from "../models/index";
 import {
@@ -26,6 +27,11 @@ router.get("/public", getPublicVenues);
 
 // Get public venue detail by slug
 router.get("/public/:slug", getPublicVenueBySlug);
+
+// External booking click tracking + aggregate stats: public, so they must sit
+// ahead of authenticate (anonymous visitors' clicks used to get a 401).
+router.post("/:id([0-9a-fA-F]{24})/track-click", trackAffiliateClick);
+router.get("/:id([0-9a-fA-F]{24})/analytics", getVenueAnalytics);
 
 // ==================== AUTHENTICATED ROUTES ====================
 
