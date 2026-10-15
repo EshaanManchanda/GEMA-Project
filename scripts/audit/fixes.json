@@ -1,5 +1,5 @@
 {
- "testsPassing": "873 / 898",
+ "testsPassing": "1124 / 1158",
  "issues": [
   {
    "area": "Security",
@@ -252,6 +252,55 @@
    "commit": "891ef1b",
    "title": "Frontend type-check had 38 errors",
    "text": "All were unused code (including the never-shown old competition payment step). The type-check is clean, so the CI frontend job can pass."
+  },
+  {
+   "area": "Bugs & user experience",
+   "sev": "medium",
+   "commit": "747d2ec",
+   "title": "Admin review moderation did nothing",
+   "text": "The moderation queue and the dashboard activity feed crashed once any review existed, and approve, reject and flag were empty stubs. They now work and share one code path with the main review moderation (approving issues the certificate)."
+  },
+  {
+   "area": "Bugs & user experience",
+   "sev": "medium",
+   "commit": "90e2232",
+   "title": "Bad input crashed with a server error",
+   "text": "A malformed id anywhere returned 500, and production 500s echoed internal database messages. Malformed input now gets a 400 with a plain message, internals stay in the log, and the teacher profile page no longer crashes."
+  },
+  {
+   "area": "Bugs & user experience",
+   "sev": "medium",
+   "commit": "43e750d",
+   "title": "Venue click tracking never recorded anything",
+   "text": "Anonymous clicks on external-booking venues hit a login check first and returned 401. The public tracking routes now come before it."
+  },
+  {
+   "area": "Bugs & user experience",
+   "sev": "low",
+   "commit": "c48c8e0",
+   "title": "Categories couldn't be created without a slug",
+   "text": "The slug was generated after validation had already rejected it. It's now generated first."
+  },
+  {
+   "area": "Security",
+   "sev": "low",
+   "commit": "7e6ea6b",
+   "title": "Blog and reel likes could be inflated",
+   "text": "Blog likes trusted a spoofable IP header, and reel likes had no limit at all (and could go negative). Each client can now like once."
+  },
+  {
+   "area": "Bugs & user experience",
+   "sev": "low",
+   "commit": "b913833",
+   "title": "Settings and banners crashed on bad values",
+   "text": "A mistyped settings value or an unknown image id returned 500; both now return a clear 4xx."
+  },
+  {
+   "area": "Testing & CI",
+   "sev": "medium",
+   "commit": "ba74137",
+   "title": "Most controllers had no tests",
+   "text": "Added 260 controller tests (registration, check-in, affiliates, venues, blogs, partnerships, moderation and more) plus 96 ownership and auth tests. They found the 44 bugs fixed in this pass."
   }
  ],
  "tests": [
