@@ -22,7 +22,13 @@ export const teacherIdOf = async (s: Session) => {
   const existing = await Teacher.findOne({ userId: s.userId }).select("_id").lean();
   if (existing) return String(existing._id);
   const _id = new Types.ObjectId();
-  await Teacher.collection.insertOne({ _id, userId: new Types.ObjectId(s.userId) });
+  // email/fullName are required on save, as on real profiles (getOrCreateTeacherProfile).
+  await Teacher.collection.insertOne({
+    _id,
+    userId: new Types.ObjectId(s.userId),
+    email: `teacher.${_id}@example.com`,
+    fullName: "Test Teacher",
+  });
   return String(_id);
 };
 

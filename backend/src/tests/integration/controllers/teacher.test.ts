@@ -46,7 +46,7 @@ describe("teacher profile", () => {
     expect((await get(teacher, "/api/teachers/profile")).status).toBe(200);
   });
 
-  it.failing("BUG: PUT /teachers/profile saves (same 'Path collision' select -> 500 after the write)", async () => {
+  it("PUT /teachers/profile saves", async () => {
     const { teacher, teacherId } = await teacherWithEvent();
 
     const res = await send(teacher, "put", "/api/teachers/profile", { firstName: "Maya", bio: "Pianist", subjects: ["Music"] });
