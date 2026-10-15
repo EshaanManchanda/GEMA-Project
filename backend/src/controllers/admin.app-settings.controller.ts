@@ -193,9 +193,11 @@ export const updateAppSettings = async (
     });
   } catch (error: any) {
     logger.error(`Error updating application settings: ${error.message}`);
-    res.status(500).json({
+    // A mistyped value (e.g. a non-numeric SMTP port) is the caller's error.
+    const invalid = error?.name === "ValidationError" || error?.name === "CastError";
+    res.status(invalid ? 400 : 500).json({
       success: false,
-      message: "Failed to update application settings",
+      message: invalid ? "Invalid settings value" : "Failed to update application settings",
       error: error.message,
     });
   }

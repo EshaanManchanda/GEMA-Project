@@ -62,7 +62,7 @@ describe("admin app settings", () => {
     expect((await put(admin, { systemSettings: { maxImagesPerEvent: 0 } })).status).toBe(400);
   });
 
-  it.failing("BUG: a mistyped email setting returns 400, not 500", async () => {
+  it("a mistyped email setting returns 400, not 500", async () => {
     const admin = await signUpAdmin(app);
     expect((await put(admin, { emailSettings: { smtpPort: "not-a-port" } })).status).toBe(400);
   });

@@ -65,7 +65,7 @@ it("returns 404 for unknown banners", async () => {
   expect((await send(admin, "delete", `/api/banners/${new Types.ObjectId()}`)).status).toBe(404);
 });
 
-it.failing("BUG: creating a banner with an imageAsset id that does not exist returns 400/404, not 500", async () => {
+it("creating a banner with an imageAsset id that does not exist returns 400/404, not 500", async () => {
   const admin = await signUpAdmin(app);
   const res = await send(admin, "post", "/api/banners", bannerBody(String(new Types.ObjectId())));
   expect([400, 404]).toContain(res.status);

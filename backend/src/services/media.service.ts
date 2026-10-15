@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import { v4 as uuidv4 } from "uuid";
 import logger from "../config/logger";
 import { escapeRegex } from "../utils/regexHelpers";
+import { AppError } from "../middleware/error";
 
 /**
  * Media Service
@@ -193,7 +194,7 @@ export class MediaService {
   ): Promise<void> {
     const media = await MediaAsset.findById(mediaId).session(session || null);
     if (!media) {
-      throw new Error(`MediaAsset ${mediaId} not found`);
+      throw new AppError(`MediaAsset ${mediaId} not found`, 404);
     }
 
     await MediaAsset.findByIdAndUpdate(
