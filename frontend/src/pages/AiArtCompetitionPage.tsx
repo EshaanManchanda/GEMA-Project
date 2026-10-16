@@ -577,10 +577,10 @@ export default function AiArtCompetitionPage() {
           <div className="grid gap-10 md:grid-cols-4 md:gap-6">
             {[
               { date: '1 Sep', year: '2026', title: 'Competition opens', copy: 'The prompt is live. Let your first idea be the spark.' },
-              { date: '15 Oct', year: '2026', title: 'Registration closes', copy: 'Make sure your name and route into the competition are in.' },
-              { date: '20 Oct', year: '2026', title: 'Artwork submission closes', copy: 'One final artwork, uploaded as a JPG or PNG.' },
-              { date: '1 Nov', year: '2026', title: 'Results announced', copy: 'We reveal the students who made us see the UAE differently.' },
-            ].map((item, index) => (
+              { date: '30 Oct', year: '2026', title: 'Registration closes', copy: 'Make sure your name and route into the competition are in.' },
+              { date: '10 Nov', year: '2026', title: 'Artwork submission closes', copy: 'One final artwork, uploaded as a JPG or PNG.' },
+              { date: '30 Nov', year: '2026', title: 'Results announced', copy: 'We reveal the students who made us see the UAE differently.' },
+            ].map((item) => (
               <div key={item.date} className="relative grid grid-cols-[32px_1fr] gap-4 md:block">
                 <div className="relative z-10 mt-0.5 h-4 w-4 rounded-full border-4 border-amber-500 bg-[#0E1525] md:mb-8 shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
                 <div>
@@ -597,7 +597,7 @@ export default function AiArtCompetitionPage() {
 
         <div className="mt-12 flex items-center gap-3 border-t border-amber-500/20 pt-5 relative z-10">
           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Note</span>
-          <p className="text-xs text-slate-400">Registration closes on 1st October 2026. Artwork submissions close on 15th October 2026.</p>
+          <p className="text-xs text-slate-400">Registration closes on 30th October 2026. Artwork submissions close on 10th November 2026.</p>
         </div>
       </div>
 

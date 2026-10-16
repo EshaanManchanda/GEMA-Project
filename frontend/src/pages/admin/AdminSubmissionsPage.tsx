@@ -24,7 +24,8 @@ import adminAPI from '@/services/api/adminAPI';
 import contactAPI, { Contact, ContactStats } from '@/services/api/contactAPI';
 import newsletterAPI from '@/services/api/newsletterAPI';
 import partnershipAPI, { Partnership, PartnershipStats } from '@/services/api/partnershipAPI';
-import competitionAPI, { CompetitionSubmission } from '@/services/api/competitionAPI';
+import competitionAPI from '@/services/api/competitionAPI';
+import nationalDayAPI from '@/services/api/nationalDayAPI';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -979,13 +980,17 @@ function PartnershipTab() {
 
 // ─── Competition Detail Modal ───────────────────────────────────────────────────
 
+// ─── Competition Detail Modal ───────────────────────────────────────────────────
+
 function CompetitionDetailModal({
     submission,
+    competitionType,
     onClose,
     onUpdateStatus,
     onDelete
 }: {
-    submission: CompetitionSubmission;
+    submission: any;
+    competitionType: 'ai-art' | 'national-day';
     onClose: () => void;
     onUpdateStatus: (id: string, status: string, notes: string, medal?: string, certificateTemplateId?: string) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
@@ -1021,7 +1026,11 @@ function CompetitionDetailModal({
                 (status === 'approved' || status === 'winner') ? selectedTemplate : undefined
             );
             if ((status === 'approved' || status === 'winner') && selectedTemplate) {
-                await competitionAPI.generateCertificate(submission._id, selectedTemplate, status === 'winner' ? medal : undefined);
+                if (competitionType === 'ai-art') {
+                    await competitionAPI.generateCertificate(submission._id, selectedTemplate, status === 'winner' ? medal : undefined);
+                } else {
+                    await nationalDayAPI.generateCertificate(submission._id, selectedTemplate, status === 'winner' ? medal : undefined);
+                }
                 toast.success('Certificate generation triggered');
             }
         } catch (err) {
@@ -1037,6 +1046,13 @@ function CompetitionDetailModal({
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
                     <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                competitionType === 'national-day' ? 'bg-amber-100 text-amber-800' : 'bg-purple-100 text-purple-800'
+                            }`}>
+                                {competitionType === 'national-day' ? '🇦🇪 National Day Art' : '🤖 AI Art Competition'}
+                            </span>
+                        </div>
                         <h2 className="text-lg font-semibold text-gray-900">{submission.artwork?.title}</h2>
                         <p className="text-sm text-gray-500">By {submission.participant?.studentFullName} (Age {submission.participant?.studentAge})</p>
                     </div>
@@ -1048,7 +1064,11 @@ function CompetitionDetailModal({
                 <div className="p-6 space-y-6">
                     {/* Artwork Preview */}
                     <div className="bg-gray-50 rounded-xl p-4 flex flex-col items-center border border-gray-200">
-                        <img src={submission.artworkUpload?.artworkUrl} alt={submission.artwork?.title} className="max-h-96 rounded-lg object-contain shadow-sm mb-4" />
+                        <img 
+                            src={submission.artworkUpload?.artworkUrl} 
+                            alt={submission.artwork?.title} 
+                            className="max-h-96 rounded-lg object-contain shadow-sm mb-4" 
+                        />
                         <p className="text-sm font-medium text-gray-700 italic text-center max-w-2xl">"{submission.artwork?.description}"</p>
                     </div>
 
@@ -1065,15 +1085,27 @@ function CompetitionDetailModal({
                             <div className="text-sm">
                                 <span className="font-medium text-gray-600">Grade:</span> {submission.participant?.grade}
                             </div>
-                            <p className="text-sm">
-                                <span className="font-medium text-gray-600">Cohort:</span> {submission.participant?.cohort || 'N/A'}
-                            </p>
+                            {submission.participant?.category && (
+                                <p className="text-sm">
+                                    <span className="font-medium text-gray-600">Category:</span> {submission.participant?.category}
+                                </p>
+                            )}
+                            {submission.participant?.cohort && (
+                                <p className="text-sm">
+                                    <span className="font-medium text-gray-600">Cohort:</span> {submission.participant?.cohort}
+                                </p>
+                            )}
                             <p className="text-sm">
                                 <span className="font-medium text-gray-600">Gender:</span> {submission.participant?.gender || 'N/A'}
                             </p>
                             <div className="text-sm">
                                 <span className="font-medium text-gray-600">School:</span> {submission.participant?.schoolName} ({submission.participant?.schoolEmirate})
                             </div>
+                            {submission.schoolBulkRef && (
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">School Bulk Ref:</span> <span className="font-mono bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded text-xs">{submission.schoolBulkRef}</span>
+                                </div>
+                            )}
                             <div className="text-sm mt-3 pt-3 border-t border-gray-100">
                                 <span className="font-medium text-gray-600">Parent/Guardian:</span> {submission.participant?.parentName}
                             </div>
@@ -1085,45 +1117,55 @@ function CompetitionDetailModal({
                             </div>
                         </div>
 
-                        {/* AI Creation Details */}
-                        <div className="space-y-3">
-                            <h3 className="font-semibold text-gray-900 border-b pb-2">AI Creation Details</h3>
-                            <div className="text-sm">
-                                <span className="font-medium text-gray-600">Tools:</span> {submission.aiCreation?.tools?.join(', ')} {submission.aiCreation?.otherToolName ? `(${submission.aiCreation.otherToolName})` : ''}
-                            </div>
-                            <div className="text-sm">
-                                <span className="font-medium text-gray-600">Creation Type:</span> {submission.aiCreation?.creationType}
-                            </div>
-                            <div className="text-sm mt-2">
-                                <span className="font-medium text-gray-600 block mb-1">Main Prompt:</span>
-                                <div className="bg-gray-50 p-2 rounded border border-gray-200 text-gray-800 text-xs whitespace-pre-wrap">{submission.aiCreation?.mainPrompt}</div>
-                            </div>
-                            {submission.aiCreation?.additionalPrompts && submission.aiCreation.additionalPrompts.length > 0 && (
-                                <div className="text-sm mt-2">
-                                    <span className="font-medium text-gray-600 block mb-1">Additional Prompts:</span>
-                                    {submission.aiCreation.additionalPrompts.map((p, i) => (
-                                        <div key={i} className="bg-gray-50 p-2 rounded border border-gray-200 text-gray-800 text-xs whitespace-pre-wrap mb-1">{p}</div>
-                                    ))}
+                        {/* Competition-Specific Details */}
+                        {competitionType === 'national-day' ? (
+                            <div className="space-y-3">
+                                <h3 className="font-semibold text-gray-900 border-b pb-2">Traditional Artwork Details</h3>
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Traditional Medium:</span> {submission.artwork?.medium}
                                 </div>
-                            )}
-                            {submission.aiCreation?.changesAfterGeneration && submission.aiCreation.changesAfterGeneration !== 'No changes' && (
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Theme Pillar:</span> {submission.artwork?.themePillar}
+                                </div>
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Registration Type:</span> {submission.registrationType === 'school_bulk' ? 'School Bulk' : 'Individual'}
+                                </div>
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Payment Amount:</span> AED {submission.paymentAmount || 35}.00 ({submission.paymentStatus})
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                <h3 className="font-semibold text-gray-900 border-b pb-2">AI Creation Details</h3>
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Tools:</span> {submission.aiCreation?.tools?.join(', ')} {submission.aiCreation?.otherToolName ? `(${submission.aiCreation.otherToolName})` : ''}
+                                </div>
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Creation Type:</span> {submission.aiCreation?.creationType}
+                                </div>
                                 <div className="text-sm mt-2">
-                                    <span className="font-medium text-gray-600 block mb-1">Changes:</span>
-                                    <div className="bg-gray-50 p-2 rounded border border-gray-200 text-gray-800 text-xs whitespace-pre-wrap">
-                                        <span className="font-medium block mb-1">{submission.aiCreation.changesAfterGeneration}</span>
-                                        {submission.aiCreation?.changesDescription}
+                                    <span className="font-medium text-gray-600 block mb-1">Main Prompt:</span>
+                                    <div className="bg-gray-50 p-2 rounded border border-gray-200 text-gray-800 text-xs whitespace-pre-wrap">{submission.aiCreation?.mainPrompt}</div>
+                                </div>
+                                {submission.aiCreation?.additionalPrompts && submission.aiCreation.additionalPrompts.length > 0 && (
+                                    <div className="text-sm mt-2">
+                                        <span className="font-medium text-gray-600 block mb-1">Additional Prompts:</span>
+                                        {submission.aiCreation.additionalPrompts.map((p: string, i: number) => (
+                                            <div key={i} className="bg-gray-50 p-2 rounded border border-gray-200 text-gray-800 text-xs whitespace-pre-wrap mb-1">{p}</div>
+                                        ))}
                                     </div>
-                                </div>
-                            )}
-                            {submission.aiCreation?.processScreenshotUrl && (
-                                <div className="text-sm mt-2">
-                                    <span className="font-medium text-gray-600 block mb-1">Process Screenshot:</span>
-                                    <a href={submission.aiCreation.processScreenshotUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
-                                        View Screenshot
-                                    </a>
-                                </div>
-                            )}
-                        </div>
+                                )}
+                                {submission.aiCreation?.changesAfterGeneration && submission.aiCreation.changesAfterGeneration !== 'No changes' && (
+                                    <div className="text-sm mt-2">
+                                        <span className="font-medium text-gray-600 block mb-1">Changes:</span>
+                                        <div className="bg-gray-50 p-2 rounded border border-gray-200 text-gray-800 text-xs whitespace-pre-wrap">
+                                            <span className="font-medium block mb-1">{submission.aiCreation.changesAfterGeneration}</span>
+                                            {submission.aiCreation?.changesDescription}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Declarations & Consent */}
                         <div className="space-y-3 md:col-span-2 mt-2">
@@ -1133,6 +1175,16 @@ function CompetitionDetailModal({
                                     <div className="text-sm flex items-start gap-2">
                                         <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.declarations?.agreeTerms ? 'text-green-500' : 'text-gray-300'}`} />
                                         <span className="text-gray-700">Agreed to Terms & Conditions</span>
+                                    </div>
+                                    {competitionType === 'national-day' && (
+                                        <div className="text-sm flex items-start gap-2">
+                                            <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.declarations?.traditionalOnlyDeclaration ? 'text-green-500' : 'text-gray-300'}`} />
+                                            <span className="text-gray-700">Handmade Traditional Art (No AI)</span>
+                                        </div>
+                                    )}
+                                    <div className="text-sm flex items-start gap-2">
+                                        <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.declarations?.originalityDeclaration ? 'text-green-500' : 'text-gray-300'}`} />
+                                        <span className="text-gray-700">Originality Declaration</span>
                                     </div>
                                 </div>
                                 <div className="space-y-2">
@@ -1147,10 +1199,6 @@ function CompetitionDetailModal({
                                     <div className="text-sm flex items-start gap-2">
                                         <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.consent?.competitionUpdatesConsent ? 'text-green-500' : 'text-gray-300'}`} />
                                         <span className="text-gray-700">Competition Updates Consent</span>
-                                    </div>
-                                    <div className="text-sm flex items-start gap-2">
-                                        <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.consent?.marketingConsent ? 'text-green-500' : 'text-gray-300'}`} />
-                                        <span className="text-gray-700">Marketing Consent</span>
                                     </div>
                                 </div>
                             </div>
@@ -1248,7 +1296,8 @@ function CompetitionDetailModal({
 // ─── Competition Tab ──────────────────────────────────────────────────────────
 
 function CompetitionTab() {
-    const [submissions, setSubmissions] = useState<CompetitionSubmission[]>([]);
+    const [selectedCompetition, setSelectedCompetition] = useState<'ai-art' | 'national-day'>('ai-art');
+    const [submissions, setSubmissions] = useState<any[]>([]);
     const [pagination, setPagination] = useState<Pagination | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -1257,34 +1306,53 @@ function CompetitionTab() {
     const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
     const [medalFilter, setMedalFilter] = useState('');
     const [page, setPage] = useState(1);
-    const [selectedSubmission, setSelectedSubmission] = useState<CompetitionSubmission | null>(null);
+    const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null);
 
     const fetchSubmissions = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await competitionAPI.getSubmissions({
-                page,
-                limit: 20,
-                status: statusFilter || undefined,
-                paymentStatus: paymentStatusFilter || undefined,
-                medal: medalFilter || undefined,
-                search: search || undefined,
-            });
-            setSubmissions(res.data.submissions || []);
-            setPagination({
-                currentPage: res.data.pagination.page,
-                totalPages: res.data.pagination.pages,
-                totalCount: res.data.pagination.total,
-                limit: res.data.pagination.limit,
-                hasNext: res.data.pagination.page < res.data.pagination.pages,
-                hasPrev: res.data.pagination.page > 1
-            });
+            if (selectedCompetition === 'ai-art') {
+                const res = await competitionAPI.getSubmissions({
+                    page,
+                    limit: 20,
+                    status: statusFilter || undefined,
+                    paymentStatus: paymentStatusFilter || undefined,
+                    medal: medalFilter || undefined,
+                    search: search || undefined,
+                });
+                setSubmissions(res.data.submissions || []);
+                setPagination({
+                    currentPage: res.data.pagination.page,
+                    totalPages: res.data.pagination.pages,
+                    totalCount: res.data.pagination.total,
+                    limit: res.data.pagination.limit,
+                    hasNext: res.data.pagination.page < res.data.pagination.pages,
+                    hasPrev: res.data.pagination.page > 1
+                });
+            } else {
+                const res = await nationalDayAPI.getSubmissions({
+                    page,
+                    limit: 20,
+                    status: statusFilter || undefined,
+                    paymentStatus: paymentStatusFilter || undefined,
+                    search: search || undefined,
+                });
+                setSubmissions(res.data.submissions || []);
+                setPagination({
+                    currentPage: res.data.page,
+                    totalPages: res.data.pages,
+                    totalCount: res.data.total,
+                    limit: 20,
+                    hasNext: res.data.page < res.data.pages,
+                    hasPrev: res.data.page > 1
+                });
+            }
         } catch (err: any) {
             toast.error(err.message || 'Failed to fetch competition submissions');
         } finally {
             setIsLoading(false);
         }
-    }, [page, statusFilter, paymentStatusFilter, medalFilter, search]);
+    }, [selectedCompetition, page, statusFilter, paymentStatusFilter, medalFilter, search]);
 
     useEffect(() => { fetchSubmissions(); }, [fetchSubmissions]);
 
@@ -1296,7 +1364,11 @@ function CompetitionTab() {
 
     const handleUpdateStatus = async (id: string, status: string, notes: string, medal?: string, certificateTemplateId?: string) => {
         try {
-            await competitionAPI.updateSubmissionStatus(id, status, notes, medal, certificateTemplateId);
+            if (selectedCompetition === 'ai-art') {
+                await competitionAPI.updateSubmissionStatus(id, status, notes, medal, certificateTemplateId);
+            } else {
+                await nationalDayAPI.updateSubmissionStatus(id, status, notes, medal, certificateTemplateId);
+            }
             toast.success('Status updated successfully');
             fetchSubmissions();
         } catch (err: any) {
@@ -1306,7 +1378,11 @@ function CompetitionTab() {
 
     const handleDelete = async (id: string) => {
         try {
-            await competitionAPI.deleteSubmission(id);
+            if (selectedCompetition === 'ai-art') {
+                await competitionAPI.deleteSubmission(id);
+            } else {
+                await nationalDayAPI.deleteSubmission(id);
+            }
             toast.success('Submission deleted successfully');
             fetchSubmissions();
         } catch (err: any) {
@@ -1316,6 +1392,41 @@ function CompetitionTab() {
 
     return (
         <div className="space-y-6">
+            {/* Competition Selector Switcher */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider pl-2">Select Competition:</span>
+                        <div className="flex bg-gray-100 p-1 rounded-lg">
+                            <button
+                                onClick={() => { setSelectedCompetition('ai-art'); setPage(1); }}
+                                className={`px-4 py-2 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${
+                                    selectedCompetition === 'ai-art'
+                                        ? 'bg-white text-purple-700 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                <span>🤖</span> AI Art Competition 2026
+                            </button>
+                            <button
+                                onClick={() => { setSelectedCompetition('national-day'); setPage(1); }}
+                                className={`px-4 py-2 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${
+                                    selectedCompetition === 'national-day'
+                                        ? 'bg-white text-emerald-800 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                <span>🇦🇪</span> UAE National Day Art 2026
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="text-xs font-medium text-gray-500 pr-2">
+                        {pagination ? `Total ${pagination.totalCount} entries` : ''}
+                    </div>
+                </div>
+            </div>
+
             {/* Filters */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -1387,7 +1498,7 @@ function CompetitionTab() {
                                     <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">School</th>
                                     <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
                                     <th className="text-left px-4 py-3 font-medium text-gray-600">Payment</th>
-                                    <th className="text-left px-4 py-3 font-medium text-gray-600">Medal</th>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-600">Medals</th>
                                     <th className="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Date</th>
                                     <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
                                 </tr>
@@ -1396,14 +1507,21 @@ function CompetitionTab() {
                                 {submissions.map(sub => (
                                     <tr key={sub._id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-4 py-3">
-                                            <span className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">KAC2026-{sub._id.slice(-8).toUpperCase()}</span>
+                                            <span className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                                                {selectedCompetition === 'national-day'
+                                                    ? `UAE2026-${sub._id.slice(-8).toUpperCase()}`
+                                                    : `KAC2026-${sub._id.slice(-8).toUpperCase()}`}
+                                            </span>
                                         </td>
                                         <td className="px-4 py-3">
                                             <p className="font-medium text-gray-900 truncate max-w-[200px]">{sub.artwork?.title}</p>
+                                            {selectedCompetition === 'national-day' && sub.artwork?.medium && (
+                                                 <p className="text-xs text-gray-400 truncate max-w-[200px]">{sub.artwork?.medium}</p>
+                                             )}
                                         </td>
                                         <td className="px-4 py-3">
                                             <p className="font-medium text-gray-900">{sub.participant?.studentFullName}</p>
-                                            <p className="text-gray-500 text-xs">Grade {sub.participant?.grade}</p>
+                                            <p className="text-gray-500 text-xs">Grade {sub.participant?.grade} {sub.participant?.category ? `· ${sub.participant.category}` : ''}</p>
                                         </td>
                                         <td className="px-4 py-3 hidden md:table-cell">
                                             <p className="text-gray-900 text-sm truncate max-w-[200px]">{sub.participant?.schoolName}</p>
@@ -1428,12 +1546,12 @@ function CompetitionTab() {
                                         </td>
                                         <td className="px-4 py-3">
                                             {sub.medal ? (
-                                                <span className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full border
-                                                    ${sub.medal === 'Gold' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 
-                                                      sub.medal === 'Silver' ? 'bg-gray-100 text-gray-800 border-gray-200' :
-                                                      sub.medal === 'Bronze' ? 'bg-orange-100 text-orange-800 border-orange-200' : ''}`}
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full border shadow-2xs capitalize
+                                                    ${sub.medal.toLowerCase() === 'gold' ? 'bg-amber-100 text-amber-900 border-amber-300' : 
+                                                      sub.medal.toLowerCase() === 'silver' ? 'bg-slate-100 text-slate-800 border-slate-300' :
+                                                      sub.medal.toLowerCase() === 'bronze' ? 'bg-orange-100 text-orange-900 border-orange-300' : 'bg-yellow-50 text-yellow-800 border-yellow-200'}`}
                                                 >
-                                                    {sub.medal === 'Gold' ? '🥇' : sub.medal === 'Silver' ? '🥈' : sub.medal === 'Bronze' ? '🥉' : ''} {sub.medal}
+                                                    {sub.medal.toLowerCase() === 'gold' ? '🥇' : sub.medal.toLowerCase() === 'silver' ? '🥈' : sub.medal.toLowerCase() === 'bronze' ? '🥉' : '🎖️'} {sub.medal}
                                                 </span>
                                             ) : (
                                                 <span className="text-gray-400 text-xs">-</span>
@@ -1479,6 +1597,7 @@ function CompetitionTab() {
             {selectedSubmission && (
                 <CompetitionDetailModal
                     submission={selectedSubmission}
+                    competitionType={selectedCompetition}
                     onClose={() => setSelectedSubmission(null)}
                     onUpdateStatus={handleUpdateStatus}
                     onDelete={handleDelete}

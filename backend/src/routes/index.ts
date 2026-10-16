@@ -323,4 +323,9 @@ router.use("/lead-pages", leadPageRoutes);
 // Competition routes (AI Art Competition 2026)
 router.use("/competition", competitionRoutes);
 
+// UAE National Day Art Competition 2026 routes
+import nationalDayRoutes from "./nationalDayCompetition.routes";
+router.use("/national-day-competition", nationalDayRoutes);
+
 export default router;
+

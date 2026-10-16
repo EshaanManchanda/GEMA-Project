@@ -859,6 +859,11 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                   </Link>
                 </li>
                 <li>
+                  <Link to="/national-day-art-competition" className="text-gray-700 hover:text-gray-900 text-sm">
+                    UAE National Day Art Competition
+                  </Link>
+                </li>
+                <li>
                   <Link to="/summer-2026" className="text-gray-700 hover:text-gray-900 text-sm">
                     Summer 2026
                   </Link>

@@ -239,6 +239,8 @@ export interface CompetitionSubmissionEmailOptions {
   parentName: string;
   refNo: string;
   artworkTitle: string;
+  competitionName?: string;
+  competitionBadge?: string;
 }
 
 class EmailService {
@@ -2165,6 +2167,9 @@ class EmailService {
   async sendCompetitionSubmissionEmail(
     options: CompetitionSubmissionEmailOptions,
   ): Promise<void> {
+    const badgeText = options.competitionBadge || "✨ Kidrove AI Art 2026";
+    const compName = options.competitionName || "Kidrove AI Art Competition";
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -2201,16 +2206,20 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <div class="header-badge">✨ Kidrove AI Art 2026</div>
+            <div class="header-badge">${badgeText}</div>
             <h1>Entry Submitted!</h1>
           </div>
           <div class="content">
             <h2 class="greeting">Hi ${options.parentName}!</h2>
-            <p class="lead">Your competition entry for <strong style="color: #ea580c;">${options.studentName}</strong> has been received successfully. Our judges are excited to see their vision of the future.</p>
+            <p class="lead">Your competition entry for <strong style="color: #ea580c;">${options.studentName}</strong> has been received successfully. Our judges are excited to see their creative artwork.</p>
             
             <div class="info-box">
               <span class="info-title">Submission Receipt</span>
               <table class="info-table">
+                <tr>
+                  <td class="info-label">Competition</td>
+                  <td class="info-value">${compName}</td>
+                </tr>
                 <tr>
                   <td class="info-label">Reference ID</td>
                   <td class="info-value"><span class="ref-code">${options.refNo}</span></td>
@@ -2241,8 +2250,8 @@ class EmailService {
 
               <div class="step-item">
                 <div class="step-content">
-                  <h4>🎨 Virtual Exhibition</h4>
-                  <p>Outstanding creations will be showcased in the exclusive Kidrove AI Art Gallery.</p>
+                  <h4>🎨 Exhibition</h4>
+                  <p>Outstanding creations will be showcased in the exclusive Kidrove Gallery.</p>
                 </div>
               </div>
             </div>
@@ -2261,16 +2270,17 @@ class EmailService {
     const text = `
 Hi ${options.parentName}!
 
-Your competition entry for ${options.studentName} has been received successfully. Our judges are excited to see their vision of the future.
+Your competition entry for ${options.studentName} has been received successfully for ${compName}.
 
 Submission Receipt:
+- Competition: ${compName}
 - Reference ID: ${options.refNo}
 - Artwork Title: ${options.artworkTitle}
 
 What happens next?
 - Participation Certificate: Every eligible student receives an official Kidrove certificate honoring their effort.
 - Winners Announced: The judging panel will evaluate entries and award Gold, Silver, and Bronze medals to top performers.
-- Virtual Exhibition: Outstanding creations will be showcased in the exclusive Kidrove AI Art Gallery.
+- Exhibition: Outstanding creations will be showcased in the exclusive Kidrove Gallery.
 
 Kidrove - Inspiring the creators of tomorrow.
 © ${new Date().getFullYear()} Kidrove. All rights reserved.
@@ -2278,7 +2288,7 @@ Kidrove - Inspiring the creators of tomorrow.
 
     await this.sendEmail({
       to: options.to,
-      subject: "Competition Entry Received!",
+      subject: `${compName} — Entry Received!`,
       html,
       text,
       notificationType: "essential"
