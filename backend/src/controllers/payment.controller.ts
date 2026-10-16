@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
 import { PaymentService } from "../services/payment.service";
+import { RefundService } from "../services/refund.service";
 import CommissionService from "../services/commission.service";
 import { Order, User, Event } from "../models/index";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
-import { convertToStripeAmount, stripePublishableKey, stripe } from "../config/stripe";
+import { stripePublishableKey, stripe } from "../config/stripe";
 import logger from "../config/logger";
 
 // @desc    Create payment intent for order
@@ -282,28 +283,23 @@ export const processRefund = async (
       return next(new AppError("No payment intent found for this order", 400));
     }
 
-    // Process refund
-    const refundAmount = amount || order.total;
-    if (refundAmount > order.total) {
-      return next(
-        new AppError("Refund amount cannot exceed the order total", 400),
-      );
+    const result = await RefundService.processRefund({
+      orderId,
+      reason: reason || "Refunded by admin",
+      initiatedBy: req.user!._id,
+      cancellationType: "admin_cancelled",
+      amount: amount ? Number(amount) : undefined,
+    });
+    if (!result.success) {
+      return next(new AppError(result.error || "Refund failed", 400));
     }
-    const stripeRefund = await PaymentService.createRefund(
-      order.paymentIntentId,
-      convertToStripeAmount(refundAmount, order.currency),
-      reason,
-    );
-
-    // Update order
-    await order.refund(refundAmount, reason);
 
     res.status(200).json({
       success: true,
       message: "Refund processed successfully",
       data: {
-        refund: stripeRefund,
-        order,
+        refund: { id: result.refundId, amount: result.refundAmount },
+        order: await Order.findById(orderId),
       },
     });
   } catch (error) {

@@ -7,8 +7,10 @@ import { findVendorByStripe } from "./subscription.service";
 import Teacher from "../models/Teacher";
 import User from "../models/User";
 import Ticket from "../models/Ticket";
+import RevenueTransaction, { TransactionStatus } from "../models/RevenueTransaction";
 import Notification, { NotificationType, NotificationPriority, NotificationChannel } from "../models/Notification";
 import Stripe from "stripe";
+import { ClientSession, Types } from "mongoose";
 import logger from "../config/logger";
 import redisClient from "../config/redis";
 import { emailService } from "./email.service";
@@ -80,6 +82,44 @@ interface RoutingCache {
   usesVendorStripe: boolean;
   vendorStripeAccountId?: string;
   commissionRate: number;
+}
+
+/**
+ * A fully refunded order grants nothing: its unused tickets stop scanning and
+ * its revenue leaves the vendor payout pool (payout queries only take
+ * COMPLETED rows). Idempotent, so the refund flow and the charge.refunded
+ * webhook can both call it.
+ */
+export async function revokeOrderEntitlements(
+  orderId: string | Types.ObjectId,
+  session?: ClientSession,
+): Promise<void> {
+  await Ticket.updateMany(
+    { orderId, status: "active" },
+    { $set: { status: "refunded" } },
+    { session },
+  );
+  const paidOut = await RevenueTransaction.find({
+    orderId,
+    status: { $ne: TransactionStatus.REFUNDED },
+    payoutStatus: { $in: ["processing", "completed"] },
+  })
+    .select("_id vendorId")
+    .session(session ?? null)
+    .lean();
+  if (paidOut.length) {
+    // ponytail: no automatic clawback; the vendor was already paid for these.
+    logger.warn("Refunded order was already paid out to vendor — reclaim manually", {
+      orderId: String(orderId),
+      revenueTransactions: paidOut.map((t) => String(t._id)),
+    });
+  }
+  // updateMany skips the amounts-sum pre-save hook; amounts stay as an audit trail.
+  await RevenueTransaction.updateMany(
+    { orderId, status: { $ne: TransactionStatus.REFUNDED } },
+    { $set: { status: TransactionStatus.REFUNDED } },
+    { session },
+  );
 }
 
 export class PaymentService {
@@ -382,6 +422,7 @@ export class PaymentService {
     paymentIntentId: string,
     amount?: number,
     reason?: string,
+    idempotencyKey?: string,
   ): Promise<Stripe.Refund> {
     try {
       const refundParams: Stripe.RefundCreateParams = {
@@ -396,7 +437,10 @@ export class PaymentService {
         refundParams.reason = reason as Stripe.RefundCreateParams.Reason;
       }
 
-      return await stripe.refunds.create(refundParams);
+      return await stripe.refunds.create(
+        refundParams,
+        idempotencyKey ? { idempotencyKey } : undefined,
+      );
     } catch (error) {
       logger.error("Error creating refund:", error);
       throw new Error("Failed to create refund");
@@ -1055,6 +1099,7 @@ export class PaymentService {
         refundAmount: refundedAmount,
         refundedAt: new Date(),
       });
+      if (isFullRefund) await revokeOrderEntitlements(orderId);
 
       logger.info(`Order ${orderId} refund status updated`, {
         refundedAmount,

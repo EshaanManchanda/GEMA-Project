@@ -111,7 +111,6 @@ export interface IRevenueTransaction extends Document {
     transferId?: string,
   ): Promise<IRevenueTransaction>;
   scheduleForPayout(date: Date): Promise<IRevenueTransaction>;
-  refund(amount: number, reason: string): Promise<IRevenueTransaction>;
 }
 
 const RevenueTransactionSchema = new Schema<IRevenueTransaction>(
@@ -337,25 +336,6 @@ RevenueTransactionSchema.methods.scheduleForPayout = async function (
 ): Promise<IRevenueTransaction> {
   this.scheduledPayoutDate = date;
   this.payoutStatus = PayoutStatus.SCHEDULED;
-  return this.save();
-};
-
-// Method to refund
-RevenueTransactionSchema.methods.refund = async function (
-  amount: number,
-  reason: string,
-): Promise<IRevenueTransaction> {
-  this.status = TransactionStatus.REFUNDED;
-  this.adminNotes = `Refunded: ${amount} ${this.currency}. Reason: ${reason}`;
-  // Adjust amounts for partial refunds
-  if (amount < this.totalAmount) {
-    const refundRatio = amount / this.totalAmount;
-    this.adminCommission = this.adminCommission * (1 - refundRatio);
-    this.vendorPayout = this.vendorPayout * (1 - refundRatio);
-  } else {
-    this.adminCommission = 0;
-    this.vendorPayout = 0;
-  }
   return this.save();
 };
 

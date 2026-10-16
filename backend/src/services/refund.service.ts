@@ -1,6 +1,6 @@
 import { Order, Event, User } from "../models/index";
 import CancellationLog from "../models/CancellationLog";
-import { PaymentService } from "./payment.service";
+import { PaymentService, revokeOrderEntitlements } from "./payment.service";
 import { convertToStripeAmount } from "../config/stripe";
 import logger from "../config/logger";
 import mongoose from "mongoose";
@@ -31,6 +31,8 @@ export interface ProcessRefundOptions {
   reason: string;
   initiatedBy: mongoose.Types.ObjectId;
   cancellationType: "user_requested" | "event_cancelled" | "admin_cancelled";
+  /** Admin partial refund; omitted = the full refundable amount. */
+  amount?: number;
 }
 
 export interface BatchRefundResult {
@@ -99,7 +101,7 @@ export class RefundService {
     session.startTransaction();
 
     try {
-      const { orderId, reason, initiatedBy, cancellationType } = options;
+      const { orderId, reason, initiatedBy, cancellationType, amount } = options;
 
       // Find the order
       const order = await Order.findById(orderId).session(session);
@@ -125,8 +127,16 @@ export class RefundService {
       }
 
       // Calculate refund amount
-      const { refundAmount, nonRefundableAmount, serviceFee, vat } =
-        this.calculateRefundableAmount(order, cancellationType);
+      const full = this.calculateRefundableAmount(order, cancellationType);
+      const { nonRefundableAmount, serviceFee, vat } = full;
+      const alreadyRefunded = order.refundAmount || 0;
+      const remaining = Math.max(0, full.refundAmount - alreadyRefunded);
+      if (amount !== undefined && amount > remaining) {
+        throw new Error("Refund amount cannot exceed the amount still refundable");
+      }
+      const refundAmount = amount ?? remaining;
+      // A partial refund returns money but keeps the booking (tickets, seats, vendor revenue).
+      const isFull = refundAmount >= remaining;
 
       if (refundAmount <= 0) {
         throw new Error("No refundable amount");
@@ -146,19 +156,26 @@ export class RefundService {
             order.currency,
           );
 
+          // ponytail: Stripe is called inside the transaction, so a failed commit after
+          // this leaves money refunded but the order unchanged. The idempotency key
+          // makes a retry return the same refund instead of paying out twice; an
+          // outbox would close the gap fully.
           const stripeRefund = await PaymentService.createRefund(
             order.paymentIntentId,
             stripeAmount,
             "requested_by_customer",
+            `refund-${order._id}-${alreadyRefunded}-${stripeAmount}`,
           );
 
           refundId = stripeRefund.id;
 
           // Update order with refund details
-          order.status = "refunded";
-          order.paymentStatus = "refunded";
+          if (isFull) {
+            order.status = "refunded";
+            order.paymentStatus = "refunded";
+          }
           order.refundStatus = "completed";
-          order.refundAmount = refundAmount;
+          order.refundAmount = alreadyRefunded + refundAmount;
           order.refundReason = reason;
           order.refundTransactionId = refundId;
           order.refundedAt = new Date();
@@ -176,10 +193,12 @@ export class RefundService {
         }
       } else {
         // No payment intent (e.g., free order or test), just update status
-        order.status = "refunded";
-        order.paymentStatus = "refunded";
+        if (isFull) {
+          order.status = "refunded";
+          order.paymentStatus = "refunded";
+        }
         order.refundStatus = "completed";
-        order.refundAmount = refundAmount;
+        order.refundAmount = alreadyRefunded + refundAmount;
         order.refundReason = reason;
         order.refundedAt = new Date();
         order.cancellationType = cancellationType;
@@ -223,8 +242,10 @@ export class RefundService {
         { session },
       );
 
+      if (isFull) await revokeOrderEntitlements(order._id, session);
+
       // Return seats to the event
-      for (const item of order.items) {
+      for (const item of isFull ? order.items : []) {
         const event = await Event.findById(item.eventId).session(session);
         if (event) {
           const schedule = event.dateSchedule.find((s: any) => {

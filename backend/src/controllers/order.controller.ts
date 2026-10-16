@@ -6,6 +6,7 @@ import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { emailService } from "../services/email.service";
 import { CouponService } from "../services/coupon.service";
+import { RefundService } from "../services/refund.service";
 import { calculateOrderPricing, resolveVatRate } from "../services/pricing.service";
 import { stripe } from "../config/stripe";
 import logger from "../config/logger";
@@ -961,15 +962,17 @@ export const refundOrderAdmin = async (
       return next(new AppError("Order is already refunded", 400));
     }
 
-    // Calculate refund amount if not provided
-    const refundAmount = amount || order.calculateRefundAmount();
-
-    if (refundAmount > order.total) {
-      return next(new AppError("Refund amount cannot exceed order total", 400));
+    const result = await RefundService.processRefund({
+      orderId: id,
+      reason: reason || "Refunded by admin",
+      initiatedBy: req.user!._id,
+      cancellationType: "admin_cancelled",
+      amount: amount ? Number(amount) : undefined,
+    });
+    if (!result.success) {
+      return next(new AppError(result.error || "Refund failed", 400));
     }
-
-    // Process refund
-    await order.refund(refundAmount, reason);
+    const refundAmount = result.refundAmount;
 
     // Send refund confirmation email
     try {
@@ -1140,13 +1143,21 @@ export const bulkUpdateOrders = async (
 
           case "refund":
             if (order.paymentStatus === "paid" && order.status !== "refunded") {
-              const refundAmount =
-                updateData?.amount || order.calculateRefundAmount();
-              await order.refund(
-                refundAmount,
-                updateData?.reason || "Bulk refund by admin",
-              );
-              results.successful.push(order._id.toString());
+              const result = await RefundService.processRefund({
+                orderId: order._id.toString(),
+                reason: updateData?.reason || "Bulk refund by admin",
+                initiatedBy: req.user!._id,
+                cancellationType: "admin_cancelled",
+                amount: updateData?.amount ? Number(updateData.amount) : undefined,
+              });
+              if (result.success) {
+                results.successful.push(order._id.toString());
+              } else {
+                results.failed.push({
+                  orderId: order._id.toString(),
+                  reason: result.error || "Refund failed",
+                });
+              }
             } else {
               results.failed.push({
                 orderId: order._id.toString(),
