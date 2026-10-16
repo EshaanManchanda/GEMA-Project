@@ -301,6 +301,20 @@
    "commit": "ba74137",
    "title": "Most controllers had no tests",
    "text": "Added 260 controller tests (registration, check-in, affiliates, venues, blogs, partnerships, moderation and more) plus 96 ownership and auth tests. They found the 44 bugs fixed in this pass."
+  },
+  {
+   "area": "Payments",
+   "sev": "critical",
+   "commit": "7f8a29a",
+   "title": "Admin refunds never refunded the card",
+   "text": "The admin refund and bulk refund buttons marked the order refunded, but never asked Stripe to return the money. All admin refund endpoints now refund through Stripe, and a retry can't refund twice."
+  },
+  {
+   "area": "Payments",
+   "sev": "high",
+   "commit": "7f8a29a",
+   "title": "Refunded orders were still paid out to vendors",
+   "text": "A refund left the order's revenue in the vendor payout pool and its tickets still scannable. A full refund, whether made here or in the Stripe dashboard, now voids the tickets and takes the revenue out of payouts."
   }
  ],
  "tests": [
@@ -378,6 +392,16 @@
     "Open the report: cd frontend && npx playwright show-report"
    ],
    "expect": "It ends with \"All checks passed\". Any failure stops it with the failing step named."
+  },
+  {
+   "title": "Admin refund returns the money",
+   "where": "Local (Docker, Stripe test keys)",
+   "steps": [
+    "Book an event as a customer and pay with 4242 4242 4242 4242.",
+    "As admin, open the order and click Refund.",
+    "Check the payment in the Stripe test dashboard, and the customer's ticket."
+   ],
+   "expect": "Stripe shows the payment refunded; the ticket shows as refunded and no longer checks in."
   }
  ]
 }
