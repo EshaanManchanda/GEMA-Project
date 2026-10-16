@@ -38,6 +38,8 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // Increase maximum file size limit for precaching from 2 MiB default to 5 MiB
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // SEO Optimization: Exclude HTML from precaching - always fetch fresh
         globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
         globIgnores: ['**/*.html', '**/index.html', '**/offline.html'],
