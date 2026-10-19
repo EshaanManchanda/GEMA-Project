@@ -107,13 +107,13 @@ export interface IConsentSection {
 export interface INationalDaySubmission extends Document {
   registrationType: RegistrationType;
   participant: IParticipantDetails;
-  artwork: IArtworkDetails;
-  artworkUpload: IArtworkUpload;
+  artwork?: Partial<IArtworkDetails>;
+  artworkUpload?: Partial<IArtworkUpload>;
   declarations: IDeclarations;
   consent: IConsentSection;
   status: SubmissionStatus;
   paymentStatus: "pending" | "paid" | "failed";
-  paymentAmount: number; // in AED: 35 for individual, 25 for bulk
+  paymentAmount: number; // in AED: 50 for individual, 40 for bulk
   currency: string;
   paymentIntentId?: string;
   checkoutSessionId?: string;
@@ -202,19 +202,16 @@ const nationalDaySubmissionSchema = new Schema<INationalDaySubmission>(
     artwork: {
       title: {
         type: String,
-        required: [true, "Artwork title is required"],
         trim: true,
         maxlength: [200, "Artwork title cannot exceed 200 characters"],
       },
       description: {
         type: String,
-        required: [true, "Artwork description is required"],
         trim: true,
         maxlength: [1000, "Artwork description cannot exceed 1000 characters"],
       },
       medium: {
         type: String,
-        required: [true, "Artwork medium is required"],
       },
       themePillar: {
         type: String,
@@ -225,25 +222,21 @@ const nationalDaySubmissionSchema = new Schema<INationalDaySubmission>(
     artworkUpload: {
       artworkUrl: {
         type: String,
-        required: [true, "Artwork image is required"],
       },
       artworkPublicId: {
         type: String,
       },
       artworkOriginalName: {
         type: String,
-        required: [true, "Original file name is required"],
       },
       artworkSize: {
         type: Number,
-        required: [true, "File size is required"],
       },
       artworkMimetype: {
         type: String,
-        required: [true, "MIME type is required"],
         enum: {
-          values: ["image/jpeg", "image/png", "image/jpg", "image/webp"],
-          message: "Only JPG, PNG or WEBP images are supported",
+          values: ["image/jpeg", "image/png", "image/jpg", "image/webp", "application/pdf"],
+          message: "Only JPG, PNG, WEBP or PDF files are supported",
         },
       },
     },
@@ -319,7 +312,7 @@ const nationalDaySubmissionSchema = new Schema<INationalDaySubmission>(
     },
     paymentAmount: {
       type: Number,
-      default: 35, // AED 35 for individual
+      default: 50, // AED 50 for individual
     },
     currency: {
       type: String,

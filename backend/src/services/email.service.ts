@@ -243,6 +243,26 @@ export interface CompetitionSubmissionEmailOptions {
   competitionBadge?: string;
 }
 
+export interface NationalDayRegistrationEmailOptions {
+  to: string;
+  studentName: string;
+  parentName: string;
+  refNo: string;
+  grade: string;
+  category: string;
+  isLittleArtist: boolean;
+  templateDownloadUrl?: string;
+  submissionUrl?: string;
+  competitionName?: string;
+  competitionBadge?: string;
+  attachments?: Array<{
+    filename: string;
+    content?: Buffer | string;
+    path?: string;
+    contentType?: string;
+  }>;
+}
+
 class EmailService {
   private transporter: nodemailer.Transporter;
 
@@ -345,15 +365,43 @@ class EmailService {
       logger.info(
         `[EmailService] Sent to ${mailOptions.to} | messageId: ${info.messageId}`,
       );
+      const etherealUrl = nodemailer.getTestMessageUrl(info);
+      if (etherealUrl) {
+        logger.info(`[EmailService] ✉️ View Ethereal email preview: ${etherealUrl}`);
+      }
       return info.messageId || "";
     } catch (error: any) {
       logger.error(
-        "[EmailService] Failed to send email:",
+        "[EmailService] Primary transport failed to send email:",
         error?.message || error,
       );
 
-      // In non-production, don't block app flow on SMTP auth/config issues.
+      // Auto-failover to Ethereal in development if production Hostinger credentials return 535 Invalid login
       if (config.nodeEnv !== "production") {
+        try {
+          const etherealTransporter = nodemailer.createTransport({
+            host: process.env.EMAIL_HOST || "smtp.ethereal.email",
+            port: parseInt(process.env.EMAIL_PORT || "587", 10),
+            auth: {
+              user: process.env.EMAIL_USERNAME || "boyd41@ethereal.email",
+              pass: process.env.EMAIL_PASSWORD || "dTNFDN5kUFZ1zSpQBd",
+            },
+          });
+          const info = await etherealTransporter.sendMail({
+            from: `"Kidrove" <${process.env.EMAIL_FROM || "boyd41@ethereal.email"}>`,
+            to: Array.isArray(options.to) ? options.to.join(", ") : options.to,
+            subject: options.subject,
+            html: options.html,
+            text: options.text,
+            attachments: options.attachments,
+          });
+          const testUrl = nodemailer.getTestMessageUrl(info);
+          logger.info(`[EmailService] ✅ Email delivered via dev fallback (Ethereal). Preview URL: ${testUrl}`);
+          return info.messageId;
+        } catch (etherealErr) {
+          logger.warn("[EmailService] Dev fallback transport also failed:", etherealErr);
+        }
+
         const devMessageId = `dev-email-${Date.now()}`;
         logger.warn(
           `[EmailService] DEV fallback active. Email not delivered, returning mock messageId: ${devMessageId}`,
@@ -2292,6 +2340,140 @@ Kidrove - Inspiring the creators of tomorrow.
       html,
       text,
       notificationType: "essential"
+    });
+  }
+
+  async sendNationalDayRegistrationEmail(
+    options: NationalDayRegistrationEmailOptions,
+  ): Promise<void> {
+    const badgeText = options.competitionBadge || "🇦🇪 Eid Al Etihad 2026";
+    const compName = options.competitionName || "Eid Al Etihad Children's Art Competition 2026";
+    const frontendUrl = config.frontendUrl || "http://localhost:5173";
+    const submitUrl = options.submissionUrl || `${frontendUrl}/national-day-art-competition/submit?ref=${options.refNo}`;
+    const downloadUrl = options.templateDownloadUrl || `${frontendUrl}/assets/eid-al-etihad-colouring-template.pdf`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #334155; margin: 0; padding: 40px 20px; background-color: #f8fafc; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 40px 30px; text-align: center; }
+          .header-badge { display: inline-block; background: rgba(0,0,0,0.25); padding: 8px 16px; border-radius: 30px; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.25); }
+          .header h1 { margin: 0; font-size: 28px; font-weight: 800; }
+          .content { padding: 35px 30px; background: #ffffff; }
+          .greeting { font-size: 22px; font-weight: 800; color: #0f172a; margin-top: 0; }
+          .lead { font-size: 15px; color: #475569; margin-bottom: 25px; }
+          .ref-card { background: #FAF8F5; border: 2px dashed #d97706; border-radius: 16px; padding: 20px; text-align: center; margin: 25px 0; }
+          .ref-title { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #78350f; font-weight: 800; margin-bottom: 6px; display: block; }
+          .ref-number { font-size: 24px; font-family: monospace; font-weight: 900; color: #b45309; letter-spacing: 2px; }
+          .btn { display: inline-block; padding: 14px 28px; border-radius: 30px; font-size: 15px; font-weight: 800; text-decoration: none; text-align: center; margin: 15px 0; }
+          .btn-primary { background: #059669; color: white !important; }
+          .btn-secondary { background: #d97706; color: white !important; }
+          .instructions-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 20px; margin: 25px 0; }
+          .instructions-box h3 { margin-top: 0; color: #166534; font-size: 16px; font-weight: 800; }
+          .instructions-box ol { margin: 0; padding-left: 20px; color: #374151; font-size: 14px; }
+          .instructions-box li { margin-bottom: 8px; }
+          .footer { background: #0f172a; padding: 25px; text-align: center; color: #94a3b8; font-size: 12px; }
+          .footer p { margin: 4px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="header-badge">${badgeText}</div>
+            <h1>Registration Confirmed!</h1>
+          </div>
+          <div class="content">
+            <h2 class="greeting">Hi ${options.parentName}!</h2>
+            <p class="lead">
+              Your registration for <strong>${options.studentName}</strong> (${options.grade} · ${options.category}) in the <strong>${compName}</strong> has been successfully received and entry fee paid.
+            </p>
+
+            <div class="ref-card">
+              <span class="ref-title">Your Official Reference Number</span>
+              <div class="ref-number">${options.refNo}</div>
+              <p style="font-size: 12px; color: #64748b; margin: 8px 0 0 0;">Save this number! You will need it to upload the artwork before December 15, 2026.</p>
+            </div>
+
+            ${
+              options.isLittleArtist
+                ? `
+            <div class="instructions-box">
+              <h3>🎨 Phase 2 Instructions (Kindergarten to Grade 2):</h3>
+              <ol>
+                <li><strong>Download the Colouring Template:</strong> Print it on standard A4 paper.</li>
+                <li><strong>Colour Offline:</strong> Student colours the template using crayons, oil pastels, pencils, or paints.</li>
+                <li><strong>Take a Photo or Scan:</strong> Take a clear top-down photo or flatbed scan (&lt;1 MB, JPG/PNG/PDF).</li>
+                <li><strong>Submit Before 15 Dec 2026:</strong> Visit our submission portal, enter your Ref No, and upload.</li>
+              </ol>
+              <div style="text-align: center; margin-top: 20px;">
+                <a href="${downloadUrl}" class="btn btn-primary" target="_blank">📥 Download Colouring Template PDF</a>
+              </div>
+            </div>
+            `
+                : `
+            <div class="instructions-box" style="background: #eff6ff; border-color: #bfdbfe;">
+              <h3 style="color: #1e40af;">🎨 Phase 2 Instructions (Grades 3 to 12):</h3>
+              <ol>
+                <li><strong>Create Original Artwork:</strong> Draw or paint traditional artwork on the theme <em>"My UAE, My Pride"</em>.</li>
+                <li><strong>Strict Traditional Art:</strong> AI generation, digital drawing, or traced internet photos are not allowed.</li>
+                <li><strong>Photograph or Scan:</strong> Capture a clear photo or scan (&lt;1 MB, JPG/PNG/PDF).</li>
+                <li><strong>Submit Before 15 Dec 2026:</strong> Click below to upload your artwork whenever ready.</li>
+              </ol>
+              <div style="text-align: center; margin-top: 20px;">
+                <a href="${submitUrl}" class="btn btn-secondary" target="_blank">🎨 Submit Artwork Online</a>
+              </div>
+            </div>
+            `
+            }
+
+            <div style="text-align: center; margin-top: 30px;">
+              <p style="font-size: 13px; color: #64748b;">
+                You can upload your artwork at any time before <strong>15 December 2026</strong> at:<br/>
+                <a href="${submitUrl}" style="color: #059669; font-weight: bold;">${submitUrl}</a>
+              </p>
+            </div>
+          </div>
+          <div class="footer">
+            <p><strong>KIDROVE · Eid Al Etihad Children's Art Competition 2026</strong></p>
+            <p>Theme: "My UAE, My Pride" · Inspiring the young creators of the UAE.</p>
+            <p>&copy; ${new Date().getFullYear()} Kidrove. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Hi ${options.parentName}!
+
+Your registration for ${options.studentName} (${options.grade} · ${options.category}) in ${compName} has been confirmed.
+
+Your Reference Number: ${options.refNo}
+Save this reference number to upload artwork.
+
+${options.isLittleArtist ? `Kindergarten to Grade 2 Instructions:
+1. Download the Colouring Template: ${downloadUrl}
+2. Colour offline using traditional crayons, oil pastels, or pencils.
+3. Photograph or scan (<1 MB).
+4. Upload at: ${submitUrl} before 15 December 2026.` : `Grades 3 to 12 Instructions:
+1. Create original traditional artwork on "My UAE, My Pride".
+2. Photograph or scan (<1 MB).
+3. Upload at: ${submitUrl} before 15 December 2026.`}
+
+Deadline for artwork submission: 15 December 2026.
+    `.trim();
+
+    await this.sendEmail({
+      to: options.to,
+      subject: `Registration Confirmed: ${options.refNo} — ${compName}`,
+      html,
+      text,
+      attachments: options.attachments,
+      notificationType: "essential",
     });
   }
 

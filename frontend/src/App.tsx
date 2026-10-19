@@ -17,7 +17,6 @@ import { PageErrorBoundary } from '@components/common/ErrorBoundary';
 // Skeleton Components for better perceived performance
 import {
   HomePageSkeleton,
-  EventsPageSkeleton,
   EventDetailSkeleton,
   AdminDashboardSkeleton,
   GenericPageSkeleton
@@ -25,7 +24,6 @@ import {
 
 // Page Components (Lazy loaded for better performance)
 const HomePage = React.lazy(() => import(/* webpackChunkName: "home" */ './pages/HomePage'));
-const EventsPage = React.lazy(() => import(/* webpackChunkName: "events" */ './pages/EventsPage'));
 const EventDetailPage = React.lazy(() => import(/* webpackChunkName: "events" */ './pages/EventDetailPage'));
 
 
@@ -176,6 +174,7 @@ const CompetitionPaymentSuccessPage = React.lazy(() => import(/* webpackChunkNam
 // UAE National Day Art Competition 2026
 const NationalDayCompetitionPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/NationalDayCompetitionPage'));
 const NationalDayPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/NationalDayPaymentSuccessPage'));
+const NationalDayArtworkSubmitPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/NationalDayArtworkSubmitPage'));
 
 
 // Analytics Pages
@@ -390,6 +389,11 @@ function AppContent() {
             <Route path="payment-success" element={
               <Suspense fallback={<GenericPageSkeleton />}>
                 <NationalDayPaymentSuccessPage />
+              </Suspense>
+            } />
+            <Route path="submit" element={
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <NationalDayArtworkSubmitPage />
               </Suspense>
             } />
           </Route>

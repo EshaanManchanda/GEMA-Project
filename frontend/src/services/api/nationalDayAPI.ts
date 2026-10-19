@@ -1,7 +1,6 @@
 import { ApiService } from '../api';
 
-export interface NationalDaySubmitPayload {
-  // Participant
+export interface NationalDayRegisterPayload {
   registrationType?: 'individual' | 'school_bulk';
   parentName: string;
   parentEmail: string;
@@ -14,13 +13,6 @@ export interface NationalDaySubmitPayload {
   schoolName: string;
   schoolEmirate: string;
   schoolBulkRef?: string;
-
-  // Artwork
-  artworkTitle: string;
-  artworkDescription: string;
-  medium: string;
-  themePillar: string;
-  artwork: File;
 
   // Declarations
   agreeTerms: boolean;
@@ -35,6 +27,24 @@ export interface NationalDaySubmitPayload {
   marketingConsent?: boolean;
 }
 
+export interface NationalDaySubmitPayload extends NationalDayRegisterPayload {
+  artworkTitle?: string;
+  artworkDescription?: string;
+  medium?: string;
+  themePillar?: string;
+  artwork?: File;
+}
+
+export interface NationalDayArtworkSubmitPayload {
+  refNo?: string;
+  submissionId?: string;
+  artworkTitle: string;
+  artworkDescription: string;
+  medium: string;
+  themePillar: string;
+  artwork: File;
+}
+
 export interface SchoolBulkInquiryPayload {
   schoolName: string;
   contactPerson: string;
@@ -47,7 +57,27 @@ export interface SchoolBulkInquiryPayload {
 
 const nationalDayAPI = {
   /**
-   * Step 1: Save draft & upload artwork
+   * Phase 1: Register Student & Parent Details (JSON payload, no artwork required)
+   */
+  register: async (payload: NationalDayRegisterPayload) => {
+    const response = await ApiService.post<any>(
+      '/national-day-competition/register',
+      payload
+    );
+    return response as {
+      success: boolean;
+      message?: string;
+      data: {
+        submissionId: string;
+        submissionRef: string;
+        amount: number;
+        currency: string;
+      };
+    };
+  },
+
+  /**
+   * Phase 1 (Legacy Draft): Save draft & upload artwork
    */
   saveDraft: async (payload: NationalDaySubmitPayload) => {
     const formData = new FormData();
@@ -64,11 +94,11 @@ const nationalDayAPI = {
     formData.append('schoolEmirate', payload.schoolEmirate);
     if (payload.schoolBulkRef) formData.append('schoolBulkRef', payload.schoolBulkRef);
 
-    formData.append('artworkTitle', payload.artworkTitle);
-    formData.append('artworkDescription', payload.artworkDescription);
-    formData.append('medium', payload.medium);
-    formData.append('themePillar', payload.themePillar);
-    formData.append('artwork', payload.artwork);
+    if (payload.artworkTitle) formData.append('artworkTitle', payload.artworkTitle);
+    if (payload.artworkDescription) formData.append('artworkDescription', payload.artworkDescription);
+    if (payload.medium) formData.append('medium', payload.medium);
+    if (payload.themePillar) formData.append('themePillar', payload.themePillar);
+    if (payload.artwork) formData.append('artwork', payload.artwork);
 
     formData.append('agreeTerms', String(payload.agreeTerms));
     formData.append('traditionalOnlyDeclaration', String(payload.traditionalOnlyDeclaration));
@@ -87,11 +117,15 @@ const nationalDayAPI = {
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );
-    return response as { success: boolean; message?: string; data: { submissionId: string; submissionRef?: string; amount: number; currency: string } };
+    return response as {
+      success: boolean;
+      message?: string;
+      data: { submissionId: string; submissionRef?: string; amount: number; currency: string };
+    };
   },
 
   /**
-   * Step 2: Create Stripe Checkout Session
+   * Phase 1 Step 3: Create Stripe Checkout Session
    */
   createCheckoutSession: async (submissionId: string) => {
     const response = await ApiService.post<any>(
@@ -102,14 +136,99 @@ const nationalDayAPI = {
   },
 
   /**
-   * Step 3: Finalize submission after payment
+   * Phase 1 Finalize: Finalize submission after payment
    */
   finalizeSubmission: async (submissionId: string, sessionId: string) => {
     const response = await ApiService.post<any>(
       '/national-day-competition/finalize',
       { submissionId, sessionId }
     );
-    return response as { success: boolean; message?: string; data: { submissionId: string; submissionRef: string; studentName: string; artworkTitle: string } };
+    return response as {
+      success: boolean;
+      message?: string;
+      data: {
+        submissionId: string;
+        submissionRef: string;
+        studentName: string;
+        grade: string;
+        category: string;
+        isLittleArtist: boolean;
+        artworkTitle?: string;
+        hasArtwork?: boolean;
+      };
+    };
+  },
+
+  /**
+   * Phase 2: Lookup registration by Reference Number (UAE2026-XXXXXXXX)
+   */
+  lookupByRef: async (refNo: string, email?: string) => {
+    const response = await ApiService.get<any>(
+      `/national-day-competition/lookup/${encodeURIComponent(refNo.trim())}`,
+      { params: email ? { email: email.trim() } : {} }
+    );
+    return response as {
+      success: boolean;
+      data: {
+        submissionId: string;
+        submissionRef: string;
+        participant: {
+          studentFullName: string;
+          studentAge: number;
+          grade: string;
+          category: string;
+          schoolName: string;
+          schoolEmirate: string;
+          parentName: string;
+          parentEmail: string;
+        };
+        hasArtwork: boolean;
+        artwork?: {
+          title: string;
+          description: string;
+          medium: string;
+          themePillar: string;
+        };
+        artworkUpload?: {
+          artworkUrl: string;
+          artworkOriginalName: string;
+          artworkMimetype: string;
+        };
+        status: string;
+      };
+    };
+  },
+
+  /**
+   * Phase 2: Submit Completed Artwork (File < 1 MB)
+   */
+  submitArtwork: async (payload: NationalDayArtworkSubmitPayload) => {
+    const formData = new FormData();
+    if (payload.refNo) formData.append('refNo', payload.refNo);
+    if (payload.submissionId) formData.append('submissionId', payload.submissionId);
+    formData.append('artworkTitle', payload.artworkTitle);
+    formData.append('artworkDescription', payload.artworkDescription);
+    formData.append('medium', payload.medium);
+    formData.append('themePillar', payload.themePillar);
+    formData.append('artwork', payload.artwork);
+
+    const response = await ApiService.post<any>(
+      '/national-day-competition/submit-artwork',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response as {
+      success: boolean;
+      message?: string;
+      data: {
+        submissionId: string;
+        submissionRef: string;
+        studentName: string;
+        artworkTitle: string;
+        artworkUrl: string;
+        submittedAt: string;
+      };
+    };
   },
 
   /**

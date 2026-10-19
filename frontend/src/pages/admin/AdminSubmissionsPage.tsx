@@ -1044,32 +1044,87 @@ function CompetitionDetailModal({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
+                <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between z-10">
                     <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                                competitionType === 'national-day' ? 'bg-amber-100 text-amber-800' : 'bg-purple-100 text-purple-800'
-                            }`}>
-                                {competitionType === 'national-day' ? '🇦🇪 National Day Art' : '🤖 AI Art Competition'}
-                            </span>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-xl font-bold text-gray-900">
+                                {submission.artwork?.title || 'Submission Details'}
+                            </h2>
+                            {submission.submissionRef && (
+                                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                                    {submission.submissionRef}
+                                </span>
+                            )}
                         </div>
-                        <h2 className="text-lg font-semibold text-gray-900">{submission.artwork?.title}</h2>
-                        <p className="text-sm text-gray-500">By {submission.participant?.studentFullName} (Age {submission.participant?.studentAge})</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                            ID: <span className="font-mono">{submission._id}</span>
+                        </p>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                        <X className="w-5 h-5 text-gray-500" />
+                    <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                        ✕
                     </button>
                 </div>
 
                 <div className="p-6 space-y-6">
                     {/* Artwork Preview */}
                     <div className="bg-gray-50 rounded-xl p-4 flex flex-col items-center border border-gray-200">
-                        <img 
-                            src={submission.artworkUpload?.artworkUrl} 
-                            alt={submission.artwork?.title} 
-                            className="max-h-96 rounded-lg object-contain shadow-sm mb-4" 
-                        />
-                        <p className="text-sm font-medium text-gray-700 italic text-center max-w-2xl">"{submission.artwork?.description}"</p>
+                        {submission.artworkUpload?.artworkUrl ? (
+                            submission.artworkUpload?.artworkMimetype === 'application/pdf' || 
+                            submission.artworkUpload?.artworkUrl?.toLowerCase().endsWith('.pdf') ||
+                            submission.artworkUpload?.artworkOriginalName?.toLowerCase().endsWith('.pdf') ? (
+                                <div className="w-full flex flex-col items-center justify-center p-6 bg-white rounded-lg border border-red-200 mb-4 shadow-sm">
+                                    <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-3 text-2xl font-black">
+                                        PDF
+                                    </div>
+                                    <p className="font-semibold text-slate-900 text-sm mb-1">{submission.artworkUpload?.artworkOriginalName || 'Artwork PDF Document'}</p>
+                                    <p className="text-xs text-slate-500 mb-4">{submission.artworkUpload?.artworkSize ? `${(submission.artworkUpload.artworkSize / 1024).toFixed(1)} KB` : 'PDF Template / Artwork'}</p>
+                                    <div className="flex gap-3">
+                                        <a
+                                            href={`/api/national-day-competition/submissions/${submission._id}/artwork`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+                                        >
+                                            <span>📄 View PDF in New Tab</span>
+                                        </a>
+                                        <a
+                                            href={`/api/national-day-competition/submissions/${submission._id}/artwork?download=true`}
+                                            download={submission.artworkUpload?.artworkOriginalName || 'artwork.pdf'}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-300"
+                                        >
+                                            <span>⬇️ Download PDF</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            ) : (
+                                <img 
+                                    src={submission.artworkUpload?.artworkUrl} 
+                                    alt={submission.artwork?.title} 
+                                    className="max-h-96 rounded-lg object-contain shadow-sm mb-4" 
+                                    onError={(e) => {
+                                        (e.target as HTMLElement).style.display = 'none';
+                                    }}
+                                />
+                            )
+                        ) : (
+                            <div className="py-10 px-6 text-center">
+                                <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-3 text-2xl">
+                                    ⏳
+                                </div>
+                                <h4 className="font-bold text-slate-900 text-sm mb-1">Artwork Not Yet Uploaded (Phase 2 Pending)</h4>
+                                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                                    Registration and entry fee (AED 50) have been confirmed. The student has until <strong>15 December 2026</strong> to submit their completed physical artwork / colored template.
+                                </p>
+                            </div>
+                        )}
+                        {submission.artwork?.description && (
+                            <p className="text-sm font-medium text-gray-700 italic text-center max-w-2xl">"{submission.artwork?.description}"</p>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1131,7 +1186,7 @@ function CompetitionDetailModal({
                                     <span className="font-medium text-gray-600">Registration Type:</span> {submission.registrationType === 'school_bulk' ? 'School Bulk' : 'Individual'}
                                 </div>
                                 <div className="text-sm">
-                                    <span className="font-medium text-gray-600">Payment Amount:</span> AED {submission.paymentAmount || 35}.00 ({submission.paymentStatus})
+                                    <span className="font-medium text-gray-600">Payment Amount:</span> AED {submission.paymentAmount || 50}.00 ({submission.paymentStatus})
                                 </div>
                             </div>
                         ) : (
@@ -1416,7 +1471,7 @@ function CompetitionTab() {
                                         : 'text-gray-600 hover:text-gray-900'
                                 }`}
                             >
-                                <span>🇦🇪</span> UAE National Day Art 2026
+                                <span>🇦🇪</span> Eid Al Etihad Children's Art Competition 2026
                             </button>
                         </div>
                     </div>
@@ -1514,14 +1569,20 @@ function CompetitionTab() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <p className="font-medium text-gray-900 truncate max-w-[200px]">{sub.artwork?.title}</p>
+                                            {sub.artwork?.title ? (
+                                                <p className="font-medium text-gray-900 truncate max-w-[200px]">{sub.artwork.title}</p>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                                    ⏳ Artwork Pending (Phase 2)
+                                                </span>
+                                            )}
                                             {selectedCompetition === 'national-day' && sub.artwork?.medium && (
                                                  <p className="text-xs text-gray-400 truncate max-w-[200px]">{sub.artwork?.medium}</p>
                                              )}
                                         </td>
                                         <td className="px-4 py-3">
                                             <p className="font-medium text-gray-900">{sub.participant?.studentFullName}</p>
-                                            <p className="text-gray-500 text-xs">Grade {sub.participant?.grade} {sub.participant?.category ? `· ${sub.participant.category}` : ''}</p>
+                                            <p className="text-gray-500 text-xs">{sub.participant?.grade ? `Grade ${sub.participant.grade}` : ''} {sub.participant?.category ? `· ${sub.participant.category}` : ''}</p>
                                         </td>
                                         <td className="px-4 py-3 hidden md:table-cell">
                                             <p className="text-gray-900 text-sm truncate max-w-[200px]">{sub.participant?.schoolName}</p>

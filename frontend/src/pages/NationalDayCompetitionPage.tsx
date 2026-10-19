@@ -1,20 +1,21 @@
 import React, { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FiUser, FiUpload, FiCheck, FiChevronRight, FiChevronLeft,
-  FiAward, FiTrash2, FiInfo, FiBookOpen, FiX,
+  FiUser, FiCheck, FiChevronRight, FiChevronLeft,
+  FiAward, FiInfo, FiX, FiArrowRight,
   FiPlay, FiChevronDown, FiAlertCircle, FiCreditCard
 } from 'react-icons/fi';
 import SEO from '@/components/common/SEO';
 import toast from 'react-hot-toast';
-import nationalDayAPI, { NationalDaySubmitPayload } from '@/services/api/nationalDayAPI';
+import nationalDayAPI from '@/services/api/nationalDayAPI';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TIMELINE = [
   {
     step: '1',
-    date: '1 Sep 2026',
+    date: '1 Nov 2026',
     title: 'Competition Opens',
     desc: 'Registration starts for all participants across the UAE',
     color: 'emerald',
@@ -25,7 +26,7 @@ const TIMELINE = [
   },
   {
     step: '2',
-    date: '1 Oct 2026',
+    date: '15 Dec 2026',
     title: 'Registration Deadline',
     desc: 'Last date for student and school registration',
     color: 'amber',
@@ -36,7 +37,7 @@ const TIMELINE = [
   },
   {
     step: '3',
-    date: '15 Oct 2026',
+    date: '15 Dec 2026',
     title: 'Submission Deadline',
     desc: 'Submit your original artwork (JPG or PNG)',
     color: 'rose',
@@ -47,7 +48,7 @@ const TIMELINE = [
   },
   {
     step: '4',
-    date: '20–31 Oct 2026',
+    date: '16-29 Dec 2026',
     title: 'Judging Period',
     desc: 'Entries will be evaluated by our expert panel',
     color: 'blue',
@@ -58,7 +59,7 @@ const TIMELINE = [
   },
   {
     step: '5',
-    date: '1 Nov 2026',
+    date: '30 Dec 2026',
     title: 'Results Announcement',
     desc: 'Winners will be officially revealed online',
     color: 'purple',
@@ -69,7 +70,7 @@ const TIMELINE = [
   },
   {
     step: '6',
-    date: '5 Dec 2026',
+    date: '31 Jan 2027',
     title: 'Award Ceremony',
     desc: 'Celebrating young talent across the UAE for National Day',
     color: 'orange',
@@ -158,8 +159,12 @@ const EMIRATES = [
 
 const FAQS = [
   {
+    q: 'Do students from KG to Grade 12 need to draw from scratch for the UAE National Day contest, or will a template be provided?',
+    a: 'Students from KG - 12 don\'t need to create a drawing from scratch. Kidrove will provide a specially designed UAE National Day colouring template for each participant to complete creatively.',
+  },
+  {
     q: 'Can students use AI tools for this competition?',
-    a: 'No. The UAE National Day Art Competition is strictly a traditional painting and drawing competition. All entries must be hand-created by the student using traditional media like paints, crayons, pastels, or pencils. AI-generated and digital copies will be disqualified.',
+    a: 'No. The Eid Al Etihad Children\'s Art Competition 2026 is strictly a traditional colouring and painting competition. All entries must be hand-created by the student using traditional media like paints, crayons, pastels, or pencils on the provided template. AI-generated and digital copies will be disqualified.',
   },
   {
     q: 'Who is eligible to participate?',
@@ -167,7 +172,7 @@ const FAQS = [
   },
   {
     q: 'How does School Bulk Registration work?',
-    a: 'Schools registering 25 or more students benefit from a discounted rate of AED 25 per student (instead of AED 35). Art coordinators can use our School Bulk Inquiry form to receive the coordinator pack and single school invoice.',
+    a: 'Schools registering 25 or more students benefit from a discounted rate of AED 40 per student (instead of AED 50). Art coordinators can use our School Bulk Inquiry form to receive the coordinator pack, templates, and single school invoice.',
   },
   {
     q: 'Can a student submit multiple artworks?',
@@ -175,11 +180,11 @@ const FAQS = [
   },
   {
     q: 'What format should the artwork upload be?',
-    a: 'Upload a clear, high-resolution photograph or flatbed scan in JPG or PNG format (under 8MB). Ensure the lighting is bright and even without harsh shadows, glares, or digital filters.',
+    a: 'Upload a clear, high-resolution photograph or scan in JPG, PNG, or PDF format (under 1MB). Ensure the lighting is bright and even without harsh shadows, glares, or digital filters.',
   },
   {
     q: 'Will every participant receive a certificate?',
-    a: 'Yes! Every valid entry receives an official, high-resolution Digital Participation Certificate featuring the student’s name, school, category, and the Eid Al Etihad competition insignia.',
+    a: 'Yes! Every valid entry receives an official, Participation Certificate featuring the student’s name, school, category, and the Eid Al Etihad competition insignia.',
   },
 ];
 
@@ -293,21 +298,6 @@ export default function NationalDayCompetitionPage() {
     setErrors([]);
   };
 
-  const handleArtworkFile = (file: File | null) => {
-    if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/jpg', 'image/webp'].includes(file.type)) {
-      setErrors(['Please upload a valid image file (JPG, PNG or WEBP).']);
-      return;
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      setErrors(['Artwork file size must be less than 8 MB.']);
-      return;
-    }
-    const preview = URL.createObjectURL(file);
-    setForm((prev) => ({ ...prev, artwork: file, artworkPreview: preview }));
-    setErrors([]);
-  };
-
   const validateStep = (step: number): string[] => {
     const errs: string[] = [];
     if (step === 1) {
@@ -318,22 +308,13 @@ export default function NationalDayCompetitionPage() {
       if (!form.parentPhone.trim()) errs.push('Parent mobile phone number is required');
       if (!form.studentFullName.trim()) errs.push('Student full name is required');
       if (!form.studentAge || isNaN(Number(form.studentAge)) || Number(form.studentAge) < 3) {
-        errs.push('Valid student age is required');
+        errs.push('Valid student age is required (ages 3–18)');
       }
       if (!form.grade) errs.push('Please select student grade / class');
       if (!form.schoolName.trim()) errs.push('School name is required');
       if (!form.schoolEmirate) errs.push('School emirate is required');
     }
     if (step === 2) {
-      if (!form.artworkTitle.trim()) errs.push('Artwork title is required');
-      if (!form.artworkDescription.trim()) errs.push('Artwork description or story is required');
-      if (!form.medium) errs.push('Please specify the traditional medium used');
-      if (!form.themePillar) errs.push('Please select the inspiration pillar');
-    }
-    if (step === 3) {
-      if (!form.artwork) errs.push('Please upload a clear photograph or scan of the artwork');
-    }
-    if (step === 4) {
       if (!form.agreeTerms) errs.push('You must agree to the competition Terms & Conditions');
       if (!form.traditionalOnlyDeclaration) errs.push('You must confirm this is a 100% traditional artwork created without AI');
       if (!form.originalityDeclaration) errs.push('You must confirm this is the student’s original work');
@@ -350,7 +331,7 @@ export default function NationalDayCompetitionPage() {
       return;
     }
     setErrors([]);
-    setCurrentStep((s) => Math.min(5, s + 1));
+    setCurrentStep((s) => Math.min(3, s + 1));
     registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -360,17 +341,12 @@ export default function NationalDayCompetitionPage() {
     registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Submit and redirect to Stripe
+  // Submit Phase 1 Registration and redirect to Stripe
   const handleProceedToPayment = async () => {
-    const errs = validateStep(4);
+    const errs = validateStep(2);
     if (errs.length) {
       setErrors(errs);
-      setCurrentStep(4);
-      return;
-    }
-    if (!form.artwork) {
-      setErrors(['Artwork file is missing. Please go back to step 3 and upload it.']);
-      setCurrentStep(3);
+      setCurrentStep(2);
       return;
     }
 
@@ -378,25 +354,19 @@ export default function NationalDayCompetitionPage() {
     setIsSubmitting(true);
 
     try {
-      const payload: NationalDaySubmitPayload = {
+      const payload: any = {
         registrationType: form.schoolBulkRef ? 'school_bulk' : 'individual',
-        parentName: form.parentName,
-        parentEmail: form.parentEmail,
-        parentPhone: form.parentPhone,
-        studentFullName: form.studentFullName,
+        parentName: form.parentName.trim(),
+        parentEmail: form.parentEmail.trim().toLowerCase(),
+        parentPhone: form.parentPhone.trim(),
+        studentFullName: form.studentFullName.trim(),
         studentAge: Number(form.studentAge),
         grade: form.grade,
         category: getCategoryFromGrade(form.grade),
         gender: form.gender || undefined,
-        schoolName: form.schoolName,
+        schoolName: form.schoolName.trim(),
         schoolEmirate: form.schoolEmirate,
-        schoolBulkRef: form.schoolBulkRef || undefined,
-
-        artworkTitle: form.artworkTitle,
-        artworkDescription: form.artworkDescription,
-        medium: form.medium,
-        themePillar: form.themePillar,
-        artwork: form.artwork,
+        schoolBulkRef: form.schoolBulkRef?.trim() || undefined,
 
         agreeTerms: form.agreeTerms,
         traditionalOnlyDeclaration: form.traditionalOnlyDeclaration,
@@ -409,16 +379,16 @@ export default function NationalDayCompetitionPage() {
         marketingConsent: form.marketingConsent,
       };
 
-      // 1. Save draft & artwork
-      const draftRes: any = await nationalDayAPI.saveDraft(payload);
-      const isSuccess = draftRes?.success !== false;
-      const submissionId = draftRes?.data?.submissionId || draftRes?.submissionId;
+      // 1. Save Phase 1 registration
+      const regRes: any = await nationalDayAPI.register(payload);
+      const isSuccess = regRes?.success !== false;
+      const submissionId = regRes?.data?.submissionId || regRes?.submissionId;
 
       if (!isSuccess || !submissionId) {
-        throw new Error(draftRes?.message || 'Failed to save entry. Please check that artwork was uploaded.');
+        throw new Error(regRes?.message || 'Failed to save registration details.');
       }
 
-      // 2. Create Stripe Checkout session (AED 35)
+      // 2. Create Stripe Checkout session (AED 50)
       const sessionRes: any = await nationalDayAPI.createCheckoutSession(submissionId);
       const sessionUrl = sessionRes?.data?.sessionUrl || sessionRes?.sessionUrl;
       if (!sessionUrl) {
@@ -439,7 +409,7 @@ export default function NationalDayCompetitionPage() {
   const handleDevBypass = async () => {
     setIsSubmitting(true);
     try {
-      const payload: NationalDaySubmitPayload = {
+      const payload: any = {
         registrationType: form.schoolBulkRef ? 'school_bulk' : 'individual',
         parentName: form.parentName || 'Test Parent',
         parentEmail: form.parentEmail || 'test@kidrove.com',
@@ -453,12 +423,6 @@ export default function NationalDayCompetitionPage() {
         schoolEmirate: form.schoolEmirate || 'Dubai',
         schoolBulkRef: form.schoolBulkRef || undefined,
 
-        artworkTitle: form.artworkTitle || 'Falcon at Dawn',
-        artworkDescription: form.artworkDescription || 'A tribute to the majestic falcon soaring over the dunes.',
-        medium: form.medium || 'Watercolours & Gouache',
-        themePillar: form.themePillar || 'Heritage & Traditions',
-        artwork: form.artwork || new File(['mock'], 'artwork.png', { type: 'image/png' }),
-
         agreeTerms: true,
         traditionalOnlyDeclaration: true,
         originalityDeclaration: true,
@@ -470,10 +434,10 @@ export default function NationalDayCompetitionPage() {
         marketingConsent: false,
       };
 
-      const draftRes: any = await nationalDayAPI.saveDraft(payload);
-      const submissionId = draftRes?.data?.submissionId || draftRes?.submissionId;
+      const regRes: any = await nationalDayAPI.register(payload);
+      const submissionId = regRes?.data?.submissionId || regRes?.submissionId;
       if (!submissionId) {
-        throw new Error(draftRes?.message || 'Failed to save test draft');
+        throw new Error(regRes?.message || 'Failed to save test registration');
       }
       window.location.href = `/national-day-art-competition/payment-success?session_id=TEST_PAYMENT_SKIP&submission_id=${submissionId}`;
     } catch (err: any) {
@@ -512,7 +476,7 @@ export default function NationalDayCompetitionPage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-slate-800 font-sans selection:bg-emerald-500 selection:text-white">
       <SEO
-        title="Kidrove UAE National Day Art Competition 2026 — My UAE, My Pride"
+        title="Kidrove Eid Al Etihad Children's Art Competition 2026 — My UAE, My Pride"
         description="Celebrate Eid Al Etihad with the UAE's premier children's art competition. Open to Kindergarten through Grade 12 across all 7 emirates. Register now!"
       />
 
@@ -544,7 +508,7 @@ export default function NationalDayCompetitionPage() {
               >
                 <span className="text-amber-600 font-bold text-xs">✦</span>
                 <span className="text-[11px] font-black uppercase tracking-wider text-amber-900">
-                  UAE National Day Children's Art Competition 2026
+                  Eid Al Etihad Children's Art Competition 2026
                 </span>
               </motion.div>
 
@@ -622,6 +586,13 @@ export default function NationalDayCompetitionPage() {
                   <span>Register Your Entry</span>
                   <FiChevronRight className="stroke-[3]" />
                 </button>
+                <Link
+                  to="/national-day-art-competition/submit"
+                  className="px-6 py-3.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-black text-sm transition-all shadow-md shadow-amber-500/25 flex items-center gap-2"
+                >
+                  <span>Already Registered? Submit Artwork</span>
+                  <FiArrowRight />
+                </Link>
                 <button
                   onClick={() => {
                     const section = document.getElementById('why-participate');
@@ -645,7 +616,7 @@ export default function NationalDayCompetitionPage() {
                 <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/10 to-transparent pointer-events-none" />
                 <span className="text-5xl md:text-6xl block mb-4 md:mb-5 relative z-10 drop-shadow-xs">📅</span>
                 <h3 className="text-lg font-black text-slate-900 mb-1 relative z-10">Submission Deadline</h3>
-                <p className="text-emerald-700 text-sm font-extrabold mb-1 relative z-10">15 October 2026</p>
+                <p className="text-emerald-700 text-sm font-extrabold mb-1 relative z-10">15 December 2026</p>
                 <p className="text-slate-600 text-xs font-medium relative z-10">Submit artwork online</p>
               </div>
 
@@ -654,7 +625,7 @@ export default function NationalDayCompetitionPage() {
                 <div className="absolute inset-0 bg-gradient-to-b from-amber-500/10 to-transparent pointer-events-none" />
                 <span className="text-5xl md:text-6xl block mb-4 md:mb-5 relative z-10 drop-shadow-xs">🏆</span>
                 <h3 className="text-lg font-black text-slate-900 mb-1 relative z-10">Results Announcement</h3>
-                <p className="text-amber-700 text-sm font-extrabold mb-1 relative z-10">1 November 2026</p>
+                <p className="text-amber-700 text-sm font-extrabold mb-1 relative z-10">30 December 2026</p>
                 <p className="text-slate-600 text-xs font-medium relative z-10">Winners announced online</p>
               </div>
 
@@ -663,8 +634,8 @@ export default function NationalDayCompetitionPage() {
                 <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/10 to-transparent pointer-events-none" />
                 <span className="text-5xl md:text-6xl block mb-4 md:mb-5 relative z-10 drop-shadow-xs">💰</span>
                 <h3 className="text-lg font-black text-slate-900 mb-1 relative z-10">Nominal Fee</h3>
-                <p className="text-teal-700 text-sm font-extrabold mb-0.5 relative z-10">AED 35 /student(individual)</p>
-                <p className="text-slate-600 text-xs font-medium relative z-10"> AED 25/student (school bulk)</p>
+                <p className="text-teal-700 text-sm font-extrabold mb-0.5 relative z-10">AED 50 /student(individual)</p>
+                <p className="text-slate-600 text-xs font-medium relative z-10"> AED 40/student (school bulk)</p>
               </div>
 
               {/* Medals & Certificates */}
@@ -673,7 +644,7 @@ export default function NationalDayCompetitionPage() {
                 <span className="text-5xl md:text-6xl block mb-4 md:mb-5 relative z-10 drop-shadow-xs">🎖️</span>
                 <h3 className="text-lg font-black text-slate-900 mb-1 relative z-10">Medals & Certificates</h3>
                 <p className="text-purple-700 text-sm font-extrabold mb-1 relative z-10">For Top Performers</p>
-                <p className="text-slate-600 text-xs font-medium relative z-10">Gold, Silver, Bronze & Certs</p>
+                <p className="text-slate-600 text-xs font-medium relative z-10">Gold, Silver, Bronze Medals & Certs</p>
               </div>
             </div>
           </div>
@@ -740,6 +711,63 @@ export default function NationalDayCompetitionPage() {
             </div>
           </div>
 
+          {/* No Drawing Required - 3 Step Guidance */}
+          <div className="bg-gradient-to-br from-amber-500/10 via-white to-emerald-500/10 border-2 border-amber-300/80 rounded-3xl p-8 sm:p-12 mb-16 shadow-sm relative overflow-hidden">
+            <div className="max-w-3xl mb-8">
+              <span className="inline-block text-[11px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 px-3.5 py-1.5 rounded-full border border-amber-300 mb-3 shadow-2xs">
+                🎨 Official Colouring Template Provided
+              </span>
+              <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-3">
+                No Drawing Skills Required!
+              </h3>
+              <p className="text-slate-700 text-sm sm:text-base leading-relaxed mb-3">
+                Every participant will receive a ready-made Eid al Etihad colouring template. Download it, colour it creatively and upload the completed artwork.
+              </p>
+              <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
+                Students don't need to create a drawing from scratch. Kidrove will provide a specially designed UAE National Day colouring template for each participant to complete creatively.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-white p-6 rounded-2xl border border-amber-200/90 shadow-xs hover:shadow-md transition-all hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl font-black mb-4">
+                  1
+                </div>
+                <h4 className="font-black text-slate-900 text-base mb-2">Download the Template</h4>
+                <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
+                  Schools can download the official competition template and share it with their students. Parents can also download it directly from the Kidrove competition page.
+                </p>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl border border-emerald-200/90 shadow-xs hover:shadow-md transition-all hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-xl font-black mb-4">
+                  2
+                </div>
+                <h4 className="font-black text-slate-900 text-base mb-2">Colour Your UAE</h4>
+                <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
+                  Students colour the template using their favourite colours and permitted colouring materials, expressing their creativity and love for the UAE.
+                </p>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl border border-sky-200/90 shadow-xs hover:shadow-md transition-all hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-800 flex items-center justify-center text-xl font-black mb-4">
+                  3
+                </div>
+                <h4 className="font-black text-slate-900 text-base mb-2">Upload the Completed Artwork</h4>
+                <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
+                  Take a clear photograph or scan of the finished template and upload it through the online submission form before the deadline.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 border border-amber-200/80 text-slate-800 text-xs sm:text-sm leading-relaxed flex items-center gap-3">
+              <span className="text-2xl">✨</span>
+              <p>
+                <strong>No drawing skills required!</strong> Every child can participate. Simply download, colour and submit. The competition celebrates creativity, colour choices and each child's personal expression.
+              </p>
+            </div>
+          </div>
+
           {/* Timeline Milestones Roadmap (Styled as connected timeline from Image 2) */}
           <div className="bg-white rounded-3xl border border-slate-200/90 p-8 sm:p-12 shadow-sm">
             <div className="text-center max-w-2xl mx-auto mb-14">
@@ -794,7 +822,7 @@ export default function NationalDayCompetitionPage() {
         <section className="bg-gradient-to-b from-[#F5F2EB] to-[#FAF8F5] py-20 border-y border-amber-100/80">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto mb-14">
-              <span className="inline-block text-xs font-bold uppercase tracking-widest text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 mb-2">
+              <span className="inline-block text-xs font-bold uppercase tracking-widest text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 mb-2">
                 2. Age Divisions
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900">Four Competition Categories</h2>
@@ -895,7 +923,7 @@ export default function NationalDayCompetitionPage() {
               <h3 className="text-xl font-black text-slate-900 mb-1">Overall Best Artwork</h3>
               <p className="text-amber-900 font-bold text-xs uppercase tracking-wider mb-3">One Champion Across All UAE</p>
               <p className="text-slate-600 text-xs leading-relaxed mb-6">
-                The singular most impactful, creative, and evocative submission across all age categories receives the prestigious Grand Champion Trophy.
+                The singular most impactful, creative, and evocative submission in each age category will receive the prestigious Grand Champion Trophy.
               </p>
               <ul className="text-xs text-slate-800 space-y-2.5 font-semibold">
                 <li className="flex items-center gap-2"><span className="text-amber-600">★</span> National Champion Trophy</li>
@@ -910,7 +938,7 @@ export default function NationalDayCompetitionPage() {
               <h3 className="text-xl font-black text-slate-900 mb-1">Best School Participation</h3>
               <p className="text-emerald-800 font-bold text-xs uppercase tracking-wider mb-3">Trophy for the Top UAE School</p>
               <p className="text-slate-600 text-xs leading-relaxed mb-6">
-                Awarded to the school with the highest number of eligible registered entries, honoring the school, its leadership, and its art department.
+                Awarded to all partner schools with eligible registered entries, honoring the school, its leadership, and its art department.
               </p>
               <ul className="text-xs text-slate-700 space-y-2.5 font-medium">
                 <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span> Prestigious School Trophy</li>
@@ -927,9 +955,9 @@ export default function NationalDayCompetitionPage() {
                 📜
               </div>
               <div>
-                <h4 className="text-slate-900 font-bold text-base mb-1">Digital Participation Certificate</h4>
+                <h4 className="text-slate-900 font-bold text-base mb-1">Participation Certificate</h4>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Every eligible participant receives a personalized digital certificate celebrating their contribution to Eid Al Etihad 2026.
+                  Every eligible participant receives a personalized physical copy of certificate celebrating their contribution to Eid Al Etihad 2026.
                 </p>
               </div>
             </div>
@@ -952,7 +980,7 @@ export default function NationalDayCompetitionPage() {
         <section className="bg-gradient-to-b from-[#F5F2EB] to-[#FAF8F5] py-20 border-y border-amber-100/80">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto mb-14">
-              <span className="inline-block text-xs font-extrabold uppercase tracking-widest text-emerald-800 bg-emerald-100/80 px-4 py-1.5 rounded-full border border-emerald-300 shadow-xs mb-3">
+              <span className="inline-block text-xs font-extrabold uppercase tracking-widest text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 mb-2">
                 ⚖️ Guidelines & Evaluation
               </span>
               <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight">
@@ -1022,9 +1050,9 @@ export default function NationalDayCompetitionPage() {
                     1
                   </div>
                   <div>
-                    <h5 className="font-black text-slate-900 text-sm mb-1">One Original Artwork</h5>
+                    <h5 className="font-black text-slate-900 text-sm mb-1">How to Use the Template</h5>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                      Each student may submit one single original piece embodying “My UAE, My Pride”. Collaboration is not permitted.
+                      Download the official ready-made Eid Al Etihad colouring template from the competition page or receive it from your school. Colour it creatively using your favourite colouring materials.
                     </p>
                   </div>
                 </div>
@@ -1034,9 +1062,9 @@ export default function NationalDayCompetitionPage() {
                     2
                   </div>
                   <div>
-                    <h5 className="font-black text-slate-900 text-sm mb-1">Child’s Own Creation</h5>
+                    <h5 className="font-black text-slate-900 text-sm mb-1">Child’s Own Colouring & Creativity</h5>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                      Artwork must be completed solely by the student. Parents or teachers may assist only with high-resolution photography and uploading.
+                      Artwork colouring must be completed solely by the student. Parents or teachers may assist only with photography, scanning, and uploading. No drawing from scratch is required.
                     </p>
                   </div>
                 </div>
@@ -1046,9 +1074,9 @@ export default function NationalDayCompetitionPage() {
                     3
                   </div>
                   <div>
-                    <h5 className="font-black text-slate-900 text-sm mb-1">Clear Scan or Photograph</h5>
+                    <h5 className="font-black text-slate-900 text-sm mb-1">Format & File Size (Under 1 MB)</h5>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                      Submit a sharp, high-res JPG or PNG image (up to 8 MB) taken under even natural light without digital filters or severe glare.
+                      Submit a clear photograph or flatbed scan in JPG, PNG, or PDF format. The file size must be under 1 MB, taken under even bright light without glares or digital filters.
                     </p>
                   </div>
                 </div>
@@ -1058,9 +1086,9 @@ export default function NationalDayCompetitionPage() {
                     4
                   </div>
                   <div>
-                    <h5 className="font-black text-slate-900 text-sm mb-1">Respectful National Interpretation</h5>
+                    <h5 className="font-black text-slate-900 text-sm mb-1">One Entry per Student</h5>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                      Artworks should honorably portray UAE heritage, national symbols, landmarks, culture, or visionary sustainable futures.
+                      Each student may submit one completed official template expressing their creativity and love for the UAE under the theme “My UAE, My Pride”.
                     </p>
                   </div>
                 </div>
@@ -1088,10 +1116,10 @@ export default function NationalDayCompetitionPage() {
 
               <div className="max-w-4xl mb-10">
                 <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight mb-4">
-                  School Bulk Registration <span className="whitespace-nowrap text-amber-700">(AED 25 / student)</span>
+                  School Bulk Registration <span className="whitespace-nowrap text-amber-700">(AED 40 / student)</span>
                 </h2>
                 <p className="text-slate-700 text-sm sm:text-base leading-relaxed">
-                  Inspire your entire school community to celebrate Eid Al Etihad! For schools registering 25 or more students, we provide a discounted bulk rate of <strong className="text-slate-900 ">AED 25 per child</strong> (saving AED 10 per entry), an Excel batch template, dedicated coordinator support, and entry into the prestigious <strong className="text-emerald-800">Top School Participation Trophy</strong>.
+                  Inspire your entire school community to celebrate Eid Al Etihad! For schools registering 25 or more students, we provide a discounted bulk rate of <strong className="text-slate-900 ">AED 40 per child</strong> (saving AED 10 per entry vs AED 50 individual rate), ready-made colouring templates, dedicated coordinator support, and entry into the prestigious <strong className="text-emerald-800">Top School Participation Trophy</strong>.
                 </p>
               </div>
 
@@ -1101,9 +1129,9 @@ export default function NationalDayCompetitionPage() {
                   <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl mb-3">
                     💰
                   </div>
-                  <span className="text-amber-800 font-black text-3xl block mb-1">AED 25</span>
+                  <span className="text-amber-800 font-black text-3xl block mb-1">AED 40</span>
                   <p className="text-sm text-slate-900 font-bold mb-1">Discounted Bulk Rate</p>
-                  <p className="text-xs text-slate-500 leading-relaxed">For 25+ students (saving AED 10/child vs AED 35 regular rate)</p>
+                  <p className="text-xs text-slate-500 leading-relaxed">For 25+ students (saving AED 10/child vs AED 50 regular rate)</p>
                 </div>
 
                 <div className="bg-white/95 backdrop-blur-sm p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
@@ -1207,26 +1235,24 @@ export default function NationalDayCompetitionPage() {
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="text-center mb-12">
               <span className="text-4xl block mb-2">🚀</span>
-              <span className="inline-block text-xs font-black uppercase tracking-widest text-emerald-800 bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-300 mb-3">
-                Online Submission
+              <span className="inline-block text-xs font-black uppercase tracking-widest text-emerald-800 bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-200 mb-3">
+                Phase 1: Student Registration
               </span>
               <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight">
-                Student Registration Form
+                Registration & Entry Fee
               </h2>
-              <p className="text-slate-600 text-sm sm:text-base mt-2">
-                Complete the 5 quick steps below to submit your artwork to the judges.
+              <p className="text-slate-600 text-sm sm:text-base mt-2 max-w-xl mx-auto">
+                Complete student details and pay entry fee (AED 50). You will immediately receive your official Reference No. and coloring template (for KG–G2). Artwork can be submitted anytime before Dec 15!
               </p>
             </div>
 
-            {/* Stepper Progress Indicator styled like AiArtCompetitionPage with high contrast */}
-            <div className="mb-12 max-w-2xl mx-auto">
-              <div className="flex justify-between items-center gap-1 sm:gap-2">
+            {/* Stepper Progress Indicator: 3 Steps */}
+            <div className="mb-12 max-w-xl mx-auto">
+              <div className="flex justify-between items-center gap-2">
                 {[
                   { id: 1, label: 'Student Info', icon: FiUser },
-                  { id: 2, label: 'Artwork Story', icon: FiBookOpen },
-                  { id: 3, label: 'Artwork Upload', icon: FiUpload },
-                  { id: 4, label: 'Consent', icon: FiAward },
-                  { id: 5, label: 'Payment', icon: FiCreditCard },
+                  { id: 2, label: 'Consent & Declarations', icon: FiAward },
+                  { id: 3, label: 'Payment', icon: FiCreditCard },
                 ].map((step) => {
                   const Icon = step.icon;
                   const isActive = currentStep === step.id;
@@ -1241,7 +1267,7 @@ export default function NationalDayCompetitionPage() {
                           ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-300'
                           : isActive
                             ? 'bg-gradient-to-br from-amber-400 to-yellow-500 text-slate-950 font-black shadow-lg shadow-amber-500/30 ring-4 ring-amber-200'
-                            : 'bg-white border-2 border-slate-400 text-slate-800 shadow-xs'
+                            : 'bg-white border-2 border-slate-300 text-slate-700 shadow-xs'
                           }`}
                       >
                         {isDone ? <FiCheck size={20} className="stroke-[3]" /> : <Icon size={18} className="stroke-[2.5]" />}
@@ -1287,12 +1313,15 @@ export default function NationalDayCompetitionPage() {
                   {currentStep === 1 && (
                     <div className="space-y-6">
                       <div className="mb-6 pb-4 border-b border-slate-100">
-                        <span className="text-amber-600 text-[10px] font-extrabold uppercase tracking-widest block mb-1">
-                          Step 1 of 4
+                        <span className="text-emerald-700 text-[10px] font-extrabold uppercase tracking-widest block mb-1">
+                          Step 1 of 3
                         </span>
                         <h3 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
-                          <span>👤</span> Participant & Parent Details
+                          <span>👤</span> Student & Parent Details
                         </h3>
+                        <p className="text-slate-500 text-xs sm:text-sm mt-1">
+                          Enter participant details. You will receive your competition Reference No. upon payment confirmation.
+                        </p>
                       </div>
 
                       <div className="grid sm:grid-cols-2 gap-5">
@@ -1434,165 +1463,12 @@ export default function NationalDayCompetitionPage() {
                     </div>
                   )}
 
-                  {/* Step 2: Artwork Story */}
+                  {/* ── Step 2: Declarations & Consent ──────────────────────────────────── */}
                   {currentStep === 2 && (
                     <div className="space-y-6">
                       <div className="mb-6 pb-4 border-b border-slate-100">
-                        <span className="text-amber-600 text-[10px] font-extrabold uppercase tracking-widest block mb-1">
-                          Step 2 of 4
-                        </span>
-                        <h3 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
-                          <span>🎨</span> Artwork Inspiration & Story
-                        </h3>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                          Artwork Title <span className="text-amber-600">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          name="artworkTitle"
-                          value={form.artworkTitle}
-                          onChange={handleInputChange}
-                          placeholder="e.g. The Falcon of the Seven Dunes"
-                          className="w-full bg-[#FAF8F5] border border-slate-300 hover:border-slate-400 rounded-xl px-4 py-3.5 text-sm text-slate-900 focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all outline-none"
-                        />
-                      </div>
-
-                      <div className="grid sm:grid-cols-2 gap-5">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                            Inspiration Pillar <span className="text-amber-600">*</span>
-                          </label>
-                          <select
-                            name="themePillar"
-                            value={form.themePillar}
-                            onChange={handleInputChange}
-                            className="w-full bg-[#FAF8F5] border border-slate-300 hover:border-slate-400 rounded-xl px-4 py-3.5 text-sm text-slate-900 focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all outline-none"
-                          >
-                            <option value="Heritage & Traditions">Heritage & Traditions</option>
-                            <option value="The UAE Today">The UAE Today</option>
-                            <option value="Unity & National Pride">Unity & National Pride</option>
-                            <option value="The UAE of Tomorrow">The UAE of Tomorrow</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                            Primary Medium Used <span className="text-amber-600">*</span>
-                          </label>
-                          <select
-                            name="medium"
-                            value={form.medium}
-                            onChange={handleInputChange}
-                            className="w-full bg-[#FAF8F5] border border-slate-300 hover:border-slate-400 rounded-xl px-4 py-3.5 text-sm text-slate-900 focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all outline-none"
-                          >
-                            {ACCEPTED_MEDIA.map((m) => (
-                              <option key={m} value={m}>{m}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between items-center mb-1.5">
-                          <label className="block text-xs font-bold text-slate-700">
-                            Artwork Description / Story <span className="text-amber-600">*</span>
-                          </label>
-                          <span className="text-[11px] font-semibold text-slate-400">Max 150 words</span>
-                        </div>
-                        <textarea
-                          name="artworkDescription"
-                          rows={5}
-                          value={form.artworkDescription}
-                          onChange={handleInputChange}
-                          placeholder="Explain what inspired the artwork, what UAE story it represents, and why this brings pride to the student..."
-                          className="w-full bg-[#FAF8F5] border border-slate-300 hover:border-slate-400 rounded-2xl p-4 text-sm text-slate-900 focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all outline-none resize-none leading-relaxed"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Step 3: Artwork Upload */}
-                  {currentStep === 3 && (
-                    <div className="space-y-6">
-                      <div className="mb-6 pb-4 border-b border-slate-100">
-                        <span className="text-amber-600 text-[10px] font-extrabold uppercase tracking-widest block mb-1">
-                          Step 3 of 4
-                        </span>
-                        <h3 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
-                          <span>🖼️</span> Upload Your Artwork
-                        </h3>
-                        <p className="text-slate-500 text-xs sm:text-sm mt-1">
-                          Upload a clear, high-resolution photograph or scan of the physical artwork.
-                        </p>
-                      </div>
-
-                      {/* Dropzone styled like AiArtCompetitionPage */}
-                      <div className="border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-3xl p-8 sm:p-12 text-center bg-[#FAF8F5] hover:bg-amber-50/20 transition-all">
-                        {form.artworkPreview ? (
-                          <div className="space-y-4">
-                            <div className="relative max-w-sm mx-auto rounded-2xl overflow-hidden border border-slate-300 shadow-xl">
-                              <img
-                                src={form.artworkPreview}
-                                alt="Uploaded artwork preview"
-                                className="w-full h-auto object-cover max-h-80"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setForm((prev) => ({ ...prev, artwork: null, artworkPreview: '' }))}
-                                className="absolute top-3 right-3 p-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-full shadow-lg transition-transform hover:scale-110"
-                                title="Remove artwork"
-                              >
-                                <FiTrash2 size={16} />
-                              </button>
-                            </div>
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold shadow-xs">
-                              <FiCheck className="stroke-[3]" />
-                              <span>{form.artwork?.name} ({(form.artwork?.size! / (1024 * 1024)).toFixed(2)} MB)</span>
-                            </div>
-                            <p className="text-slate-400 text-xs">Click the trash icon to choose a different image</p>
-                          </div>
-                        ) : (
-                          <div className="py-4">
-                            <div className="w-16 h-16 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center mx-auto mb-4 text-amber-700 text-2xl shadow-xs">
-                              <FiUpload />
-                            </div>
-                            <h4 className="text-slate-900 font-black text-lg mb-1">
-                              Drag & Drop or Choose Image
-                            </h4>
-                            <p className="text-xs sm:text-sm text-slate-500 mb-5 max-w-sm mx-auto">
-                              JPG, JPEG, PNG, or WEBP up to 8 MB. Make sure the artwork is evenly lit and clearly visible.
-                            </p>
-                            <label className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-black text-sm cursor-pointer transition-all shadow-md shadow-amber-500/25 hover:scale-105 active:scale-95">
-                              <span>Select Artwork File</span>
-                              <input
-                                type="file"
-                                accept="image/jpeg,image/png,image/jpg,image/webp"
-                                className="hidden"
-                                onChange={(e) => handleArtworkFile(e.target.files?.[0] || null)}
-                              />
-                            </label>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="p-5 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-2">
-                        <p className="font-extrabold text-amber-900 text-sm">📸 Photo Tips for Highest Evaluation Score:</p>
-                        <p>• Lay the artwork flat on a table in natural daylight without direct shadows.</p>
-                        <p>• Hold your camera directly above the canvas perpendicular to avoid perspective distortion.</p>
-                        <p>• Crop out surrounding floor or table space so the canvas fills the whole frame.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ── Step 4: Declarations & Consent ──────────────────────────────────── */}
-                  {currentStep === 4 && (
-                    <div className="space-y-6">
-                      <div className="mb-6 pb-4 border-b border-slate-100">
-                        <span className="text-amber-600 text-[10px] font-extrabold uppercase tracking-widest block mb-1">
-                          Step 4 of 5
+                        <span className="text-emerald-700 text-[10px] font-extrabold uppercase tracking-widest block mb-1">
+                          Step 2 of 3
                         </span>
                         <h3 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
                           <span>✅</span> Declarations & Consent
@@ -1654,8 +1530,8 @@ export default function NationalDayCompetitionPage() {
                             type="button"
                             onClick={() => setForm((prev) => ({ ...prev, artworkDisplayPermission: 'yes' }))}
                             className={`p-5 rounded-2xl border text-left transition-all flex gap-3.5 ${form.artworkDisplayPermission === 'yes'
-                                ? 'bg-emerald-50 border-emerald-500 shadow-sm ring-1 ring-emerald-500'
-                                : 'bg-[#FAF8F5] border-slate-200 text-slate-700 hover:border-slate-300'
+                              ? 'bg-emerald-50 border-emerald-500 shadow-sm ring-1 ring-emerald-500'
+                              : 'bg-[#FAF8F5] border-slate-200 text-slate-700 hover:border-slate-300'
                               }`}
                           >
                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${form.artworkDisplayPermission === 'yes' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-400'
@@ -1676,8 +1552,8 @@ export default function NationalDayCompetitionPage() {
                             type="button"
                             onClick={() => setForm((prev) => ({ ...prev, artworkDisplayPermission: 'no' }))}
                             className={`p-5 rounded-2xl border text-left transition-all flex gap-3.5 ${form.artworkDisplayPermission === 'no'
-                                ? 'bg-rose-50 border-rose-500 shadow-sm ring-1 ring-rose-500'
-                                : 'bg-[#FAF8F5] border-slate-200 text-slate-700 hover:border-slate-300'
+                              ? 'bg-rose-50 border-rose-500 shadow-sm ring-1 ring-rose-500'
+                              : 'bg-[#FAF8F5] border-slate-200 text-slate-700 hover:border-slate-300'
                               }`}
                           >
                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${form.artworkDisplayPermission === 'no' ? 'border-rose-600 bg-rose-600 text-white' : 'border-slate-400'
@@ -1695,29 +1571,7 @@ export default function NationalDayCompetitionPage() {
                           </button>
                         </div>
 
-                        {form.artworkDisplayPermission === 'yes' && (
-                          <div className="mt-4 p-4 bg-[#FAF8F5] border border-slate-200 rounded-2xl">
-                            <label className="block text-slate-900 text-xs font-bold mb-1">Student Name Display Credit:</label>
-                            <p className="text-slate-600 text-xs mb-3">Select how the student should be credited in showcase exhibitions:</p>
-                            <div className="flex flex-col gap-2.5">
-                              {[
-                                { value: true, label: 'Full Credit (Show first name, grade, and school name)' },
-                                { value: false, label: 'Anonymous (Only show grade and school emirate)' }
-                              ].map((opt) => (
-                                <label key={String(opt.value)} className="flex items-center gap-3 cursor-pointer text-xs sm:text-sm text-slate-800 hover:text-slate-900 transition-colors select-none">
-                                  <input
-                                    type="radio"
-                                    name="nameDisplayPermission"
-                                    checked={form.nameDisplayPermission === opt.value}
-                                    onChange={() => setForm((prev) => ({ ...prev, nameDisplayPermission: opt.value }))}
-                                    className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
-                                  />
-                                  <span>{opt.label}</span>
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+
                       </div>
 
                       {/* Communication Preferences */}
@@ -1732,7 +1586,7 @@ export default function NationalDayCompetitionPage() {
                               onChange={handleInputChange}
                               className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                             />
-                            <span>I agree to receive communications regarding competition verification, certificates, and results on 2 December 2026.</span>
+                            <span>I agree to receive communications regarding competition verification, certificates, and results on 30th December 2026.</span>
                           </label>
                           <label className="flex items-start gap-3 cursor-pointer text-xs sm:text-sm text-slate-700">
                             <input
@@ -1760,18 +1614,18 @@ export default function NationalDayCompetitionPage() {
                     </div>
                   )}
 
-                  {/* ── Step 5: Payment ──────────────────────────────────── */}
-                  {currentStep === 5 && (
+                  {/* ── Step 3: Payment ──────────────────────────────────── */}
+                  {currentStep === 3 && (
                     <div className="bg-[#FAF8F5] border border-slate-200/90 rounded-3xl p-6 sm:p-10 max-w-lg mx-auto text-center" id="submit-entry">
                       <div className="w-16 h-16 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xs">
                         <FiCreditCard className="w-8 h-8" />
                       </div>
-                      <span className="text-amber-600 text-[10px] font-extrabold uppercase tracking-widest block mb-1">
-                        Step 5 of 5
+                      <span className="text-emerald-700 text-[10px] font-extrabold uppercase tracking-widest block mb-1">
+                        Step 3 of 3
                       </span>
-                      <h3 className="text-2xl font-black text-slate-900 mb-2">Entry Fee Payment</h3>
+                      <h3 className="text-2xl font-black text-slate-900 mb-2">Pay Entry Fee</h3>
                       <p className="text-slate-600 text-xs sm:text-sm mb-6 leading-relaxed">
-                        Please complete your individual entry fee payment of <strong className="text-slate-900 font-extrabold">AED 35.00</strong>. You will be redirected to our secure Stripe checkout and returned automatically once confirmed.
+                        Please complete your entry fee payment of <strong className="text-slate-900 font-extrabold">AED 50.00</strong>. You will be redirected to our secure Stripe checkout and returned with instant download access and your Reference Number.
                       </p>
 
                       {/* Order Summary */}
@@ -1781,16 +1635,16 @@ export default function NationalDayCompetitionPage() {
                           <span className="font-bold text-slate-900">{form.studentFullName}</span>
                         </div>
                         <div className="flex justify-between pb-2 border-b border-slate-100">
-                          <span className="text-slate-500">Artwork:</span>
-                          <span className="font-bold text-slate-900">"{form.artworkTitle}"</span>
+                          <span className="text-slate-500">Grade / Category:</span>
+                          <span className="font-bold text-emerald-800">{form.grade} · {getCategoryFromGrade(form.grade)}</span>
                         </div>
                         <div className="flex justify-between pb-2 border-b border-slate-100">
-                          <span className="text-slate-500">Category:</span>
-                          <span className="font-bold text-emerald-800">{getCategoryFromGrade(form.grade)}</span>
+                          <span className="text-slate-500">Artwork Deadline:</span>
+                          <span className="font-bold text-slate-900">15 December 2026</span>
                         </div>
                         <div className="flex justify-between pt-1 text-base font-black">
-                          <span className="text-slate-900">Total Due:</span>
-                          <span className="text-emerald-700">AED 35.00</span>
+                          <span className="text-slate-900">Total Entry Fee:</span>
+                          <span className="text-emerald-700">AED 50.00</span>
                         </div>
                       </div>
 
@@ -1804,10 +1658,10 @@ export default function NationalDayCompetitionPage() {
                           {isSubmitting ? (
                             <span className="flex items-center gap-2">
                               <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              Preparing payment…
+                              Connecting to Stripe…
                             </span>
                           ) : (
-                            'Pay AED 35.00 & Complete Submission'
+                            'Pay AED 50.00 & Complete Registration'
                           )}
                         </button>
 
@@ -1839,7 +1693,7 @@ export default function NationalDayCompetitionPage() {
                   </button>
                 ) : <div />}
 
-                {currentStep < 5 && (
+                {currentStep < 3 && (
                   <button
                     type="button"
                     onClick={handleNext}
@@ -1898,7 +1752,7 @@ export default function NationalDayCompetitionPage() {
 
               <div className="mb-6">
                 <span className="text-amber-800 text-[10px] font-bold uppercase tracking-widest block mb-1">
-                  School Bulk Program · AED 25/Student
+                  School Bulk Program · AED 40/Student
                 </span>
                 <h3 className="text-2xl font-black text-slate-900">School Bulk Registration Inquiry</h3>
                 <p className="text-xs text-slate-600 mt-1">
@@ -2099,7 +1953,7 @@ export default function NationalDayCompetitionPage() {
               </div>
 
               <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-xs text-slate-500">Kidrove UAE National Day Art Competition 2026</span>
+                <span className="text-xs text-slate-500">Kidrove Eid Al Etihad Children's Art Competition 2026</span>
                 <button
                   type="button"
                   onClick={() => setShowDeclarationsModal(false)}

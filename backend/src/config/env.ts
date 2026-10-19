@@ -292,12 +292,12 @@ export const config: Config = {
       process.env.STRIPE_PORTAL_NO_CANCEL_CONFIG_ID || "",
   },
   email: {
-    service: process.env.EMAIL_SERVICE || "mailtrap",
-    host: process.env.EMAIL_HOST || "smtp.gmail.com",
-    port: parseInt(process.env.EMAIL_PORT || "587", 10),
-    username: process.env.EMAIL_USERNAME || "",
-    password: process.env.EMAIL_PASSWORD || "",
-    from: process.env.EMAIL_FROM || "contact@kidrove.com",
+    service: process.env.EMAIL_SERVICE || "smtp",
+    host: process.env.SMTP_HOST || process.env.EMAIL_HOST || "smtp.hostinger.com",
+    port: parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || "587", 10),
+    username: process.env.SMTP_CUSTOMER || process.env.SMTP_USER || process.env.EMAIL_USERNAME || "contact@kidrove.com",
+    password: process.env.SMTP_PASS || process.env.EMAIL_PASSWORD || "",
+    from: process.env.SMTP_FROM || process.env.EMAIL_FROM || "contact@kidrove.com",
     fromName: process.env.EMAIL_FROM_NAME || process.env.APP_NAME || "Kidrove",
   },
   upload: {
