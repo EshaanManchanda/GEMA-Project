@@ -2369,9 +2369,10 @@ Kidrove - Inspiring the creators of tomorrow.
           .ref-card { background: #FAF8F5; border: 2px dashed #d97706; border-radius: 16px; padding: 20px; text-align: center; margin: 25px 0; }
           .ref-title { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #78350f; font-weight: 800; margin-bottom: 6px; display: block; }
           .ref-number { font-size: 24px; font-family: monospace; font-weight: 900; color: #b45309; letter-spacing: 2px; }
-          .btn { display: inline-block; padding: 14px 28px; border-radius: 30px; font-size: 15px; font-weight: 800; text-decoration: none; text-align: center; margin: 15px 0; }
+          .btn { display: inline-block; padding: 14px 28px; border-radius: 30px; font-size: 15px; font-weight: 800; text-decoration: none; text-align: center; margin: 10px 6px; }
           .btn-primary { background: #059669; color: white !important; }
           .btn-secondary { background: #d97706; color: white !important; }
+          .btn-warning { background: #f59e0b; color: #78350f !important; border: 1px solid #d97706; }
           .instructions-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 20px; margin: 25px 0; }
           .instructions-box h3 { margin-top: 0; color: #166534; font-size: 16px; font-weight: 800; }
           .instructions-box ol { margin: 0; padding-left: 20px; color: #374151; font-size: 14px; }
@@ -2411,6 +2412,7 @@ Kidrove - Inspiring the creators of tomorrow.
               </ol>
               <div style="text-align: center; margin-top: 20px;">
                 <a href="${downloadUrl}" class="btn btn-primary" target="_blank">📥 Download Colouring Template PDF</a>
+                <a href="${submitUrl}" class="btn btn-warning" target="_blank" style="background:#f59e0b;color:#78350f !important;font-weight:800;">🎨 Submit Artwork Online</a>
               </div>
             </div>
             `
@@ -2429,13 +2431,6 @@ Kidrove - Inspiring the creators of tomorrow.
             </div>
             `
             }
-
-            <div style="text-align: center; margin-top: 30px;">
-              <p style="font-size: 13px; color: #64748b;">
-                You can upload your artwork at any time before <strong>15 December 2026</strong> at:<br/>
-                <a href="${submitUrl}" style="color: #059669; font-weight: bold;">${submitUrl}</a>
-              </p>
-            </div>
           </div>
           <div class="footer">
             <p><strong>KIDROVE · Eid Al Etihad Children's Art Competition 2026</strong></p>
