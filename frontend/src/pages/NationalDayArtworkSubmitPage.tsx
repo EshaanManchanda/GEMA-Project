@@ -26,8 +26,6 @@ export default function NationalDayArtworkSubmitPage() {
   // Form state
   const [artworkTitle, setArtworkTitle] = useState('');
   const [artworkDescription, setArtworkDescription] = useState('');
-  const [medium, setMedium] = useState('Pencil Drawing / Sketching');
-  const [themePillar, setThemePillar] = useState('Heritage & Traditions');
   const [artworkFile, setArtworkFile] = useState<File | null>(null);
   const [artworkPreview, setArtworkPreview] = useState('');
 
@@ -52,13 +50,19 @@ export default function NationalDayArtworkSubmitPage() {
         if (res.data.artwork?.description) {
           setArtworkDescription(res.data.artwork.description);
         }
-        if (res.data.artwork?.medium) {
-          setMedium(res.data.artwork.medium);
+        const alreadySubmitted = Boolean(
+          res.data.hasArtwork ||
+          res.data.artworkUpload?.artworkUrl ||
+          ['under_review', 'approved', 'winner'].includes(res.data.status)
+        );
+
+        if (alreadySubmitted) {
+          toast.success(`Registration verified! Artwork has already been submitted for ${res.data.participant.studentFullName}.`, {
+            icon: '✅',
+          });
+        } else {
+          toast.success(`Registration loaded for ${res.data.participant.studentFullName}!`);
         }
-        if (res.data.artwork?.themePillar) {
-          setThemePillar(res.data.artwork.themePillar);
-        }
-        toast.success(`Registration loaded for ${res.data.participant.studentFullName}!`);
       }
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Could not find registration. Check reference number.';
@@ -129,8 +133,6 @@ export default function NationalDayArtworkSubmitPage() {
         submissionId: registration.submissionId,
         artworkTitle: artworkTitle.trim(),
         artworkDescription: artworkDescription.trim(),
-        medium,
-        themePillar,
         artwork: artworkFile,
       };
 
@@ -149,6 +151,12 @@ export default function NationalDayArtworkSubmitPage() {
       setIsSubmitting(false);
     }
   };
+
+  const isAlreadySubmitted = Boolean(
+    registration?.hasArtwork ||
+    registration?.artworkUpload?.artworkUrl ||
+    ['under_review', 'approved', 'winner'].includes(registration?.status)
+  );
 
   const isLittleArtist =
     registration?.participant?.category === 'Little Artists' ||
@@ -331,8 +339,8 @@ export default function NationalDayArtworkSubmitPage() {
               )}
             </div>
 
-            {/* Template Download Prompt for KG to Grade 2 */}
-            {registration && isLittleArtist && (
+            {/* Template Download Prompt for KG to Grade 2 (only if not yet submitted) */}
+            {registration && isLittleArtist && !isAlreadySubmitted && (
               <div className="bg-amber-50/80 border border-amber-200 rounded-3xl p-6 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h4 className="font-black text-amber-950 text-sm mb-1 flex items-center gap-2">
@@ -352,8 +360,89 @@ export default function NationalDayArtworkSubmitPage() {
               </div>
             )}
 
-            {/* Step 2 Form: Upload Artwork */}
-            {registration && (
+            {/* Already Submitted Status Card */}
+            {registration && isAlreadySubmitted && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white border-2 border-emerald-300 rounded-3xl p-6 sm:p-10 shadow-lg text-center"
+              >
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto mb-4">
+                  <FiCheck size={32} className="stroke-[3]" />
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 mb-2">
+                  Artwork Already Submitted
+                </h3>
+                <p className="text-slate-600 text-sm max-w-md mx-auto mb-6 leading-relaxed">
+                  The artwork for <strong className="text-slate-900">{registration.participant?.studentFullName}</strong> has already been received and is currently under official evaluation. Resubmission is not permitted.
+                </p>
+
+                <div className="bg-[#FAF8F5] border border-slate-200 rounded-2xl p-5 text-left max-w-md mx-auto mb-6 space-y-2.5 text-xs sm:text-sm">
+                  <div className="flex justify-between border-b pb-2">
+                    <span className="text-slate-500">Ref No:</span>
+                    <span className="font-mono font-bold text-amber-800">{registration.submissionRef}</span>
+                  </div>
+                  {registration.artwork?.title && (
+                    <div className="flex justify-between border-b pb-2">
+                      <span className="text-slate-500">Artwork Title:</span>
+                      <span className="font-bold text-slate-900">{registration.artwork.title}</span>
+                    </div>
+                  )}
+                  {registration.artwork?.medium && (
+                    <div className="flex justify-between border-b pb-2">
+                      <span className="text-slate-500">Medium:</span>
+                      <span className="font-medium text-slate-800">{registration.artwork.medium}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between border-b pb-2">
+                    <span className="text-slate-500">Current Status:</span>
+                    <span className="font-extrabold text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-300 text-xs uppercase tracking-wide">
+                      {registration.status?.replace('_', ' ') || 'Under Review'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-1">
+                    <span className="text-slate-500">Results Announcement:</span>
+                    <span className="font-bold text-slate-900">30 December 2026</span>
+                  </div>
+                </div>
+
+                {registration.artworkUpload?.artworkUrl && (
+                  <div className="mb-6 max-w-xs mx-auto">
+                    <p className="text-xs text-slate-500 mb-2 font-medium">Submitted Artwork Preview:</p>
+                    {registration.artworkUpload.artworkUrl.toLowerCase().endsWith('.pdf') ? (
+                      <a
+                        href={registration.artworkUpload.artworkUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold border border-slate-300 transition-colors"
+                      >
+                        📄 View Submitted PDF Artwork
+                      </a>
+                    ) : (
+                      <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm max-h-48 bg-slate-50">
+                        <img
+                          src={registration.artworkUpload.artworkUrl}
+                          alt="Submitted Artwork"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+                  <Link
+                    to="/national-day-art-competition"
+                    className="py-3 px-6 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm transition-all"
+                  >
+                    Return to Competition Home
+                  </Link>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 2 Form: Upload Artwork (only if NOT already submitted) */}
+            {registration && !isAlreadySubmitted && (
               <form onSubmit={handleSubmit} className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
                 <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
                   <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-800 font-black text-sm flex items-center justify-center">
@@ -370,54 +459,18 @@ export default function NationalDayArtworkSubmitPage() {
                 </div>
 
                 {/* Form Fields */}
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Artwork Title <span className="text-amber-600">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={artworkTitle}
-                      onChange={(e) => setArtworkTitle(e.target.value)}
-                      placeholder={isLittleArtist ? 'e.g. My UAE Colors' : 'e.g. Pride of the Falcon'}
-                      className="w-full bg-[#FAF8F5] border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:bg-white focus:border-amber-500 outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Medium Used <span className="text-amber-600">*</span>
-                    </label>
-                    <select
-                      value={medium}
-                      onChange={(e) => setMedium(e.target.value)}
-                      className="w-full bg-[#FAF8F5] border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:bg-white focus:border-amber-500 outline-none"
-                    >
-                      <option value="Pencil Drawing / Sketching">Pencil Drawing / Sketching</option>
-                      <option value="Crayons / Oil Pastels">Crayons / Oil Pastels</option>
-                      <option value="Watercolours">Watercolours</option>
-                      <option value="Acrylics">Acrylics</option>
-                      <option value="Mixed Traditional Media">Mixed Traditional Media</option>
-                      <option value="Other Traditional Medium">Other Traditional Medium</option>
-                    </select>
-                  </div>
-                </div>
-
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Theme Pillar <span className="text-amber-600">*</span>
+                    Artwork Title <span className="text-amber-600">*</span>
                   </label>
-                  <select
-                    value={themePillar}
-                    onChange={(e) => setThemePillar(e.target.value)}
+                  <input
+                    type="text"
+                    value={artworkTitle}
+                    onChange={(e) => setArtworkTitle(e.target.value)}
+                    placeholder={isLittleArtist ? 'e.g. My UAE Colors' : 'e.g. Pride of the Falcon'}
                     className="w-full bg-[#FAF8F5] border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 focus:bg-white focus:border-amber-500 outline-none"
-                  >
-                    <option value="Heritage & Traditions">Heritage & Traditions (Falconry, Dhows, Forts, Dates)</option>
-                    <option value="The UAE Today">The UAE Today (Modern Skyline, Innovation, Culture)</option>
-                    <option value="Unity & National Pride">Unity & National Pride (The 7 Emirates, The Flag)</option>
-                    <option value="The UAE of Tomorrow">The UAE of Tomorrow (Sustainability, Space Exploration)</option>
-                  </select>
+                    required
+                  />
                 </div>
 
                 <div>

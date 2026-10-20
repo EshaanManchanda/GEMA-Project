@@ -7,6 +7,7 @@ import NationalDaySubmission, {
 } from "../models/NationalDaySubmission";
 import User, { UserRole, UserStatus } from "../models/User";
 import Student from "../models/Student";
+import Contact from "../models/Contact";
 import { config } from "../config/env";
 import logger from "../config/logger";
 import uploadService from "../services/upload.service";
@@ -194,7 +195,11 @@ export const finalizeSubmission = catchAsync(
     }
 
     const subRef = (submission as any).submissionRef || `UAE2026-${submission._id.toString().slice(-8).toUpperCase()}`;
-    const isLittleArtist = submission.participant.category === "Little Artists";
+    const studentGrade = submission.participant?.grade || "";
+    const isLittleArtist =
+      submission.participant?.category === "Little Artists" ||
+      ["Kindergarten", "Grade 1", "Grade 2"].includes(studentGrade) ||
+      /kindergarten|^kg$|grade\s*[12]\b/i.test(studentGrade);
 
     // Already finalized — idempotent response
     if (submission.paymentStatus === "paid") {
@@ -506,6 +511,22 @@ export const submitArtwork = catchAsync(
       return next(new AppError("Registration fee must be paid before submitting artwork", 402));
     }
 
+    // Check if artwork is already submitted or under review
+    const alreadySubmittedStatuses: string[] = [
+      SubmissionStatus.UNDER_REVIEW,
+      SubmissionStatus.APPROVED,
+      SubmissionStatus.WINNER,
+    ];
+    if (submission.artworkUpload?.artworkUrl || alreadySubmittedStatuses.includes(submission.status)) {
+      if (artworkFile.path && fs.existsSync(artworkFile.path)) fs.unlinkSync(artworkFile.path);
+      return next(
+        new AppError(
+          "Artwork has already been submitted for this registration and is currently under review. Further submissions are not permitted.",
+          409
+        )
+      );
+    }
+
     // Upload artwork to Cloudinary
     let artworkUrl = "";
     let artworkPublicId = "";
@@ -602,7 +623,31 @@ export const handleSchoolBulkInquiry = catchAsync(
       return next(new AppError("Please provide all required school contact details", 400));
     }
 
-    logger.info(`[national-day] School bulk inquiry received from ${schoolName} (${contactPerson})`);
+    const messageLines = [
+      `[School Bulk Registration Inquiry - Eid Al Etihad 2026]`,
+      `School Name: ${schoolName}`,
+      `Coordinator: ${contactPerson}`,
+      `Phone: ${phone}`,
+      `Emirate: ${emirate || "Not specified"}`,
+      `Estimated Students: ${estimatedStudents || "25+"}`,
+    ];
+    if (notes && notes.trim()) {
+      messageLines.push(`Notes: ${notes.trim()}`);
+    }
+
+    try {
+      const contactRecord = new Contact({
+        name: `${contactPerson} (${schoolName})`,
+        email: email.trim().toLowerCase(),
+        subject: "General Inquiry",
+        message: messageLines.join("\n"),
+        status: "new",
+      });
+      await contactRecord.save();
+      logger.info(`[national-day] Saved school bulk inquiry to Contact collection for ${schoolName}`);
+    } catch (dbErr) {
+      logger.error(`[national-day] Failed to save school bulk inquiry to Contact collection:`, dbErr);
+    }
 
     return res.status(200).json({
       success: true,

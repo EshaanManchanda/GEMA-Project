@@ -91,7 +91,7 @@ const CATEGORIES = [
     badge: 'bg-white/80 text-emerald-800 border border-emerald-300/60 shadow-xs',
     subtleGlow: 'bg-[#86efac]/20',
     icon: '🌱',
-    desc: 'Focus on joyful storytelling, imagination, pure color vibrancy, and pride in UAE symbols like the falcon, flag, and family.',
+    desc: 'Joyful creative colouring on the official outline template celebrating the UAE.',
   },
   {
     id: 2,
@@ -159,12 +159,12 @@ const EMIRATES = [
 
 const FAQS = [
   {
-    q: 'Do students from KG to Grade 12 need to draw from scratch for the UAE National Day contest, or will a template be provided?',
-    a: 'Students from KG - 12 don\'t need to create a drawing from scratch. Kidrove will provide a specially designed UAE National Day colouring template for each participant to complete creatively.',
+    q: 'Do students need to draw from scratch for the UAE National Day contest, or will a template be provided?',
+    a: 'Kindergarten, Grade 1, and Grade 2 (Little Artists category) receive a specially designed ready-made Eid Al Etihad colouring template to download, print, and colour creatively. Students in Grades 3 to 12 create their own original traditional drawing or painting from scratch based on the theme “My UAE, My Pride”.',
   },
   {
     q: 'Can students use AI tools for this competition?',
-    a: 'No. The Eid Al Etihad Children\'s Art Competition 2026 is strictly a traditional colouring and painting competition. All entries must be hand-created by the student using traditional media like paints, crayons, pastels, or pencils on the provided template. AI-generated and digital copies will be disqualified.',
+    a: 'No. The Eid Al Etihad Children\'s Art Competition 2026 is strictly a traditional art competition. KG to Grade 2 entries must be hand-coloured on the official outline template, and Grades 3 to 12 entries must be original traditional drawings/paintings made by hand using traditional mediums (paints, crayons, pastels, or pencils). AI-generated and digital copies will be disqualified.',
   },
   {
     q: 'Who is eligible to participate?',
@@ -172,7 +172,7 @@ const FAQS = [
   },
   {
     q: 'How does School Bulk Registration work?',
-    a: 'Schools registering 25 or more students benefit from a discounted rate of AED 40 per student (instead of AED 50). Art coordinators can use our School Bulk Inquiry form to receive the coordinator pack, templates, and single school invoice.',
+    a: 'Schools registering 25 or more students benefit from a discounted rate of AED 40 per student (instead of AED 50). Art coordinators can use our School Bulk Inquiry form to receive the coordinator pack, KG–G2 colouring templates, and single school invoice.',
   },
   {
     q: 'Can a student submit multiple artworks?',
@@ -711,20 +711,17 @@ export default function NationalDayCompetitionPage() {
             </div>
           </div>
 
-          {/* No Drawing Required - 3 Step Guidance */}
+          {/* Age-Specific Guidance: KG-G2 Template vs Grades 3-12 Original Drawing */}
           <div className="bg-gradient-to-br from-amber-500/10 via-white to-emerald-500/10 border-2 border-amber-300/80 rounded-3xl p-8 sm:p-12 mb-16 shadow-sm relative overflow-hidden">
             <div className="max-w-3xl mb-8">
               <span className="inline-block text-[11px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 px-3.5 py-1.5 rounded-full border border-amber-300 mb-3 shadow-2xs">
-                🎨 Official Colouring Template Provided
+                🎨 Age-Appropriate Format
               </span>
               <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-3">
-                No Drawing Skills Required!
+                Colouring Template (KG–G2) & Original Art (G3–G12)
               </h3>
               <p className="text-slate-700 text-sm sm:text-base leading-relaxed mb-3">
-                Every participant will receive a ready-made Eid al Etihad colouring template. Download it, colour it creatively and upload the completed artwork.
-              </p>
-              <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                Students don't need to create a drawing from scratch. Kidrove will provide a specially designed UAE National Day colouring template for each participant to complete creatively.
+                Students in <strong>Kindergarten, Grade 1, and Grade 2</strong> receive the official Eid Al Etihad colouring template to print and colour offline after the registration. Students in <strong>Grades 3 to 12</strong> create their own original traditional artwork from scratch.
               </p>
             </div>
 
@@ -733,9 +730,9 @@ export default function NationalDayCompetitionPage() {
                 <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl font-black mb-4">
                   1
                 </div>
-                <h4 className="font-black text-slate-900 text-base mb-2">Download the Template</h4>
+                <h4 className="font-black text-slate-900 text-base mb-2">Register & Receive Guidelines</h4>
                 <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                  Schools can download the official competition template and share it with their students. Parents can also download it directly from the Kidrove competition page.
+                  Upon registration, parents and schools receive confirmation along with the age-specific materials: the official outline template for KG–G2, and the complete competition theme brief for Grades 3–12.
                 </p>
               </div>
 
@@ -743,9 +740,9 @@ export default function NationalDayCompetitionPage() {
                 <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-xl font-black mb-4">
                   2
                 </div>
-                <h4 className="font-black text-slate-900 text-base mb-2">Colour Your UAE</h4>
+                <h4 className="font-black text-slate-900 text-base mb-2">Create Handcrafted Art</h4>
                 <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                  Students colour the template using their favourite colours and permitted colouring materials, expressing their creativity and love for the UAE.
+                  KG–G2 colour their template creatively with crayons, pastels, or paints. Grades 3–12 paint or draw original artwork on the theme using traditional media.
                 </p>
               </div>
 
@@ -753,9 +750,9 @@ export default function NationalDayCompetitionPage() {
                 <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-800 flex items-center justify-center text-xl font-black mb-4">
                   3
                 </div>
-                <h4 className="font-black text-slate-900 text-base mb-2">Upload the Completed Artwork</h4>
+                <h4 className="font-black text-slate-900 text-base mb-2">Upload Completed Artwork</h4>
                 <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                  Take a clear photograph or scan of the finished template and upload it through the online submission form before the deadline.
+                  Take a clear photograph or scan of the finished piece (under 1 MB, JPG/PNG/PDF) and upload it using your Reference Number before 15 Dec 2026.
                 </p>
               </div>
             </div>
@@ -763,7 +760,7 @@ export default function NationalDayCompetitionPage() {
             <div className="p-4 sm:p-5 rounded-2xl bg-white/90 border border-amber-200/80 text-slate-800 text-xs sm:text-sm leading-relaxed flex items-center gap-3">
               <span className="text-2xl">✨</span>
               <p>
-                <strong>No drawing skills required!</strong> Every child can participate. Simply download, colour and submit. The competition celebrates creativity, colour choices and each child's personal expression.
+                <strong>Tailored for every age!</strong> Little ones enjoy easy coloring with the provided template, while senior students showcase their original painting and drawing talents.
               </p>
             </div>
           </div>
@@ -1050,9 +1047,9 @@ export default function NationalDayCompetitionPage() {
                     1
                   </div>
                   <div>
-                    <h5 className="font-black text-slate-900 text-sm mb-1">How to Use the Template</h5>
+                    <h5 className="font-black text-slate-900 text-sm mb-1">KG–G2 Template vs Grades 3–12 Original Art</h5>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                      Download the official ready-made Eid Al Etihad colouring template from the competition page or receive it from your school. Colour it creatively using your favourite colouring materials.
+                      Kindergarten, Grade 1, and Grade 2 students receive the official ready-made colouring template upon registration. Grades 3 to 12 create their own original traditional drawing or painting on the theme “My UAE, My Pride”.
                     </p>
                   </div>
                 </div>
@@ -1062,9 +1059,9 @@ export default function NationalDayCompetitionPage() {
                     2
                   </div>
                   <div>
-                    <h5 className="font-black text-slate-900 text-sm mb-1">Child’s Own Colouring & Creativity</h5>
+                    <h5 className="font-black text-slate-900 text-sm mb-1">Child’s Own Handcrafted Creativity</h5>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                      Artwork colouring must be completed solely by the student. Parents or teachers may assist only with photography, scanning, and uploading. No drawing from scratch is required.
+                      Artwork colouring and drawing must be completed solely by the student using traditional physical mediums (crayons, paints, pastels, pencils). Parents/teachers may assist only with photography and uploading.
                     </p>
                   </div>
                 </div>
@@ -1088,7 +1085,7 @@ export default function NationalDayCompetitionPage() {
                   <div>
                     <h5 className="font-black text-slate-900 text-sm mb-1">One Entry per Student</h5>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                      Each student may submit one completed official template expressing their creativity and love for the UAE under the theme “My UAE, My Pride”.
+                      Each student may submit one entry (coloured template for KG–G2 or original artwork for Grades 3–12) expressing their love for the UAE under the theme “My UAE, My Pride”.
                     </p>
                   </div>
                 </div>
@@ -1119,7 +1116,7 @@ export default function NationalDayCompetitionPage() {
                   School Bulk Registration <span className="whitespace-nowrap text-amber-700">(AED 40 / student)</span>
                 </h2>
                 <p className="text-slate-700 text-sm sm:text-base leading-relaxed">
-                  Inspire your entire school community to celebrate Eid Al Etihad! For schools registering 25 or more students, we provide a discounted bulk rate of <strong className="text-slate-900 ">AED 40 per child</strong> (saving AED 10 per entry vs AED 50 individual rate), ready-made colouring templates, dedicated coordinator support, and entry into the prestigious <strong className="text-emerald-800">Top School Participation Trophy</strong>.
+                  Inspire your entire school community to celebrate Eid Al Etihad! For schools registering 25 or more students, we provide a discounted bulk rate of <strong className="text-slate-900 ">AED 40 per child</strong> (saving AED 10 per entry vs AED 50 individual rate), ready-made colouring templates for Kindergarten to Grade 2, dedicated coordinator support, and entry into the prestigious <strong className="text-emerald-800">Top School Participation Trophy</strong>.
                 </p>
               </div>
 
@@ -1149,7 +1146,7 @@ export default function NationalDayCompetitionPage() {
                   </div>
                   <span className="text-emerald-700 font-black text-3xl block mb-1">Official Trophy</span>
                   <p className="text-sm text-slate-900 font-bold mb-1">Top School Award</p>
-                  <p className="text-xs text-slate-500 leading-relaxed">Recognising schools with maximum participation & winning art</p>
+                  <p className="text-xs text-slate-500 leading-relaxed">Recognising schools with student participation & winning art</p>
                 </div>
               </div>
 

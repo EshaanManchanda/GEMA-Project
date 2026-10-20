@@ -39,9 +39,9 @@ export interface NationalDayArtworkSubmitPayload {
   refNo?: string;
   submissionId?: string;
   artworkTitle: string;
-  artworkDescription: string;
-  medium: string;
-  themePillar: string;
+  artworkDescription?: string;
+  medium?: string;
+  themePillar?: string;
   artwork: File;
 }
 
@@ -207,9 +207,9 @@ const nationalDayAPI = {
     if (payload.refNo) formData.append('refNo', payload.refNo);
     if (payload.submissionId) formData.append('submissionId', payload.submissionId);
     formData.append('artworkTitle', payload.artworkTitle);
-    formData.append('artworkDescription', payload.artworkDescription);
-    formData.append('medium', payload.medium);
-    formData.append('themePillar', payload.themePillar);
+    if (payload.artworkDescription) formData.append('artworkDescription', payload.artworkDescription);
+    if (payload.medium) formData.append('medium', payload.medium);
+    if (payload.themePillar) formData.append('themePillar', payload.themePillar);
     formData.append('artwork', payload.artwork);
 
     const response = await ApiService.post<any>(
