@@ -2404,11 +2404,15 @@ Kidrove - Inspiring the creators of tomorrow.
                 ? `
             <div class="instructions-box">
               <h3>🎨 Phase 2 Instructions (Kindergarten to Grade 2):</h3>
+              <p style="background: #fef3c7; border: 1px solid #f59e0b; padding: 10px 14px; border-radius: 8px; color: #92400e; font-size: 13px; font-weight: 700; margin: 10px 0 15px 0;">
+                ⚠️ <strong>Important Note:</strong> The colouring template PDF contains 3 design options. Please <u>choose and colour any ONE template only</u> of your choice (you do NOT need to colour all 3).
+              </p>
               <ol>
                 <li><strong>Download the Colouring Template:</strong> Print it on standard A4 paper.</li>
-                <li><strong>Colour Offline:</strong> Student colours the template using crayons, oil pastels, pencils, or paints.</li>
+                <li><strong>Choose Any ONE Template:</strong> Pick 1 of the 3 templates in the PDF that your child likes best.</li>
+                <li><strong>Colour Offline:</strong> Student colours the selected template using crayons, oil pastels, pencils, or paints.</li>
                 <li><strong>Take a Photo or Scan:</strong> Take a clear top-down photo or flatbed scan (&lt;1 MB, JPG/PNG/PDF).</li>
-                <li><strong>Submit Before 15 Dec 2026:</strong> Visit our submission portal, enter your Ref No, and upload.</li>
+                <li><strong>Submit Before 15 Dec 2026:</strong> Visit our submission portal, enter your Ref No, and upload your single completed template.</li>
               </ol>
               <div style="text-align: center; margin-top: 20px;">
                 <a href="${downloadUrl}" class="btn btn-primary" target="_blank">📥 Download Colouring Template PDF</a>
@@ -2451,8 +2455,9 @@ Your Reference Number: ${options.refNo}
 Save this reference number to upload artwork.
 
 ${options.isLittleArtist ? `Kindergarten to Grade 2 Instructions:
+PLEASE NOTE: The downloaded PDF contains 3 design options. Choose ANY ONE template only to colour (you do NOT need to colour all 3).
 1. Download the Colouring Template: ${downloadUrl}
-2. Colour offline using traditional crayons, oil pastels, or pencils.
+2. Pick any 1 of the 3 templates and colour offline using traditional crayons, oil pastels, or pencils.
 3. Photograph or scan (<1 MB).
 4. Upload at: ${submitUrl} before 15 December 2026.` : `Grades 3 to 12 Instructions:
 1. Create original traditional artwork on "My UAE, My Pride".

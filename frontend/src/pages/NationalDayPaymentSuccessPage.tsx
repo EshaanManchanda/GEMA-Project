@@ -162,15 +162,19 @@ export default function NationalDayPaymentSuccessPage() {
                 Download Official Colouring Template
               </h3>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed mb-4">
-              For <strong>Kindergarten to Grade 2</strong> students: download and print your official UAE National Day outline template. The student colours it offline with traditional crayons, oil pastels, or pencils.
+            <p className="text-xs text-slate-600 leading-relaxed mb-3">
+              For <strong>Kindergarten to Grade 2</strong> students: download and print your official UAE National Day outline templates.
             </p>
+            <div className="bg-amber-100/80 border border-amber-300 rounded-xl p-3 text-xs text-amber-900 font-bold mb-4 flex items-start gap-2">
+              <span className="text-base shrink-0">💡</span>
+              <span><strong>Please Note:</strong> The PDF contains 3 different template designs. Please <u>choose and colour any ONE template only</u> of your choice (you do not need to colour all 3).</span>
+            </div>
             <a
               href="/assets/eid-al-etihad-colouring-template.pdf"
               download="eid-al-etihad-colouring-template.pdf"
               className="w-full py-3.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/25 hover:scale-[1.01]"
             >
-              <span>📥 Download Colouring Template (PDF)</span>
+              <span>📥 Download Colouring Template (PDF - 3 Options)</span>
             </a>
             <div className="mt-4 pt-4 border-t border-emerald-200/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
               <span className="text-slate-600">Finished colouring?</span>

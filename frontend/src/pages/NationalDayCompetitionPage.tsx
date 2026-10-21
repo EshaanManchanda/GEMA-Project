@@ -160,7 +160,11 @@ const EMIRATES = [
 const FAQS = [
   {
     q: 'Do students need to draw from scratch for the UAE National Day contest, or will a template be provided?',
-    a: 'Kindergarten, Grade 1, and Grade 2 (Little Artists category) receive a specially designed ready-made Eid Al Etihad colouring template to download, print, and colour creatively. Students in Grades 3 to 12 create their own original traditional drawing or painting from scratch based on the theme “My UAE, My Pride”.',
+    a: 'Kindergarten, Grade 1, and Grade 2 (Little Artists category) receive official Eid Al Etihad colouring templates. The downloaded PDF contains 3 different template designs—students simply choose and colour ANY ONE template of their choice (you do NOT need to colour all 3). Students in Grades 3 to 12 create their own original traditional drawing or painting from scratch based on the theme “My UAE, My Pride”.',
+  },
+  {
+    q: 'For Kindergarten to Grade 2, do we need to colour all 3 templates in the PDF or only one?',
+    a: 'You only need to colour ONE template! The PDF includes 3 beautiful Eid Al Etihad outline designs so your child can choose their favourite one. Please submit only one completed template per participant.',
   },
   {
     q: 'Can students use AI tools for this competition?',
@@ -721,7 +725,7 @@ export default function NationalDayCompetitionPage() {
                 Colouring Template (KG–G2) & Original Art (G3–G12)
               </h3>
               <p className="text-slate-700 text-sm sm:text-base leading-relaxed mb-3">
-                Students in <strong>Kindergarten, Grade 1, and Grade 2</strong> receive the official Eid Al Etihad colouring template to print and colour offline after the registration. Students in <strong>Grades 3 to 12</strong> create their own original traditional artwork from scratch.
+                Students in <strong>Kindergarten, Grade 1, and Grade 2</strong> receive official Eid Al Etihad colouring templates containing 3 design options to download and print—<strong>simply choose and colour any ONE template only</strong>. Students in <strong>Grades 3 to 12</strong> create their own original traditional artwork from scratch.
               </p>
             </div>
 
@@ -730,9 +734,9 @@ export default function NationalDayCompetitionPage() {
                 <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl font-black mb-4">
                   1
                 </div>
-                <h4 className="font-black text-slate-900 text-base mb-2">Register & Receive Guidelines</h4>
+                <h4 className="font-black text-slate-900 text-base mb-2">Register & Receive Details</h4>
                 <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                  Upon registration, parents and schools receive confirmation along with the age-specific materials: the official outline template for KG–G2, and the complete competition theme brief for Grades 3–12.
+                  Upon registration, parents and schools receive confirmation along with instructions: the 3 colouring template designs for KG–G2 (choose any 1 to colour), and theme guidelines (“My UAE, My Pride”) for Grades 3–12.
                 </p>
               </div>
 
@@ -742,7 +746,7 @@ export default function NationalDayCompetitionPage() {
                 </div>
                 <h4 className="font-black text-slate-900 text-base mb-2">Create Handcrafted Art</h4>
                 <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                  KG–G2 colour their template creatively with crayons, pastels, or paints. Grades 3–12 paint or draw original artwork on the theme using traditional media.
+                  KG–G2 pick their favourite single template out of the 3 options and colour it creatively with crayons, pastels, or paints. Grades 3–12 paint or draw original artwork on the theme using traditional media.
                 </p>
               </div>
 
@@ -1049,7 +1053,7 @@ export default function NationalDayCompetitionPage() {
                   <div>
                     <h5 className="font-black text-slate-900 text-sm mb-1">KG–G2 Template vs Grades 3–12 Original Art</h5>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                      Kindergarten, Grade 1, and Grade 2 students receive the official ready-made colouring template upon registration. Grades 3 to 12 create their own original traditional drawing or painting on the theme “My UAE, My Pride”.
+                      Kindergarten, Grade 1, and Grade 2 students receive the official ready-made colouring PDF containing 3 designs upon registration—<strong>choose and colour any ONE template only</strong>. Grades 3 to 12 create their own original traditional drawing or painting on the theme “My UAE, My Pride”.
                     </p>
                   </div>
                 </div>

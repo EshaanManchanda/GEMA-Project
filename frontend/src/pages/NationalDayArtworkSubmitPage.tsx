@@ -346,8 +346,11 @@ export default function NationalDayArtworkSubmitPage() {
                   <h4 className="font-black text-amber-950 text-sm mb-1 flex items-center gap-2">
                     <span>📥</span> Need the Coloring Template?
                   </h4>
-                  <p className="text-amber-900 leading-relaxed max-w-lg">
-                    Kindergarten to Grade 2 students can print the ready-made template, color it with offline traditional tools, and upload a photo below.
+                  <p className="text-amber-900 leading-relaxed max-w-lg mb-1">
+                    Kindergarten to Grade 2 students can download the official PDF which contains 3 outline designs.
+                  </p>
+                  <p className="text-amber-800 font-bold leading-relaxed">
+                    👉 <strong>Important:</strong> Please choose and colour <u>any ONE template only</u> of your choice (you do not need to do all 3). Then upload the photo below.
                   </p>
                 </div>
                 <a
@@ -355,7 +358,7 @@ export default function NationalDayArtworkSubmitPage() {
                   download="eid-al-etihad-colouring-template.pdf"
                   className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black shrink-0 transition-all shadow-xs"
                 >
-                  Download Template PDF
+                  Download Template PDF (3 Designs)
                 </a>
               </div>
             )}
