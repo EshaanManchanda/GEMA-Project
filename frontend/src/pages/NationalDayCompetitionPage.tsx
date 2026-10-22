@@ -1164,7 +1164,7 @@ export default function NationalDayCompetitionPage() {
                   <FiChevronRight className="stroke-[3]" />
                 </button>
                 <a
-                  href="https://docs.google.com/spreadsheets/d/1T3sos6JH3kVPfuS0-Gq9rqdojUZmCDGN/edit?usp=sharing&ouid=105721430558491971288&rtpof=true&sd=true"
+                  href="https://docs.google.com/spreadsheets/d/1BfoPxf6WE1AElZ4Cz_Tl4KDrGzB_yV1cirNRzLqfPMY/edit?usp=sharing"
                   target="_blank"
                   rel="noreferrer"
                   className="px-6 py-4 rounded-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-bold text-sm transition-all shadow-xs flex items-center gap-2"
