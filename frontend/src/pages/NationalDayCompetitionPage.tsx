@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiUser, FiCheck, FiChevronRight, FiChevronLeft,
   FiAward, FiInfo, FiX, FiArrowRight,
-  FiPlay, FiChevronDown, FiAlertCircle, FiCreditCard
+  FiPlay, FiChevronDown, FiAlertCircle, FiCreditCard,
+  FiDownload, FiFileText
 } from 'react-icons/fi';
 import SEO from '@/components/common/SEO';
 import toast from 'react-hot-toast';
@@ -761,11 +762,40 @@ export default function NationalDayCompetitionPage() {
               </div>
             </div>
 
-            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 border border-amber-200/80 text-slate-800 text-xs sm:text-sm leading-relaxed flex items-center gap-3">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 border border-amber-200/80 text-slate-800 text-xs sm:text-sm leading-relaxed flex items-center gap-3 mb-6">
               <span className="text-2xl">✨</span>
               <p>
                 <strong>Tailored for every age!</strong> Little ones enjoy easy coloring with the provided template, while senior students showcase their original painting and drawing talents.
               </p>
+            </div>
+
+            {/* Download Official Brochure Card */}
+            <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-emerald-950/15 border border-emerald-700/50 relative overflow-hidden">
+              <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-amber-400/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="flex items-start sm:items-center gap-4 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-3xl shrink-0 backdrop-blur-xs shadow-inner">
+                  📄
+                </div>
+                <div>
+                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-black uppercase tracking-wider mb-1.5">
+                    Official Competition Document
+                  </div>
+                  <h4 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                    Download Eid Al Etihad Brochure
+                  </h4>
+                  <p className="text-emerald-100/90 text-xs sm:text-sm mt-1 max-w-xl leading-relaxed">
+                    Get all competition guidelines, categories, judging criteria, submission steps, and official outline information in one handy PDF document.
+                  </p>
+                </div>
+              </div>
+              <a
+                href="/assets/Eid-Al-Etihad%20Brochure.pdf"
+                download="Eid-Al-Etihad Brochure.pdf"
+                className="relative z-10 shrink-0 w-full md:w-auto px-7 py-3.5 rounded-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-sm transition-all shadow-lg shadow-amber-400/20 flex items-center justify-center gap-2.5 group"
+              >
+                <FiDownload className="text-lg stroke-[2.5] group-hover:translate-y-0.5 transition-transform" />
+                <span>Download PDF Brochure</span>
+              </a>
             </div>
           </div>
 
@@ -1170,6 +1200,14 @@ export default function NationalDayCompetitionPage() {
                   className="px-6 py-4 rounded-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-bold text-sm transition-all shadow-xs flex items-center gap-2"
                 >
                   <span>📥 Download Bulk Student Sheet</span>
+                </a>
+                <a
+                  href="/assets/Eid-Al-Etihad%20Brochure.pdf"
+                  download="Eid-Al-Etihad Brochure.pdf"
+                  className="px-6 py-4 rounded-full bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-300 text-emerald-900 font-bold text-sm transition-all shadow-xs flex items-center gap-2"
+                >
+                  <FiDownload className="text-emerald-700" />
+                  <span>Download Brochure PDF</span>
                 </a>
               </div>
             </div>
