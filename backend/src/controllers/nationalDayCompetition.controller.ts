@@ -234,6 +234,12 @@ export const finalizeSubmission = catchAsync(
       if (session.payment_status !== "paid") {
         return next(new AppError("Payment has not been completed. Please complete payment before submitting.", 402));
       }
+
+      // Metadata is set server-side in createCheckoutSession — stops one paid session finalizing other submissions
+      if (session.metadata?.submissionId !== submission._id.toString()) {
+        logger.warn(`[national-day] Session ${sessionId} does not belong to submission ${submission._id}`);
+        return next(new AppError("Payment does not match this submission.", 400));
+      }
     }
 
     // Activate submission
