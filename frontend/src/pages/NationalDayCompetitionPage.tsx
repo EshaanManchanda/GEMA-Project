@@ -5,7 +5,7 @@ import {
   FiUser, FiCheck, FiChevronRight, FiChevronLeft,
   FiAward, FiInfo, FiX, FiArrowRight,
   FiPlay, FiChevronDown, FiAlertCircle, FiCreditCard,
-  FiDownload, FiFileText
+  FiDownload
 } from 'react-icons/fi';
 import SEO from '@/components/common/SEO';
 import toast from 'react-hot-toast';

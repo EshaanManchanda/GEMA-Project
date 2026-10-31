@@ -16,10 +16,11 @@ import nationalDayAPI from '@/services/api/nationalDayAPI';
 export default function NationalDayArtworkSubmitPage() {
   const [searchParams] = useSearchParams();
   const initialRef = (searchParams.get('ref') || '').trim();
+  const initialEmail = (searchParams.get('email') || '').trim();
 
   // Search state
   const [refInput, setRefInput] = useState(initialRef);
-  const [parentEmailInput, setParentEmailInput] = useState('');
+  const [parentEmailInput, setParentEmailInput] = useState(initialEmail);
   const [isSearching, setIsSearching] = useState(false);
   const [registration, setRegistration] = useState<any>(null);
 
@@ -34,9 +35,9 @@ export default function NationalDayArtworkSubmitPage() {
   const [isSubmittedSuccess, setIsSubmittedSuccess] = useState(false);
   const [submissionReceipt, setSubmissionReceipt] = useState<any>(null);
 
-  const fetchRegistration = async (refToUse: string, emailToUse?: string) => {
-    if (!refToUse) {
-      toast.error('Please enter your Reference Number (e.g. UAE2026-XXXXXXXX)');
+  const fetchRegistration = async (refToUse: string, emailToUse: string) => {
+    if (!refToUse || !emailToUse.trim()) {
+      toast.error('Please enter your Reference Number and the parent email used at registration');
       return;
     }
     setIsSearching(true);
@@ -74,10 +75,10 @@ export default function NationalDayArtworkSubmitPage() {
   };
 
   useEffect(() => {
-    if (initialRef) {
-      fetchRegistration(initialRef);
+    if (initialRef && initialEmail) {
+      fetchRegistration(initialRef, initialEmail);
     }
-  }, [initialRef]);
+  }, [initialRef, initialEmail]);
 
   const handleFileChange = (file: File | null) => {
     if (!file) {
@@ -131,6 +132,7 @@ export default function NationalDayArtworkSubmitPage() {
       const payload = {
         refNo: registration.submissionRef,
         submissionId: registration.submissionId,
+        parentEmail: parentEmailInput.trim(),
         artworkTitle: artworkTitle.trim(),
         artworkDescription: artworkDescription.trim(),
         artwork: artworkFile,
@@ -282,7 +284,7 @@ export default function NationalDayArtworkSubmitPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Parent Email <span className="text-slate-400 font-normal">(optional verification)</span>
+                    Parent Email <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
@@ -304,7 +306,7 @@ export default function NationalDayArtworkSubmitPage() {
                 <button
                   type="button"
                   onClick={() => fetchRegistration(refInput, parentEmailInput)}
-                  disabled={isSearching || !refInput.trim()}
+                  disabled={isSearching || !refInput.trim() || !parentEmailInput.trim()}
                   className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-all disabled:opacity-50"
                 >
                   {isSearching ? <span className="animate-spin">🌀</span> : <FiSearch />}

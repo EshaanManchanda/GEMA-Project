@@ -109,6 +109,11 @@ router.post(
  * GET /api/national-day-competition/submissions/:id/artwork
  * Proxies artwork file to prevent Cloudinary cross-origin raw file delivery issues in Chrome
  */
-router.get("/submissions/:id/artwork", downloadArtwork);
+router.get(
+  "/submissions/:id/artwork",
+  authenticate,
+  authorize([UserRole.ADMIN]),
+  downloadArtwork
+);
 
 export default router;

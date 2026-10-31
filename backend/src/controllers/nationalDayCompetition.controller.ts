@@ -13,6 +13,9 @@ import logger from "../config/logger";
 import uploadService from "../services/upload.service";
 import { emailService } from "../services/email.service";
 import fs from "fs";
+import crypto from "crypto";
+import { escapeRegex } from "../utils/regexHelpers";
+import { escapeHtml } from "../utils/htmlHelpers";
 import { stripe } from "../config/stripe";
 import { AuthRequest } from "../types";
 import { certificateService } from "../modules/certificates/services/certificate.service";
@@ -33,6 +36,16 @@ export const getCategoryFromGrade = (grade: string): string => {
   return "Emerging Artists";
 };
 
+// Ref is "UAE2026-" + the last 8 hex chars of the _id. Matches across every
+// submission, not just the newest 100.
+const findByRef = (refNo: string) => {
+  const suffix = String(refNo).toLowerCase().replace(/^uae2026-/, "").trim();
+  if (!/^[0-9a-f]{8}$/.test(suffix)) return Promise.resolve(null);
+  return NationalDaySubmission.findOne({
+    $expr: { $eq: [{ $substrCP: [{ $toString: "$_id" }, 16, 8] }, suffix] },
+  }).sort({ createdAt: -1 });
+};
+
 // ─── Save Draft Submission ───────────────────────────────────────────────────
 
 // ─── Save Phase 1 Registration (No Artwork Required) ───────────────────────────
@@ -48,8 +61,17 @@ export const registerParticipant = catchAsync(
       return next(new AppError("Parent/Guardian details (name, email, phone) are required", 400));
     }
 
-    const regType = body.registrationType === "school_bulk" 
-      ? RegistrationType.SCHOOL_BULK 
+    // Bulk price only with a school code we actually issued (comma list in env)
+    const schoolCodes = (process.env.NATIONAL_DAY_SCHOOL_CODES || "")
+      .split(",")
+      .map((c) => c.trim().toUpperCase())
+      .filter(Boolean);
+    const bulkRef = String(body.schoolBulkRef || "").trim().toUpperCase();
+    if (body.registrationType === "school_bulk" && !schoolCodes.includes(bulkRef)) {
+      return next(new AppError("Invalid school bulk reference code", 400));
+    }
+    const regType = body.registrationType === "school_bulk"
+      ? RegistrationType.SCHOOL_BULK
       : RegistrationType.INDIVIDUAL;
       
     const feeAmount = regType === RegistrationType.SCHOOL_BULK ? 40 : 50;
@@ -220,7 +242,7 @@ export const finalizeSubmission = catchAsync(
     }
 
     // Verify session
-    if (sessionId === "TEST_PAYMENT_SKIP" && process.env.NODE_ENV !== "production") {
+    if (sessionId === "TEST_PAYMENT_SKIP" && process.env.ALLOW_TEST_PAYMENT_SKIP === "true" && process.env.NODE_ENV !== "production") {
       logger.info(`[national-day] Test payment bypass used for submission ${submissionId}`);
     } else {
       let session;
@@ -262,7 +284,7 @@ export const finalizeSubmission = catchAsync(
 
         if (!parentUser) {
           isNewUser = true;
-          tempPassword = Math.random().toString(36).slice(-8) + "!1A";
+          tempPassword = crypto.randomBytes(9).toString("base64url") + "!1A";
 
           const nameParts = parentName ? parentName.trim().split(/\s+/) : ["Parent"];
           const parentFirstName = nameParts[0] || "Parent";
@@ -291,7 +313,9 @@ export const finalizeSubmission = catchAsync(
           lastName,
         });
 
-        if (!existingStudent) {
+        // Finalize is unauthenticated: never attach a child to an account the caller
+        // hasn't shown they own. Existing parents still get the entry by email.
+        if (!existingStudent && isNewUser) {
           await Student.create({
             parentUserId: parentUser._id,
             email: parentEmail,
@@ -318,7 +342,7 @@ export const finalizeSubmission = catchAsync(
                     <p style="margin:10px 0 0;color:rgba(255,255,255,0.9);font-size:15px;">Your parent account has been created</p>
                   </div>
                   <div style="padding:35px 30px;">
-                    <p style="font-size:16px;color:#374151;line-height:1.7;margin-top:0;">Hi <strong>${parentUser.firstName}</strong>,</p>
+                    <p style="font-size:16px;color:#374151;line-height:1.7;margin-top:0;">Hi <strong>${escapeHtml(parentUser.firstName)}</strong>,</p>
                     <p style="font-size:15px;color:#4b5563;line-height:1.7;">
                       Thank you for registering for the <strong style="color:#059669;">Eid Al Etihad Children's Art Competition 2026</strong>. We've created a parent account for you so you can track your child's entry and submit their artwork.
                     </p>
@@ -327,7 +351,7 @@ export const finalizeSubmission = catchAsync(
                       <table style="width:100%;border-collapse:collapse;margin-top:10px;">
                         <tr>
                           <td style="padding:8px 0;border-bottom:1px dashed #bbf7d0;color:#6b7280;font-size:13px;width:40%;">Login Email</td>
-                          <td style="padding:8px 0;border-bottom:1px dashed #bbf7d0;color:#1f2937;font-size:13px;font-weight:700;">${parentEmail}</td>
+                          <td style="padding:8px 0;border-bottom:1px dashed #bbf7d0;color:#1f2937;font-size:13px;font-weight:700;">${escapeHtml(parentEmail)}</td>
                         </tr>
                         <tr>
                           <td style="padding:8px 0;color:#6b7280;font-size:13px;">Temporary Password</td>
@@ -401,8 +425,9 @@ export const lookupSubmissionByRef = catchAsync(
     const rawRef = (req.params.refNo || req.query.refNo as string || "").trim();
     const email = (req.query.email as string || "").trim().toLowerCase();
 
-    if (!rawRef) {
-      return next(new AppError("Reference number is required", 400));
+    // The ref is guessable, so the parent email is what proves the caller owns the entry
+    if (!rawRef || !email) {
+      return next(new AppError("Reference number and parent email are required", 400));
     }
 
     // Reference format: UAE2026-XXXXXXXX or 24-char ObjectId
@@ -411,22 +436,12 @@ export const lookupSubmissionByRef = catchAsync(
     if (rawRef.length === 24 && /^[0-9a-fA-F]{24}$/.test(rawRef)) {
       submission = await NationalDaySubmission.findById(rawRef);
     } else {
-      // Extract last 8 hex chars if format is UAE2026-XXXXXXXX
-      const suffix = rawRef.toUpperCase().replace(/^UAE2026-/, "").trim();
-      if (suffix.length === 8) {
-        // Query matching regex on stringified ObjectId ending
-        const candidates = await NationalDaySubmission.find({}).sort({ createdAt: -1 }).limit(100);
-        submission = candidates.find(c => c._id.toString().slice(-8).toUpperCase() === suffix) || null;
-      }
+      submission = await findByRef(rawRef);
     }
 
-    if (!submission) {
-      return next(new AppError("No registration found with this Reference Number. Please check and try again.", 404));
-    }
-
-    // If email provided, verify it matches
-    if (email && submission.participant.parentEmail.toLowerCase() !== email) {
-      return next(new AppError("Email does not match the registered parent email for this Reference Number", 403));
+    // Same answer for a wrong email as for a missing entry, so refs can't be probed
+    if (!submission || submission.participant.parentEmail.toLowerCase() !== email) {
+      return next(new AppError("No registration found with this Reference Number and email. Please check and try again.", 404));
     }
 
     // Verify payment completed
@@ -492,22 +507,21 @@ export const submitArtwork = catchAsync(
     }
 
     const { submissionId, refNo, artworkTitle, artworkDescription, medium, themePillar } = req.body;
+    const parentEmail = String(req.body.parentEmail || "").trim().toLowerCase();
 
-    if (!submissionId && !refNo) {
+    if ((!submissionId && !refNo) || !parentEmail) {
       if (artworkFile.path && fs.existsSync(artworkFile.path)) fs.unlinkSync(artworkFile.path);
-      return next(new AppError("submissionId or refNo is required", 400));
+      return next(new AppError("Reference number and parent email are required", 400));
     }
 
     let submission: INationalDaySubmission | null = null;
     if (submissionId) {
       submission = await NationalDaySubmission.findById(submissionId);
     } else if (refNo) {
-      const suffix = refNo.toUpperCase().replace(/^UAE2026-/, "").trim();
-      const candidates = await NationalDaySubmission.find({}).sort({ createdAt: -1 }).limit(100);
-      submission = candidates.find(c => c._id.toString().slice(-8).toUpperCase() === suffix) || null;
+      submission = await findByRef(refNo);
     }
 
-    if (!submission) {
+    if (!submission || submission.participant.parentEmail.toLowerCase() !== parentEmail) {
       if (artworkFile.path && fs.existsSync(artworkFile.path)) fs.unlinkSync(artworkFile.path);
       return next(new AppError("Registration record not found", 404));
     }
@@ -688,7 +702,7 @@ export const getSubmissions = catchAsync(
       filter.medal = req.query.medal;
     }
     if (req.query.search) {
-      const searchRegex = new RegExp(req.query.search as string, "i");
+      const searchRegex = new RegExp(escapeRegex(String(req.query.search)), "i");
       filter.$or = [
         { "participant.studentFullName": searchRegex },
         { "participant.parentEmail": searchRegex },

@@ -101,6 +101,16 @@ export const PUBLIC_ROUTES: Record<string, string> = {
   "GET /api/reviews/google/:eventId": browse,
   "GET /api/reviews/:type/:id": browse,
 
+  // National Day art competition: anonymous parents register, pay and upload.
+  // Entries are reached by reference + parent email; see nationalDay.test.ts.
+  "POST /api/national-day-competition/register": "public competition entry",
+  "GET /api/national-day-competition/lookup/:refNo": "entry lookup (ref + parent email)",
+  "POST /api/national-day-competition/submit-artwork": "artwork upload (ref + parent email)",
+  "POST /api/national-day-competition/save-draft": "public competition entry",
+  "POST /api/national-day-competition/create-checkout-session": "public checkout",
+  "POST /api/national-day-competition/finalize": "Stripe session must belong to the entry",
+  "POST /api/national-day-competition/school-inquiry": "contact form",
+
   // Analytics beacons
   "POST /api/insights/track": "analytics beacon",
   "POST /api/analytics/track": "analytics beacon",

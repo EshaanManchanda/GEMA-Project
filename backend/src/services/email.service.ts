@@ -1,5 +1,6 @@
 import nodemailer, { type Mail } from "nodemailer";
 import { config } from "../config/index";
+import { escapeHtml } from "../utils/htmlHelpers";
 import {
   getBrandConfig,
   getTeamSignature,
@@ -376,19 +377,18 @@ class EmailService {
         `[EmailService] Failed to send email: ${error?.message || error}`,
       );
 
-      // Auto-failover to Ethereal in development if production Hostinger credentials return 535 Invalid login
+      // Dev only: retry through an Ethereal test inbox when one is configured
+      const etherealUser = process.env.ETHEREAL_USERNAME;
+      const etherealPass = process.env.ETHEREAL_PASSWORD;
       if (config.nodeEnv !== "production") {
-        try {
+        if (etherealUser && etherealPass) try {
           const etherealTransporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST || "smtp.ethereal.email",
-            port: parseInt(process.env.EMAIL_PORT || "587", 10),
-            auth: {
-              user: process.env.EMAIL_USERNAME || "boyd41@ethereal.email",
-              pass: process.env.EMAIL_PASSWORD || "dTNFDN5kUFZ1zSpQBd",
-            },
+            host: "smtp.ethereal.email",
+            port: 587,
+            auth: { user: etherealUser, pass: etherealPass },
           });
           const info = await etherealTransporter.sendMail({
-            from: `"Kidrove" <${process.env.EMAIL_FROM || "boyd41@ethereal.email"}>`,
+            from: `"Kidrove" <${etherealUser}>`,
             to: Array.isArray(options.to) ? options.to.join(", ") : options.to,
             subject: options.subject,
             html: options.html,
@@ -399,7 +399,7 @@ class EmailService {
           logger.info(`[EmailService] ✅ Email delivered via dev fallback (Ethereal). Preview URL: ${testUrl}`);
           return info.messageId;
         } catch (etherealErr) {
-          logger.warn("[EmailService] Dev fallback transport also failed:", etherealErr);
+          logger.warn(`[EmailService] Dev fallback transport also failed: ${(etherealErr as Error)?.message || etherealErr}`);
         }
 
         const devMessageId = `dev-email-${Date.now()}`;
@@ -2258,8 +2258,8 @@ class EmailService {
             <h1>Entry Submitted!</h1>
           </div>
           <div class="content">
-            <h2 class="greeting">Hi ${options.parentName}!</h2>
-            <p class="lead">Your competition entry for <strong style="color: #ea580c;">${options.studentName}</strong> has been received successfully. Our judges are excited to see their creative artwork.</p>
+            <h2 class="greeting">Hi ${escapeHtml(options.parentName)}!</h2>
+            <p class="lead">Your competition entry for <strong style="color: #ea580c;">${escapeHtml(options.studentName)}</strong> has been received successfully. Our judges are excited to see their creative artwork.</p>
             
             <div class="info-box">
               <span class="info-title">Submission Receipt</span>
@@ -2349,7 +2349,7 @@ Kidrove - Inspiring the creators of tomorrow.
     const badgeText = options.competitionBadge || "🇦🇪 Eid Al Etihad 2026";
     const compName = options.competitionName || "Eid Al Etihad Children's Art Competition 2026";
     const frontendUrl = config.frontendUrl || "http://localhost:5173";
-    const submitUrl = options.submissionUrl || `${frontendUrl}/national-day-art-competition/submit?ref=${options.refNo}`;
+    const submitUrl = options.submissionUrl || `${frontendUrl}/national-day-art-competition/submit?ref=${encodeURIComponent(options.refNo)}&email=${encodeURIComponent(String(options.to))}`;
     const downloadUrl = options.templateDownloadUrl || `${frontendUrl}/assets/eid-al-etihad-colouring-template.pdf`;
 
     const html = `
@@ -2388,9 +2388,9 @@ Kidrove - Inspiring the creators of tomorrow.
             <h1>Registration Confirmed!</h1>
           </div>
           <div class="content">
-            <h2 class="greeting">Hi ${options.parentName}!</h2>
+            <h2 class="greeting">Hi ${escapeHtml(options.parentName)}!</h2>
             <p class="lead">
-              Your registration for <strong>${options.studentName}</strong> (${options.grade} · ${options.category}) in the <strong>${compName}</strong> has been successfully received and entry fee paid.
+              Your registration for <strong>${escapeHtml(options.studentName)}</strong> (${escapeHtml(options.grade)} · ${escapeHtml(options.category)}) in the <strong>${compName}</strong> has been successfully received and entry fee paid.
             </p>
 
             <div class="ref-card">

@@ -307,13 +307,13 @@ export const finalizeSubmission = catchAsync(
 
     // Verify the Checkout Session belongs to this submission
     if (submission.checkoutSessionId && submission.checkoutSessionId !== sessionId) {
-      if (!(sessionId === "TEST_PAYMENT_SKIP" && process.env.NODE_ENV !== "production")) {
+      if (!(sessionId === "TEST_PAYMENT_SKIP" && process.env.ALLOW_TEST_PAYMENT_SKIP === "true" && process.env.NODE_ENV !== "production")) {
         logger.warn(`[competition] Session mismatch: expected ${submission.checkoutSessionId}, got ${sessionId}`);
         return next(new AppError("Payment session mismatch. Please contact support.", 400));
       }
     }
 
-    if (sessionId === "TEST_PAYMENT_SKIP" && process.env.NODE_ENV !== "production") {
+    if (sessionId === "TEST_PAYMENT_SKIP" && process.env.ALLOW_TEST_PAYMENT_SKIP === "true" && process.env.NODE_ENV !== "production") {
       logger.info(`[competition] Test payment bypass used for submission ${submissionId}`);
     } else {
       // Retrieve session from Stripe

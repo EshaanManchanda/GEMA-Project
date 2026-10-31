@@ -38,6 +38,7 @@ export interface NationalDaySubmitPayload extends NationalDayRegisterPayload {
 export interface NationalDayArtworkSubmitPayload {
   refNo?: string;
   submissionId?: string;
+  parentEmail: string;
   artworkTitle: string;
   artworkDescription?: string;
   medium?: string;
@@ -162,10 +163,10 @@ const nationalDayAPI = {
   /**
    * Phase 2: Lookup registration by Reference Number (UAE2026-XXXXXXXX)
    */
-  lookupByRef: async (refNo: string, email?: string) => {
+  lookupByRef: async (refNo: string, email: string) => {
     const response = await ApiService.get<any>(
       `/national-day-competition/lookup/${encodeURIComponent(refNo.trim())}`,
-      { params: email ? { email: email.trim() } : {} }
+      { params: { email: email.trim() } }
     );
     return response as {
       success: boolean;
@@ -206,6 +207,7 @@ const nationalDayAPI = {
     const formData = new FormData();
     if (payload.refNo) formData.append('refNo', payload.refNo);
     if (payload.submissionId) formData.append('submissionId', payload.submissionId);
+    formData.append('parentEmail', payload.parentEmail);
     formData.append('artworkTitle', payload.artworkTitle);
     if (payload.artworkDescription) formData.append('artworkDescription', payload.artworkDescription);
     if (payload.medium) formData.append('medium', payload.medium);
