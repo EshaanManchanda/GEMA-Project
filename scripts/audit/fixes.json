@@ -322,6 +322,20 @@
       "commit": "3056625",
       "title": "One competition payment could unlock any number of entries",
       "text": "Confirming a National Day entry checked that a Stripe payment was complete, but not which entry it paid for, so one paid checkout link could be reused to mark other unpaid entries as paid. The payment now has to belong to the entry being confirmed."
+    },
+    {
+      "area": "Analytics",
+      "sev": "medium",
+      "commit": "808a98f",
+      "title": "Page-view beacon had no rate limit or field checks",
+      "text": "POST /api/track/pageview wrote whatever it was sent, as fast as it was sent, and hashed IPs without a salt. It now has a rate limiter, type and length checks on every field, and a salted IP hash (set ANALYTICS_IP_SALT)."
+    },
+    {
+      "area": "Analytics",
+      "sev": "low",
+      "commit": "808a98f",
+      "title": "Traffic numbers couldn't say where visitors came from",
+      "text": "Page views now carry an anonymous visitor id, the traffic source (UTM tags or referrer), browser, OS and visible time; new accounts keep the source they first arrived from. Search, filter, Book click, favourite, share, blog view, organiser profile click, sign-up and login events are tracked. A nightly rollup keeps daily and monthly totals after the 90-day raw data expires, and seven admin-only reports read them."
     }
   ],
   "tests": [
@@ -418,6 +432,15 @@
         "Call POST finalize for the second entry's submissionId with the first entry's session_id."
       ],
       "expect": "The request fails with \"Payment does not match this submission.\" and the second entry stays unpaid."
+    },
+    {
+      "title": "Daily rollup and backfill",
+      "where": "Local (Docker)",
+      "steps": [
+        "Browse a few pages, then in the backend run: npx ts-node -e \"require('./src/config/database').connectDB().then(()=>require('./src/services/analyticsRollup.service').runNightlyRollup()).then(()=>process.exit())\"",
+        "In Mongo, look at the analyticsdailies collection."
+      ],
+      "expect": "One period:\"day\" row per day of the last 90 days and a period:\"month\" row for this month; today's row counts the pages you just browsed. Running it again changes nothing."
     }
   ]
 }
