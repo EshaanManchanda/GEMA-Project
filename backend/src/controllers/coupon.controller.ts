@@ -3,6 +3,7 @@ import { Coupon, Order, ICoupon, CouponStatus } from "../models/index";
 import { AppError } from "../middleware/index";
 import { ApiResponse } from "../types/index";
 import { escapeRegex } from "../utils/regexHelpers";
+import { CouponService } from "../services/coupon.service";
 
 /**
  * Get all coupons (admin only)
@@ -295,58 +296,12 @@ export const applyCoupon = async (
       return next(new AppError("Authentication required", 401));
     }
 
-    // Find coupon and order
-    const [coupon, order] = await Promise.all([
-      Coupon.findById(couponId),
-      Order.findById(orderId),
-    ]);
-
-    if (!coupon) {
-      return next(new AppError("Coupon not found", 404));
-    }
-
-    if (!order) {
-      return next(new AppError("Order not found", 404));
-    }
-
-    // Verify order belongs to user
-    if (order.userId.toString() !== userId) {
-      return next(new AppError("Unauthorized access to order", 403));
-    }
-
-    // Validate coupon
-    const isValidForUser = await coupon.isValidForUser(userId);
-    if (!isValidForUser) {
-      return next(new AppError("Coupon is not valid for this user", 400));
-    }
-
-    const eventIds = order.items.map((item) => item.eventId);
-
-    // Fetch event details for validation
-    const Event = require("../models/Event").default;
-    const events = await Event.find({ _id: { $in: eventIds } }).select(
-      "category vendorId type price",
+    const { discountAmount } = await CouponService.applyCoupon(
+      String(couponId),
+      String(orderId),
+      String(userId),
     );
-
-    const isValidForOrder = coupon.isValidForOrder(
-      order.subtotal,
-      eventIds,
-      events,
-    );
-    if (!isValidForOrder) {
-      return next(new AppError("Coupon is not applicable to this order", 400));
-    }
-
-    // Calculate discount
-    const discountAmount = coupon.calculateDiscount(order.subtotal);
-
-    // Update order with coupon
-    order.couponCode = coupon.code;
-    order.couponDiscount = discountAmount;
-    await order.save();
-
-    // Increment coupon usage
-    await coupon.incrementUsage(userId, orderId, discountAmount);
+    const order = await Order.findById(orderId);
 
     res.status(200).json({
       success: true,

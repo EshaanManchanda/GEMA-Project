@@ -11,6 +11,7 @@ import { WORKER_TUNING } from "../config/workerTuning";
 import logger from "../config/logger";
 import Order from "../models/Order";
 import Event from "../models/Event";
+import Coupon from "../models/Coupon";
 import { stripe } from "../config/stripe";
 import { PaymentService } from "../services/payment.service";
 
@@ -97,6 +98,10 @@ const processSeatExpiry = async (_job: Job) => {
           },
           { session: mongoSession },
         );
+      }
+
+      if (order.couponCode) {
+        await Coupon.releaseUsage(order.couponCode, order._id, mongoSession);
       }
 
       // Mark order cancelled so it won't be picked up again

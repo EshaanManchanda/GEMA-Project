@@ -97,6 +97,35 @@ export class RefundService {
   static async processRefund(
     options: ProcessRefundOptions,
   ): Promise<RefundResult> {
+    // Retry lock/write conflicts with other writers; the Stripe idempotency key
+    // makes a repeated attempt return the same refund.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.processRefundOnce(options);
+      } catch (error: any) {
+        const transient =
+          error?.hasErrorLabel?.("TransientTransactionError") ||
+          error?.errorResponse?.errorLabels?.includes("TransientTransactionError");
+        if (attempt < 4 && transient) {
+          await new Promise((r) => setTimeout(r, 50 * attempt)); // let the conflicting writer finish
+          continue;
+        }
+        logger.error("Refund processing failed:", error);
+        return {
+          success: false,
+          refundAmount: 0,
+          nonRefundableAmount: 0,
+          serviceFee: 0,
+          vat: 0,
+          error: error.message,
+        };
+      }
+    }
+  }
+
+  private static async processRefundOnce(
+    options: ProcessRefundOptions,
+  ): Promise<RefundResult> {
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -145,11 +174,8 @@ export class RefundService {
       // Process refund via Stripe if payment was made
       let refundId: string | undefined;
       if (order.paymentIntentId) {
+        let stripeRefund;
         try {
-          // Update order status to processing
-          order.refundStatus = "processing";
-          await order.save({ session });
-
           // Convert to Stripe amount (cents)
           const stripeAmount = convertToStripeAmount(
             refundAmount,
@@ -160,37 +186,33 @@ export class RefundService {
           // this leaves money refunded but the order unchanged. The idempotency key
           // makes a retry return the same refund instead of paying out twice; an
           // outbox would close the gap fully.
-          const stripeRefund = await PaymentService.createRefund(
+          stripeRefund = await PaymentService.createRefund(
             order.paymentIntentId,
             stripeAmount,
             "requested_by_customer",
             `refund-${order._id}-${alreadyRefunded}-${stripeAmount}`,
           );
-
-          refundId = stripeRefund.id;
-
-          // Update order with refund details
-          if (isFull) {
-            order.status = "refunded";
-            order.paymentStatus = "refunded";
-          }
-          order.refundStatus = "completed";
-          order.refundAmount = alreadyRefunded + refundAmount;
-          order.refundReason = reason;
-          order.refundTransactionId = refundId;
-          order.refundedAt = new Date();
-          order.cancellationType = cancellationType;
-          order.serviceFeeRefunded = false;
-
-          await order.save({ session });
         } catch (stripeError: any) {
-          // Mark refund as failed
-          order.refundStatus = "failed";
-          await order.save({ session });
-
           logger.error("Stripe refund failed:", stripeError);
           throw new Error(`Stripe refund failed: ${stripeError.message}`);
         }
+
+        refundId = stripeRefund.id;
+
+        // Update order with refund details
+        if (isFull) {
+          order.status = "refunded";
+          order.paymentStatus = "refunded";
+        }
+        order.refundStatus = "completed";
+        order.refundAmount = alreadyRefunded + refundAmount;
+        order.refundReason = reason;
+        order.refundTransactionId = refundId;
+        order.refundedAt = new Date();
+        order.cancellationType = cancellationType;
+        order.serviceFeeRefunded = false;
+
+        await order.save({ session });
       } else {
         // No payment intent (e.g., free order or test), just update status
         if (isFull) {
@@ -327,18 +349,9 @@ export class RefundService {
         serviceFee,
         vat,
       };
-    } catch (error: any) {
+    } catch (error) {
       await session.abortTransaction();
-      logger.error("Refund processing failed:", error);
-
-      return {
-        success: false,
-        refundAmount: 0,
-        nonRefundableAmount: 0,
-        serviceFee: 0,
-        vat: 0,
-        error: error.message,
-      };
+      throw error;
     } finally {
       session.endSession();
     }

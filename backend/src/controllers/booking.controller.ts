@@ -13,6 +13,7 @@ import {
   RegistrationStatus,
   RegistrationPaymentStatus,
 } from "../models/index";
+import Coupon from "../models/Coupon";
 import EventModel from "../models/Event";
 import AdminRevenueSettings from "../models/AdminRevenueSettings";
 import { AppError } from "../middleware/index";
@@ -504,6 +505,17 @@ export const initiateBooking = async (
 
       await tempOrder.save({ session });
 
+      // Hold one coupon use for this order; released if it expires unpaid.
+      if (validatedCouponCode) {
+        const coupon = await Coupon.findByCode(validatedCouponCode).session(session);
+        const reserved =
+          !!coupon &&
+          (await Coupon.reserveUsage(coupon._id, userId, tempOrder._id, couponDiscount, session));
+        if (!reserved) {
+          throw new AppError("This coupon has reached its usage limit", 400);
+        }
+      }
+
       // Create payment session
       let paymentSession: any;
 
@@ -605,6 +617,7 @@ export const initiateBooking = async (
       session.endSession();
     }
   } catch (error) {
+    if (error instanceof AppError) return next(error);
     logger.error("Error initiating booking:", error);
     return next(new AppError("Failed to initiate booking", 500));
   }
@@ -1425,6 +1438,11 @@ export const cancelBooking = async (
         },
       },
     );
+
+    // An unpaid order never used its coupon — give the use back
+    if (order.couponCode && order.paymentStatus === "pending") {
+      await Coupon.releaseUsage(order.couponCode, order._id);
+    }
 
     order.status = "cancelled";
     order.cancelledAt = cancelledAt;

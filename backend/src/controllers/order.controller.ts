@@ -189,21 +189,14 @@ export const createOrder = async (
 
     const order = await Order.create(orderData);
 
-    // Record coupon usage against the now-created order (usage tracking
-    // only — pricing was already computed above).
-    if (validatedCoupon) {
-      try {
-        await CouponService.applyCoupon(
-          validatedCoupon._id.toString(),
-          order._id.toString(),
-          userId,
-        );
-      } catch (couponErr) {
-        logger.warn("Coupon usage tracking failed (order pricing unaffected)", {
-          couponCode,
-          orderId: order._id,
-        });
-      }
+    // Hold one coupon use for the order; a concurrent checkout may have taken
+    // the last one since validation, in which case the order can't keep the discount.
+    if (
+      validatedCoupon &&
+      !(await Coupon.reserveUsage(validatedCoupon._id, userId, order._id, couponDiscount))
+    ) {
+      await Order.deleteOne({ _id: order._id });
+      return next(new AppError("This coupon has reached its usage limit", 400));
     }
 
     res.status(201).json({
@@ -382,6 +375,11 @@ export const cancelOrder = async (
           await event.save();
         }
       }
+    }
+
+    // An unpaid order never used its coupon — give the use back
+    if (order.couponCode && order.paymentStatus === "pending") {
+      await Coupon.releaseUsage(order.couponCode, order._id);
     }
 
     await order.cancel(reason);

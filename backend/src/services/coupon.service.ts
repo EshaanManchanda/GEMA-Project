@@ -93,8 +93,12 @@ export class CouponService {
     if (!order) {
       throw new AppError("Order not found", 404);
     }
-    if (order.userId.toString() !== userId) {
+    if (order.userId.toString() !== String(userId)) {
       throw new AppError("Unauthorized access to order", 403);
+    }
+    // Discounting after payment would rewrite the total of a charge already made.
+    if (order.paymentStatus !== "pending" || order.couponCode) {
+      throw new AppError("A coupon can't be applied to this order", 400);
     }
 
     const isValidForUser = await coupon.isValidForUser(
@@ -122,17 +126,14 @@ export class CouponService {
 
     const discountAmount = coupon.calculateDiscount(order.subtotal);
 
-    // Update order
+    // Hold the use before discounting, so a lost race never leaves a discounted order
+    if (!(await Coupon.reserveUsage(coupon._id, userId, order._id, discountAmount))) {
+      throw new AppError("This coupon has reached its usage limit", 400);
+    }
+
     order.couponCode = coupon.code;
     order.couponDiscount = discountAmount;
     await order.save();
-
-    // Increment usage
-    await coupon.incrementUsage(
-      new mongoose.Types.ObjectId(userId),
-      new mongoose.Types.ObjectId(orderId),
-      discountAmount,
-    );
 
     logger.info("Coupon applied to order", {
       couponCode: coupon.code,

@@ -72,6 +72,18 @@ export interface ICoupon extends Document {
 export interface ICouponModel extends mongoose.Model<ICoupon> {
   findActive(): mongoose.Query<ICoupon[], ICoupon>;
   findByCode(code: string): mongoose.Query<ICoupon | null, ICoupon>;
+  reserveUsage(
+    couponId: mongoose.Types.ObjectId | string,
+    userId: mongoose.Types.ObjectId | string,
+    orderId: mongoose.Types.ObjectId | string,
+    discountAmount: number,
+    session?: mongoose.ClientSession,
+  ): Promise<boolean>;
+  releaseUsage(
+    code: string,
+    orderId: mongoose.Types.ObjectId | string,
+    session?: mongoose.ClientSession,
+  ): Promise<void>;
 }
 
 const couponUsageSchema = new Schema<ICouponUsage>({
@@ -519,21 +531,91 @@ couponSchema.methods.canBeUsed = function (): boolean {
   );
 };
 
-// Method to increment usage
+// Method to increment usage — throws when a limit is already reached.
 couponSchema.methods.incrementUsage = async function (
   userId: mongoose.Types.ObjectId,
   orderId: mongoose.Types.ObjectId,
   discountAmount: number,
 ): Promise<void> {
-  this.usageCount += 1;
-  this.usage.push({
+  const ok = await (this.constructor as ICouponModel).reserveUsage(
+    this._id,
     userId,
     orderId,
-    usedAt: new Date(),
     discountAmount,
-  });
+  );
+  if (!ok) throw new Error("Coupon usage limit reached");
+};
 
-  await this.save();
+/**
+ * Atomically record one use for an order, only while both the total and the
+ * per-user limit still have room. One conditional update, so concurrent
+ * checkouts can't overshoot a limit. Returns true when the order holds a use
+ * (including when it already did), false when a limit is reached.
+ */
+couponSchema.statics.reserveUsage = async function (
+  couponId: mongoose.Types.ObjectId | string,
+  userId: mongoose.Types.ObjectId | string,
+  orderId: mongoose.Types.ObjectId | string,
+  discountAmount: number,
+  session?: mongoose.ClientSession,
+): Promise<boolean> {
+  const uid = new mongoose.Types.ObjectId(String(userId));
+  const oid = new mongoose.Types.ObjectId(String(orderId));
+  const reserved = await this.findOneAndUpdate(
+    {
+      _id: couponId,
+      "usage.orderId": { $ne: oid },
+      $expr: {
+        $and: [
+          {
+            $or: [
+              { $not: [{ $ifNull: ["$usageLimit", false] }] },
+              { $lt: ["$usageCount", "$usageLimit"] },
+            ],
+          },
+          {
+            $or: [
+              { $not: [{ $ifNull: ["$userUsageLimit", false] }] },
+              {
+                $lt: [
+                  {
+                    $size: {
+                      $filter: {
+                        input: { $ifNull: ["$usage", []] },
+                        cond: { $eq: ["$$this.userId", uid] },
+                      },
+                    },
+                  },
+                  "$userUsageLimit",
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    },
+    {
+      $inc: { usageCount: 1 },
+      $push: { usage: { userId: uid, orderId: oid, usedAt: new Date(), discountAmount } },
+    },
+    { new: true, session },
+  );
+  if (reserved) return true;
+  return !!(await this.exists({ _id: couponId, "usage.orderId": oid }).session(session ?? null));
+};
+
+/** Give back an unpaid order's use (expired or abandoned checkout). Idempotent. */
+couponSchema.statics.releaseUsage = async function (
+  code: string,
+  orderId: mongoose.Types.ObjectId | string,
+  session?: mongoose.ClientSession,
+): Promise<void> {
+  const oid = new mongoose.Types.ObjectId(String(orderId));
+  await this.updateOne(
+    { code: code.toUpperCase(), "usage.orderId": oid },
+    { $inc: { usageCount: -1 }, $pull: { usage: { orderId: oid } } },
+    { session },
+  );
 };
 
 // Static method to find active coupons

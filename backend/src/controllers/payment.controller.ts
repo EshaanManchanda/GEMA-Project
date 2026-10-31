@@ -3,7 +3,7 @@ import { validationResult } from "express-validator";
 import { PaymentService } from "../services/payment.service";
 import { RefundService } from "../services/refund.service";
 import CommissionService from "../services/commission.service";
-import { Order, User, Event } from "../models/index";
+import { Order, User, Event, Coupon } from "../models/index";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { stripePublishableKey, stripe } from "../config/stripe";
@@ -181,6 +181,9 @@ export const confirmPayment = async (
               },
             },
           );
+        }
+        if (order.couponCode) {
+          await Coupon.releaseUsage(order.couponCode, order._id);
         }
         await Order.updateOne(
           { _id: order._id },

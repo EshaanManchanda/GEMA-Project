@@ -28,6 +28,9 @@ beforeAll(async () => {
   await connectTestDB();
   app = createTestApp();
   await ensureCollections();
+  // Wait out index builds on what the refund transaction writes; one still
+  // running fails the transaction with a "catalog changes" WriteConflict.
+  await Promise.all([Order, Ticket, RevenueTransaction].map((m) => m.init()));
 });
 afterEach(clearTestDB);
 afterAll(closeTestDB);
@@ -85,6 +88,9 @@ async function expectRevoked(orderId: string) {
   expect(tx!.status).toBe(TransactionStatus.REFUNDED);
 }
 
+// A retried transaction may repeat the Stripe call; the idempotency key makes that one refund.
+const distinctRefunds = () => new Set(refundSpy.mock.calls.map((c) => c[1]?.idempotencyKey)).size;
+
 const asAdmin = (req: request.Test) => req.set("Cookie", cookie(admin)).set("x-csrf-token", admin.csrfToken);
 
 describe("admin refund endpoints", () => {
@@ -92,7 +98,7 @@ describe("admin refund endpoints", () => {
     const orderId = await paidOrder();
     const res = await asAdmin(request(app).post(`/api/orders/admin/${orderId}/refund`)).send({ reason: "test" });
     expect(res.status).toBe(200);
-    expect(refundSpy).toHaveBeenCalledTimes(1);
+    expect(distinctRefunds()).toBe(1);
     expect(refundSpy.mock.calls[0][0]).toMatchObject({ amount: 5000 });
     expect(refundSpy.mock.calls[0][1]).toMatchObject({ idempotencyKey: expect.stringContaining(`refund-${orderId}`) });
     await expectRevoked(orderId);
@@ -124,7 +130,7 @@ describe("admin refund endpoints", () => {
     const b = await paidOrder();
     const res = await asAdmin(request(app).patch("/api/orders/admin/bulk")).send({ orderIds: [a, b], action: "refund" });
     expect(res.status).toBe(200);
-    expect(refundSpy).toHaveBeenCalledTimes(2);
+    expect(distinctRefunds()).toBe(2);
     await expectRevoked(a);
     await expectRevoked(b);
   });
@@ -133,7 +139,7 @@ describe("admin refund endpoints", () => {
     const orderId = await paidOrder();
     const res = await asAdmin(request(app).post("/api/payments/refund")).send({ orderId, reason: "test" });
     expect(res.status).toBe(200);
-    expect(refundSpy).toHaveBeenCalledTimes(1);
+    expect(distinctRefunds()).toBe(1);
     await expectRevoked(orderId);
   });
 });
