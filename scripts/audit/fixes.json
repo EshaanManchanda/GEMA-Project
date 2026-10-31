@@ -1,407 +1,423 @@
 {
- "testsPassing": "1124 / 1158",
- "issues": [
-  {
-   "area": "Security",
-   "sev": "critical",
-   "commit": "b331903",
-   "title": "Account takeover through the legacy employee API",
-   "text": "PUT /api/employees/:id applied the whole request body, so a vendor could point their employee at any user (even an admin) and the handler then rewrote that user's login email. A password reset finished the takeover. The same hole let a vendor move an employee onto another vendor and read its attendees. Updates now use an allowlist and never touch the login email."
-  },
-  {
-   "area": "Payments",
-   "sev": "critical",
-   "commit": "1b60316",
-   "title": "One payment could confirm many orders and registrations",
-   "text": "Booking confirm only checked the amount, and registration confirm checked nothing, so one succeeded Stripe payment could be replayed to confirm other pending orders of the same price, or any number of paid registrations. Both now require the payment to be the one created for that record."
-  },
-  {
-   "area": "Payments",
-   "sev": "high",
-   "commit": "f1c03d8",
-   "title": "Competition entries marked paid with someone else's payment",
-   "text": "Finalizing an AI Art Competition entry only checked that the Stripe session was paid, so one paid session could finalize unlimited free drafts. It must now be the session created for that entry."
-  },
-  {
-   "area": "Payments",
-   "sev": "high",
-   "commit": "9cd97de",
-   "title": "Late Stripe events could revive refunded orders",
-   "text": "With Stripe now retrying failed webhooks, a delayed \"payment succeeded\" could flip a refunded order back to paid, re-send confirmation emails and count the affiliate sale twice. Each is now guarded."
-  },
-  {
-   "area": "Security",
-   "sev": "high",
-   "commit": "cec47b8",
-   "title": "Public review link created accounts, fake bookings and certificates",
-   "text": "Anyone who knew an event id could create verified accounts, paid-looking registrations, reviews and certificates for any email, and learn account ids. The shared link now carries a secret token, never acts as an existing account unless that user logs in, and is rate limited. Offline attendees keep working; links shared before this change must be regenerated."
-  },
-  {
-   "area": "Security",
-   "sev": "high",
-   "commit": "00c810c",
-   "title": "Ticket transfer brought used and refunded tickets back",
-   "text": "Transferring a ticket reset it to active with a fresh QR code, so a checked-in, cancelled or refunded ticket became valid again. Only active, unused tickets can be transferred now."
-  },
-  {
-   "area": "Security",
-   "sev": "high",
-   "commit": "3a4722d",
-   "title": "Any vendor could read or issue tickets for other vendors' events",
-   "text": "Any vendor could list the tickets (attendee names and emails) of any order, and mint valid tickets for another vendor's event. Both are now limited to the event's own vendor and staff."
-  },
-  {
-   "area": "Security",
-   "sev": "high",
-   "commit": "ff5c8ea",
-   "title": "Vendors could issue certificates under other vendors' events",
-   "text": "Single and bulk certificate generation didn't check event ownership, so a vendor could issue official certificates under a competitor's event to any email."
-  },
-  {
-   "area": "Security",
-   "sev": "high",
-   "commit": "7339006",
-   "title": "Student signup could plant children on other accounts",
-   "text": "The public student-program form attached a child to any existing account by email and put the submitted text into the welcome email as raw HTML (phishing from our domain). Existing accounts now need their owner logged in, the email is escaped, the temporary password is cryptographically random, and the form is rate limited."
-  },
-  {
-   "area": "Security",
-   "sev": "high",
-   "commit": "cb84b5c",
-   "title": "Scripts inside uploaded SVG images ran on the API domain",
-   "text": "Uploaded files are served from the API origin, so a script inside an uploaded SVG ran there when the file was opened directly. SVG/XML/HTML now get a sandboxing CSP (images and PDFs still display), and customer booking attachments no longer accept SVG."
-  },
-  {
-   "area": "Security",
-   "sev": "medium",
-   "commit": "83a52fb",
-   "title": "Certificate lookup exposed children's names to anyone",
-   "text": "Typing any email on the public certificate lookup showed the recipients' names, events and PDF links. Now only the logged-in owner sees the list; anyone else gets \"check your inbox\" and the list is emailed to that address."
-  },
-  {
-   "area": "Security",
-   "sev": "medium",
-   "commit": "4e703a8",
-   "title": "Vendors could give themselves paid promotion and ratings",
-   "text": "Creating an event accepted isFeatured, premium promotion, featuredUntil and fake rating counts from the request. One shared protected-field list now covers create and update."
-  },
-  {
-   "area": "Security",
-   "sev": "medium",
-   "commit": "99dca63",
-   "title": "Search boxes accepted regular expressions",
-   "text": "76 search sites put raw text into database regex queries: typing \"(\" returned a 500, and crafted patterns could tie up the database. Searches now match the literal text."
-  },
-  {
-   "area": "Security",
-   "sev": "medium",
-   "commit": "fcaf589",
-   "title": "Public forms could be used to spam inboxes",
-   "text": "Contact, newsletter, partnership, lead and competition-draft forms only had the general rate limit. Each now allows 60 submissions an hour per network, and the event lead form validates its fields (a malformed name used to cause a 500)."
-  },
-  {
-   "area": "Security",
-   "sev": "medium",
-   "commit": "ba194e3",
-   "title": "Anyone could burn the paid exchange-rate quota",
-   "text": "POST /api/currency/refresh was public and called the paid FX API every time. It is now admin-only; nothing in the site used it."
-  },
-  {
-   "area": "Bugs & user experience",
-   "sev": "medium",
-   "commit": "5fac050",
-   "title": "Users could be signed out everywhere after a quick refresh",
-   "text": "Two refresh tokens issued in the same second were identical, so an early refresh looked like token theft and signed the user out on every device. Each token is now unique."
-  },
-  {
-   "area": "Bugs & user experience",
-   "sev": "medium",
-   "commit": "514b1e1",
-   "title": "Vendor analytics page never loaded",
-   "text": "A public route declared earlier caught /events/vendor/analytics, so vendors always got \"Invalid event ID\". Found by the new route-auth check."
-  },
-  {
-   "area": "Bugs & user experience",
-   "sev": "medium",
-   "commit": "9cd97de",
-   "title": "Affiliates were never credited for paid orders",
-   "text": "The payment webhook looked affiliates up by the wrong field name, so no paid order ever recorded an affiliate conversion. Past orders with an affiliate code may need a backfill."
-  },
-  {
-   "area": "Bugs & user experience",
-   "sev": "low",
-   "commit": "00c810c",
-   "title": "Transferring a ticket to a new email always failed",
-   "text": "It tried to create an account without a password and returned a 500. It now asks the recipient to sign up first."
-  },
-  {
-   "area": "Payments",
-   "sev": "high",
-   "commit": "ababdd3",
-   "title": "Paid competition entries lost when the tab was closed",
-   "text": "Only the browser's return trip finalized an entry, so a parent who paid and closed the tab kept an unpaid draft and no confirmation. The Stripe webhook now finalizes it too, exactly once."
-  },
-  {
-   "area": "Bugs & user experience",
-   "sev": "medium",
-   "commit": "d8f6988",
-   "title": "Events created through one route didn't belong to their vendor",
-   "text": "POST /api/events stored the vendor's user id instead of the vendor id, so later ownership checks treated the vendor as a stranger. New events store the vendor id; older ones keep working until migrateEventVendorIds runs."
-  },
-  {
-   "area": "Bugs & user experience",
-   "sev": "medium",
-   "commit": "d8f6988",
-   "title": "Teachers got an error opening their own bookings",
-   "text": "Bookings pointed at a \"TeachingEvent\" model that doesn't exist, so reading a booking always returned a 500."
-  },
-  {
-   "area": "Payments",
-   "sev": "medium",
-   "commit": "1b823a8",
-   "title": "Stale Stripe events could mislead customers or downgrade vendors",
-   "text": "A late \"payment failed\" event notified customers who had already paid, and an out-of-order subscription event could downgrade a paying vendor. Subscription and invoice errors were also swallowed, losing the update. Now: no notice for paid orders, the subscription's current state is read from Stripe, and failures make Stripe retry."
-  },
-  {
-   "area": "Reliability & operations",
-   "sev": "low",
-   "commit": "c69d1e6",
-   "title": "Seeded test data broke every vendor check",
-   "text": "The local seed never created vendor profiles, so seeded events and employees pointed at nothing and vendor features couldn't be tested locally. Seeded vendors now get verified profiles."
-  },
-  {
-   "area": "Testing & CI",
-   "sev": "high",
-   "commit": "6be20aa",
-   "title": "CI never ran the browser tests or enforced coverage and audits",
-   "text": "Playwright tests existed but never ran in CI, coverage thresholds were never checked, and npm audit couldn't fail. Every PR now runs the browser tests against a real seeded backend, a ZAP security scan, CodeQL, a blocking dependency audit (reviewed exceptions only) and a coverage gate. scripts/verify.sh runs the same checks locally."
-  },
-  {
-   "area": "Testing & CI",
-   "sev": "medium",
-   "commit": "c5bf55c",
-   "title": "Nothing caught a route that forgot its login check",
-   "text": "Tests now mount the real route table and call every API route without login (and every admin route as a customer). Any route that isn't on the reviewed public list must refuse, so a new public route fails CI until reviewed."
-  },
-  {
-   "area": "Testing & CI",
-   "sev": "medium",
-   "commit": "e77087e",
-   "title": "Payment and booking code paths couldn't be tested",
-   "text": "The test database couldn't run transactions, which 27 code paths use. Tests now run on a replica set like production."
-  },
-  {
-   "area": "Bugs & user experience",
-   "sev": "low",
-   "commit": "cf82c46",
-   "title": "Old /book/<id> links went to a broken page",
-   "text": "The redirect sent visitors to the literal path /booking/:eventId. It now uses the real event id."
-  },
-  {
-   "area": "Security",
-   "sev": "high",
-   "commit": "f9e7822",
-   "title": "An admin endpoint returned the new user's password hash",
-   "text": "Creating a vendor from a partnership returned the full user document, password hash included. User documents now never serialize password or OTP hashes, on any endpoint. The public partner directory also stopped returning phone numbers, payment session ids and attachments."
-  },
-  {
-   "area": "Security",
-   "sev": "high",
-   "commit": "4bcf5f5",
-   "title": "Employees could check tickets in as a colleague",
-   "text": "The check-in API trusted the employee id in the request, any venue assignment authorised every event, and vendors could read every vendor's check-in logs. Check-ins are now tied to the logged-in employee and their assigned events, and logs are limited to the vendor's own events."
-  },
-  {
-   "area": "Security",
-   "sev": "high",
-   "commit": "68d92ba",
-   "title": "Affiliates could set their own earnings",
-   "text": "Applying or editing an affiliate profile accepted any field, including commission earned and totals. Only the form's fields are accepted now. Applying had also always failed, because the affiliate code was generated after validation."
-  },
-  {
-   "area": "Security",
-   "sev": "medium",
-   "commit": "c150545",
-   "title": "Vendors could approve their own venues",
-   "text": "Venue updates accepted isApproved and promotion fields. Creating a venue also always failed (venue-type mismatch and missing required fields); both are fixed."
-  },
-  {
-   "area": "Security",
-   "sev": "medium",
-   "commit": "cdf2b45",
-   "title": "Anyone could read unmoderated blog comments",
-   "text": "The public comment list accepted ?status=pending. It now returns published comments only, and deleting a comment twice no longer pushes the count below zero."
-  },
-  {
-   "area": "Security",
-   "sev": "medium",
-   "commit": "c968630",
-   "title": "Anyone could rewrite a newsletter subscriber's details",
-   "text": "Subscribing with an existing email overwrote that subscriber's name, city and preferences. Existing subscribers are left as they are, and the welcome email escapes the name."
-  },
-  {
-   "area": "Bugs & user experience",
-   "sev": "high",
-   "commit": "bfdaff7",
-   "title": "Event cards reloaded the whole site, sometimes on another domain",
-   "text": "Cards linked to an absolute URL built from the configured site address, so every click was a full reload to that host. They now navigate inside the app."
-  },
-  {
-   "area": "Testing & CI",
-   "sev": "medium",
-   "commit": "891ef1b",
-   "title": "Frontend type-check had 38 errors",
-   "text": "All were unused code (including the never-shown old competition payment step). The type-check is clean, so the CI frontend job can pass."
-  },
-  {
-   "area": "Bugs & user experience",
-   "sev": "medium",
-   "commit": "747d2ec",
-   "title": "Admin review moderation did nothing",
-   "text": "The moderation queue and the dashboard activity feed crashed once any review existed, and approve, reject and flag were empty stubs. They now work and share one code path with the main review moderation (approving issues the certificate)."
-  },
-  {
-   "area": "Bugs & user experience",
-   "sev": "medium",
-   "commit": "90e2232",
-   "title": "Bad input crashed with a server error",
-   "text": "A malformed id anywhere returned 500, and production 500s echoed internal database messages. Malformed input now gets a 400 with a plain message, internals stay in the log, and the teacher profile page no longer crashes."
-  },
-  {
-   "area": "Bugs & user experience",
-   "sev": "medium",
-   "commit": "43e750d",
-   "title": "Venue click tracking never recorded anything",
-   "text": "Anonymous clicks on external-booking venues hit a login check first and returned 401. The public tracking routes now come before it."
-  },
-  {
-   "area": "Bugs & user experience",
-   "sev": "low",
-   "commit": "c48c8e0",
-   "title": "Categories couldn't be created without a slug",
-   "text": "The slug was generated after validation had already rejected it. It's now generated first."
-  },
-  {
-   "area": "Security",
-   "sev": "low",
-   "commit": "7e6ea6b",
-   "title": "Blog and reel likes could be inflated",
-   "text": "Blog likes trusted a spoofable IP header, and reel likes had no limit at all (and could go negative). Each client can now like once."
-  },
-  {
-   "area": "Bugs & user experience",
-   "sev": "low",
-   "commit": "b913833",
-   "title": "Settings and banners crashed on bad values",
-   "text": "A mistyped settings value or an unknown image id returned 500; both now return a clear 4xx."
-  },
-  {
-   "area": "Testing & CI",
-   "sev": "medium",
-   "commit": "ba74137",
-   "title": "Most controllers had no tests",
-   "text": "Added 260 controller tests (registration, check-in, affiliates, venues, blogs, partnerships, moderation and more) plus 96 ownership and auth tests. They found the 44 bugs fixed in this pass."
-  },
-  {
-   "area": "Payments",
-   "sev": "critical",
-   "commit": "7f8a29a",
-   "title": "Admin refunds never refunded the card",
-   "text": "The admin refund and bulk refund buttons marked the order refunded, but never asked Stripe to return the money. All admin refund endpoints now refund through Stripe, and a retry can't refund twice."
-  },
-  {
-   "area": "Payments",
-   "sev": "high",
-   "commit": "7f8a29a",
-   "title": "Refunded orders were still paid out to vendors",
-   "text": "A refund left the order's revenue in the vendor payout pool and its tickets still scannable. A full refund, whether made here or in the Stripe dashboard, now voids the tickets and takes the revenue out of payouts."
-  }
- ],
- "tests": [
-  {
-   "title": "Review link token",
-   "where": "Local",
-   "steps": [
-    "As admin, open an event in Admin → Events → Edit and click Generate Review Link; the link ends with ?t=…",
-    "Open the link without the ?t= part.",
-    "Open the full link and enter a new email, then submit a rating.",
-    "Open it again with customer@gema.com while logged out."
-   ],
-   "expect": "Without the token the page says the link is invalid. A new email can review. An existing account is asked to log in first."
-  },
-  {
-   "title": "Certificate lookup",
-   "where": "Local",
-   "steps": [
-    "Logged out, open /certificates/lookup and enter an email that has a certificate.",
-    "Open Mailpit at http://localhost:8025.",
-    "Log in as that user and open the page again."
-   ],
-   "expect": "Logged out: \"Check your inbox\" and nothing listed; the list arrives by email. Logged in: the list shows on the page."
-  },
-  {
-   "title": "Student program signup",
-   "where": "Local",
-   "steps": [
-    "Logged out, open /student-program and submit the form with customer@gema.com.",
-    "Submit again with a brand-new email."
-   ],
-   "expect": "The first is refused with \"already has a Kidrove account, please log in\". The second succeeds and the welcome email arrives in Mailpit."
-  },
-  {
-   "title": "Search with special characters",
-   "where": "Local",
-   "steps": [
-    "Search the blog for ( and for C++.",
-    "Search venues for [a-z."
-   ],
-   "expect": "Results load normally (empty or matching); no error page."
-  },
-  {
-   "title": "Uploaded SVG can't run scripts",
-   "where": "Local",
-   "steps": [
-    "As a vendor, upload an SVG containing <script>alert(1)</script> as an event image.",
-    "Open the image URL directly in a new tab."
-   ],
-   "expect": "The image shows (or is blank) and no alert appears. The response has a Content-Security-Policy with sandbox."
-  },
-  {
-   "title": "Vendor analytics",
-   "where": "Local",
-   "steps": [
-    "Log in as vendor@gema.com and open the analytics section of the vendor dashboard."
-   ],
-   "expect": "The analytics load; no \"Invalid event ID\" error."
-  },
-  {
-   "title": "Competition entry survives a closed tab",
-   "where": "Local (Docker, with STRIPE_API_KEY set)",
-   "steps": [
-    "Open /ai-art-competition, fill the form and pay with test card 4242 4242 4242 4242.",
-    "On Stripe's success screen, close the tab before it redirects back.",
-    "As admin, open the competition submissions list."
-   ],
-   "expect": "The entry shows as paid, and exactly one confirmation email is in Mailpit."
-  },
-  {
-   "title": "Full pre-deploy check",
-   "where": "Local",
-   "steps": [
-    "From the repo root, with Docker running: ./scripts/verify.sh",
-    "Open the report: cd frontend && npx playwright show-report"
-   ],
-   "expect": "It ends with \"All checks passed\". Any failure stops it with the failing step named."
-  },
-  {
-   "title": "Admin refund returns the money",
-   "where": "Local (Docker, Stripe test keys)",
-   "steps": [
-    "Book an event as a customer and pay with 4242 4242 4242 4242.",
-    "As admin, open the order and click Refund.",
-    "Check the payment in the Stripe test dashboard, and the customer's ticket."
-   ],
-   "expect": "Stripe shows the payment refunded; the ticket shows as refunded and no longer checks in."
-  }
- ]
+  "testsPassing": "1124 / 1158",
+  "issues": [
+    {
+      "area": "Security",
+      "sev": "critical",
+      "commit": "b331903",
+      "title": "Account takeover through the legacy employee API",
+      "text": "PUT /api/employees/:id applied the whole request body, so a vendor could point their employee at any user (even an admin) and the handler then rewrote that user's login email. A password reset finished the takeover. The same hole let a vendor move an employee onto another vendor and read its attendees. Updates now use an allowlist and never touch the login email."
+    },
+    {
+      "area": "Payments",
+      "sev": "critical",
+      "commit": "1b60316",
+      "title": "One payment could confirm many orders and registrations",
+      "text": "Booking confirm only checked the amount, and registration confirm checked nothing, so one succeeded Stripe payment could be replayed to confirm other pending orders of the same price, or any number of paid registrations. Both now require the payment to be the one created for that record."
+    },
+    {
+      "area": "Payments",
+      "sev": "high",
+      "commit": "f1c03d8",
+      "title": "Competition entries marked paid with someone else's payment",
+      "text": "Finalizing an AI Art Competition entry only checked that the Stripe session was paid, so one paid session could finalize unlimited free drafts. It must now be the session created for that entry."
+    },
+    {
+      "area": "Payments",
+      "sev": "high",
+      "commit": "9cd97de",
+      "title": "Late Stripe events could revive refunded orders",
+      "text": "With Stripe now retrying failed webhooks, a delayed \"payment succeeded\" could flip a refunded order back to paid, re-send confirmation emails and count the affiliate sale twice. Each is now guarded."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "cec47b8",
+      "title": "Public review link created accounts, fake bookings and certificates",
+      "text": "Anyone who knew an event id could create verified accounts, paid-looking registrations, reviews and certificates for any email, and learn account ids. The shared link now carries a secret token, never acts as an existing account unless that user logs in, and is rate limited. Offline attendees keep working; links shared before this change must be regenerated."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "00c810c",
+      "title": "Ticket transfer brought used and refunded tickets back",
+      "text": "Transferring a ticket reset it to active with a fresh QR code, so a checked-in, cancelled or refunded ticket became valid again. Only active, unused tickets can be transferred now."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "3a4722d",
+      "title": "Any vendor could read or issue tickets for other vendors' events",
+      "text": "Any vendor could list the tickets (attendee names and emails) of any order, and mint valid tickets for another vendor's event. Both are now limited to the event's own vendor and staff."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "ff5c8ea",
+      "title": "Vendors could issue certificates under other vendors' events",
+      "text": "Single and bulk certificate generation didn't check event ownership, so a vendor could issue official certificates under a competitor's event to any email."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "7339006",
+      "title": "Student signup could plant children on other accounts",
+      "text": "The public student-program form attached a child to any existing account by email and put the submitted text into the welcome email as raw HTML (phishing from our domain). Existing accounts now need their owner logged in, the email is escaped, the temporary password is cryptographically random, and the form is rate limited."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "cb84b5c",
+      "title": "Scripts inside uploaded SVG images ran on the API domain",
+      "text": "Uploaded files are served from the API origin, so a script inside an uploaded SVG ran there when the file was opened directly. SVG/XML/HTML now get a sandboxing CSP (images and PDFs still display), and customer booking attachments no longer accept SVG."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "83a52fb",
+      "title": "Certificate lookup exposed children's names to anyone",
+      "text": "Typing any email on the public certificate lookup showed the recipients' names, events and PDF links. Now only the logged-in owner sees the list; anyone else gets \"check your inbox\" and the list is emailed to that address."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "4e703a8",
+      "title": "Vendors could give themselves paid promotion and ratings",
+      "text": "Creating an event accepted isFeatured, premium promotion, featuredUntil and fake rating counts from the request. One shared protected-field list now covers create and update."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "99dca63",
+      "title": "Search boxes accepted regular expressions",
+      "text": "76 search sites put raw text into database regex queries: typing \"(\" returned a 500, and crafted patterns could tie up the database. Searches now match the literal text."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "fcaf589",
+      "title": "Public forms could be used to spam inboxes",
+      "text": "Contact, newsletter, partnership, lead and competition-draft forms only had the general rate limit. Each now allows 60 submissions an hour per network, and the event lead form validates its fields (a malformed name used to cause a 500)."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "ba194e3",
+      "title": "Anyone could burn the paid exchange-rate quota",
+      "text": "POST /api/currency/refresh was public and called the paid FX API every time. It is now admin-only; nothing in the site used it."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "medium",
+      "commit": "5fac050",
+      "title": "Users could be signed out everywhere after a quick refresh",
+      "text": "Two refresh tokens issued in the same second were identical, so an early refresh looked like token theft and signed the user out on every device. Each token is now unique."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "medium",
+      "commit": "514b1e1",
+      "title": "Vendor analytics page never loaded",
+      "text": "A public route declared earlier caught /events/vendor/analytics, so vendors always got \"Invalid event ID\". Found by the new route-auth check."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "medium",
+      "commit": "9cd97de",
+      "title": "Affiliates were never credited for paid orders",
+      "text": "The payment webhook looked affiliates up by the wrong field name, so no paid order ever recorded an affiliate conversion. Past orders with an affiliate code may need a backfill."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "low",
+      "commit": "00c810c",
+      "title": "Transferring a ticket to a new email always failed",
+      "text": "It tried to create an account without a password and returned a 500. It now asks the recipient to sign up first."
+    },
+    {
+      "area": "Payments",
+      "sev": "high",
+      "commit": "ababdd3",
+      "title": "Paid competition entries lost when the tab was closed",
+      "text": "Only the browser's return trip finalized an entry, so a parent who paid and closed the tab kept an unpaid draft and no confirmation. The Stripe webhook now finalizes it too, exactly once."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "medium",
+      "commit": "d8f6988",
+      "title": "Events created through one route didn't belong to their vendor",
+      "text": "POST /api/events stored the vendor's user id instead of the vendor id, so later ownership checks treated the vendor as a stranger. New events store the vendor id; older ones keep working until migrateEventVendorIds runs."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "medium",
+      "commit": "d8f6988",
+      "title": "Teachers got an error opening their own bookings",
+      "text": "Bookings pointed at a \"TeachingEvent\" model that doesn't exist, so reading a booking always returned a 500."
+    },
+    {
+      "area": "Payments",
+      "sev": "medium",
+      "commit": "1b823a8",
+      "title": "Stale Stripe events could mislead customers or downgrade vendors",
+      "text": "A late \"payment failed\" event notified customers who had already paid, and an out-of-order subscription event could downgrade a paying vendor. Subscription and invoice errors were also swallowed, losing the update. Now: no notice for paid orders, the subscription's current state is read from Stripe, and failures make Stripe retry."
+    },
+    {
+      "area": "Reliability & operations",
+      "sev": "low",
+      "commit": "c69d1e6",
+      "title": "Seeded test data broke every vendor check",
+      "text": "The local seed never created vendor profiles, so seeded events and employees pointed at nothing and vendor features couldn't be tested locally. Seeded vendors now get verified profiles."
+    },
+    {
+      "area": "Testing & CI",
+      "sev": "high",
+      "commit": "6be20aa",
+      "title": "CI never ran the browser tests or enforced coverage and audits",
+      "text": "Playwright tests existed but never ran in CI, coverage thresholds were never checked, and npm audit couldn't fail. Every PR now runs the browser tests against a real seeded backend, a ZAP security scan, CodeQL, a blocking dependency audit (reviewed exceptions only) and a coverage gate. scripts/verify.sh runs the same checks locally."
+    },
+    {
+      "area": "Testing & CI",
+      "sev": "medium",
+      "commit": "c5bf55c",
+      "title": "Nothing caught a route that forgot its login check",
+      "text": "Tests now mount the real route table and call every API route without login (and every admin route as a customer). Any route that isn't on the reviewed public list must refuse, so a new public route fails CI until reviewed."
+    },
+    {
+      "area": "Testing & CI",
+      "sev": "medium",
+      "commit": "e77087e",
+      "title": "Payment and booking code paths couldn't be tested",
+      "text": "The test database couldn't run transactions, which 27 code paths use. Tests now run on a replica set like production."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "low",
+      "commit": "cf82c46",
+      "title": "Old /book/<id> links went to a broken page",
+      "text": "The redirect sent visitors to the literal path /booking/:eventId. It now uses the real event id."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "f9e7822",
+      "title": "An admin endpoint returned the new user's password hash",
+      "text": "Creating a vendor from a partnership returned the full user document, password hash included. User documents now never serialize password or OTP hashes, on any endpoint. The public partner directory also stopped returning phone numbers, payment session ids and attachments."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "4bcf5f5",
+      "title": "Employees could check tickets in as a colleague",
+      "text": "The check-in API trusted the employee id in the request, any venue assignment authorised every event, and vendors could read every vendor's check-in logs. Check-ins are now tied to the logged-in employee and their assigned events, and logs are limited to the vendor's own events."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "68d92ba",
+      "title": "Affiliates could set their own earnings",
+      "text": "Applying or editing an affiliate profile accepted any field, including commission earned and totals. Only the form's fields are accepted now. Applying had also always failed, because the affiliate code was generated after validation."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "c150545",
+      "title": "Vendors could approve their own venues",
+      "text": "Venue updates accepted isApproved and promotion fields. Creating a venue also always failed (venue-type mismatch and missing required fields); both are fixed."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "cdf2b45",
+      "title": "Anyone could read unmoderated blog comments",
+      "text": "The public comment list accepted ?status=pending. It now returns published comments only, and deleting a comment twice no longer pushes the count below zero."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "c968630",
+      "title": "Anyone could rewrite a newsletter subscriber's details",
+      "text": "Subscribing with an existing email overwrote that subscriber's name, city and preferences. Existing subscribers are left as they are, and the welcome email escapes the name."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "high",
+      "commit": "bfdaff7",
+      "title": "Event cards reloaded the whole site, sometimes on another domain",
+      "text": "Cards linked to an absolute URL built from the configured site address, so every click was a full reload to that host. They now navigate inside the app."
+    },
+    {
+      "area": "Testing & CI",
+      "sev": "medium",
+      "commit": "891ef1b",
+      "title": "Frontend type-check had 38 errors",
+      "text": "All were unused code (including the never-shown old competition payment step). The type-check is clean, so the CI frontend job can pass."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "medium",
+      "commit": "747d2ec",
+      "title": "Admin review moderation did nothing",
+      "text": "The moderation queue and the dashboard activity feed crashed once any review existed, and approve, reject and flag were empty stubs. They now work and share one code path with the main review moderation (approving issues the certificate)."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "medium",
+      "commit": "90e2232",
+      "title": "Bad input crashed with a server error",
+      "text": "A malformed id anywhere returned 500, and production 500s echoed internal database messages. Malformed input now gets a 400 with a plain message, internals stay in the log, and the teacher profile page no longer crashes."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "medium",
+      "commit": "43e750d",
+      "title": "Venue click tracking never recorded anything",
+      "text": "Anonymous clicks on external-booking venues hit a login check first and returned 401. The public tracking routes now come before it."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "low",
+      "commit": "c48c8e0",
+      "title": "Categories couldn't be created without a slug",
+      "text": "The slug was generated after validation had already rejected it. It's now generated first."
+    },
+    {
+      "area": "Security",
+      "sev": "low",
+      "commit": "7e6ea6b",
+      "title": "Blog and reel likes could be inflated",
+      "text": "Blog likes trusted a spoofable IP header, and reel likes had no limit at all (and could go negative). Each client can now like once."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "low",
+      "commit": "b913833",
+      "title": "Settings and banners crashed on bad values",
+      "text": "A mistyped settings value or an unknown image id returned 500; both now return a clear 4xx."
+    },
+    {
+      "area": "Testing & CI",
+      "sev": "medium",
+      "commit": "ba74137",
+      "title": "Most controllers had no tests",
+      "text": "Added 260 controller tests (registration, check-in, affiliates, venues, blogs, partnerships, moderation and more) plus 96 ownership and auth tests. They found the 44 bugs fixed in this pass."
+    },
+    {
+      "area": "Payments",
+      "sev": "critical",
+      "commit": "7f8a29a",
+      "title": "Admin refunds never refunded the card",
+      "text": "The admin refund and bulk refund buttons marked the order refunded, but never asked Stripe to return the money. All admin refund endpoints now refund through Stripe, and a retry can't refund twice."
+    },
+    {
+      "area": "Payments",
+      "sev": "high",
+      "commit": "7f8a29a",
+      "title": "Refunded orders were still paid out to vendors",
+      "text": "A refund left the order's revenue in the vendor payout pool and its tickets still scannable. A full refund, whether made here or in the Stripe dashboard, now voids the tickets and takes the revenue out of payouts."
+    },
+    {
+      "area": "Payments",
+      "sev": "high",
+      "commit": "3056625",
+      "title": "One competition payment could unlock any number of entries",
+      "text": "Confirming a National Day entry checked that a Stripe payment was complete, but not which entry it paid for, so one paid checkout link could be reused to mark other unpaid entries as paid. The payment now has to belong to the entry being confirmed."
+    }
+  ],
+  "tests": [
+    {
+      "title": "Review link token",
+      "where": "Local",
+      "steps": [
+        "As admin, open an event in Admin → Events → Edit and click Generate Review Link; the link ends with ?t=…",
+        "Open the link without the ?t= part.",
+        "Open the full link and enter a new email, then submit a rating.",
+        "Open it again with customer@gema.com while logged out."
+      ],
+      "expect": "Without the token the page says the link is invalid. A new email can review. An existing account is asked to log in first."
+    },
+    {
+      "title": "Certificate lookup",
+      "where": "Local",
+      "steps": [
+        "Logged out, open /certificates/lookup and enter an email that has a certificate.",
+        "Open Mailpit at http://localhost:8025.",
+        "Log in as that user and open the page again."
+      ],
+      "expect": "Logged out: \"Check your inbox\" and nothing listed; the list arrives by email. Logged in: the list shows on the page."
+    },
+    {
+      "title": "Student program signup",
+      "where": "Local",
+      "steps": [
+        "Logged out, open /student-program and submit the form with customer@gema.com.",
+        "Submit again with a brand-new email."
+      ],
+      "expect": "The first is refused with \"already has a Kidrove account, please log in\". The second succeeds and the welcome email arrives in Mailpit."
+    },
+    {
+      "title": "Search with special characters",
+      "where": "Local",
+      "steps": [
+        "Search the blog for ( and for C++.",
+        "Search venues for [a-z."
+      ],
+      "expect": "Results load normally (empty or matching); no error page."
+    },
+    {
+      "title": "Uploaded SVG can't run scripts",
+      "where": "Local",
+      "steps": [
+        "As a vendor, upload an SVG containing <script>alert(1)</script> as an event image.",
+        "Open the image URL directly in a new tab."
+      ],
+      "expect": "The image shows (or is blank) and no alert appears. The response has a Content-Security-Policy with sandbox."
+    },
+    {
+      "title": "Vendor analytics",
+      "where": "Local",
+      "steps": [
+        "Log in as vendor@gema.com and open the analytics section of the vendor dashboard."
+      ],
+      "expect": "The analytics load; no \"Invalid event ID\" error."
+    },
+    {
+      "title": "Competition entry survives a closed tab",
+      "where": "Local (Docker, with STRIPE_API_KEY set)",
+      "steps": [
+        "Open /ai-art-competition, fill the form and pay with test card 4242 4242 4242 4242.",
+        "On Stripe's success screen, close the tab before it redirects back.",
+        "As admin, open the competition submissions list."
+      ],
+      "expect": "The entry shows as paid, and exactly one confirmation email is in Mailpit."
+    },
+    {
+      "title": "Full pre-deploy check",
+      "where": "Local",
+      "steps": [
+        "From the repo root, with Docker running: ./scripts/verify.sh",
+        "Open the report: cd frontend && npx playwright show-report"
+      ],
+      "expect": "It ends with \"All checks passed\". Any failure stops it with the failing step named."
+    },
+    {
+      "title": "Admin refund returns the money",
+      "where": "Local (Docker, Stripe test keys)",
+      "steps": [
+        "Book an event as a customer and pay with 4242 4242 4242 4242.",
+        "As admin, open the order and click Refund.",
+        "Check the payment in the Stripe test dashboard, and the customer's ticket."
+      ],
+      "expect": "Stripe shows the payment refunded; the ticket shows as refunded and no longer checks in."
+    },
+    {
+      "title": "National Day payment can't be reused",
+      "where": "Local (Docker, Stripe test keys)",
+      "steps": [
+        "Register two National Day entries; pay for the first with 4242 4242 4242 4242 and note the session_id in the success URL.",
+        "Call POST finalize for the second entry's submissionId with the first entry's session_id."
+      ],
+      "expect": "The request fails with \"Payment does not match this submission.\" and the second entry stays unpaid."
+    }
+  ]
 }
