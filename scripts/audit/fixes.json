@@ -1,5 +1,5 @@
 {
-  "testsPassing": "1124 / 1158",
+  "testsPassing": "1172 / 1204",
   "issues": [
     {
       "area": "Security",
@@ -378,6 +378,20 @@
       "commit": "6c981d2",
       "title": "National Day artwork public, email HTML injection, leaked test credentials",
       "text": "Artwork downloads are now admin-only, names in emails are HTML-escaped, the admin search escapes regex input, temp passwords use a secure random generator, and the hard-coded Ethereal mailbox login was removed (it is still in git history, so treat that mailbox as public)."
+    },
+    {
+      "area": "Payments",
+      "sev": "high",
+      "commit": "63e4d4d",
+      "title": "A coupon's last use could be taken twice, and unpaid orders burnt uses",
+      "text": "Coupon limits were checked and counted in separate steps, so two checkouts at once could both use the last allowed use. Uses also stayed spent when an unpaid order was cancelled, failed payment or expired. The check and the count now happen in one database update, and those orders give the use back."
+    },
+    {
+      "area": "Testing & CI",
+      "sev": "low",
+      "commit": "63e4d4d",
+      "title": "Refund tests flaky under the full suite",
+      "text": "Refund transactions sometimes aborted while other test files were still building indexes. Refunds now retry transient transaction errors with a short backoff and the refund tests build their indexes first. They pass on their own every time but can still fail when the whole suite runs at once; see the known failures note."
     }
   ],
   "tests": [
@@ -522,6 +536,16 @@
         "Open /national-day-art-competition/submit?ref=<reference> and look up with a different email, then with the parent email."
       ],
       "expect": "A different email says no registration was found; the parent email shows the entry. The link in the confirmation email fills in both."
+    },
+    {
+      "title": "Coupon last use and cancelled orders",
+      "where": "Local (Docker)",
+      "steps": [
+        "As admin, create a coupon with a total usage limit of 1.",
+        "As a customer, start a booking, apply the coupon, then cancel the unpaid order.",
+        "Start another booking and apply the same coupon."
+      ],
+      "expect": "The second booking accepts the coupon (the cancelled order gave its use back). After paying, a third attempt says the coupon has reached its usage limit."
     }
   ]
 }
