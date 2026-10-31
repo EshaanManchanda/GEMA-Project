@@ -336,6 +336,13 @@
       "commit": "808a98f",
       "title": "Traffic numbers couldn't say where visitors came from",
       "text": "Page views now carry an anonymous visitor id, the traffic source (UTM tags or referrer), browser, OS and visible time; new accounts keep the source they first arrived from. Search, filter, Book click, favourite, share, blog view, organiser profile click, sign-up and login events are tracked. A nightly rollup keeps daily and monthly totals after the 90-day raw data expires, and seven admin-only reports read them."
+    },
+    {
+      "area": "Analytics",
+      "sev": "low",
+      "commit": "fe8b390",
+      "title": "Two trackers counted the same visit as two sessions",
+      "text": "Page views and event clicks each kept their own session id, so they couldn't be joined into a funnel. One tracker now sends a shared session id and an anonymous visitor id, captures the landing UTM tags and referrer, and stops entirely when the browser has Global Privacy Control or Do Not Track on. The admin Traffic page gets seven report tabs with CSV export."
     }
   ],
   "tests": [
@@ -441,6 +448,28 @@
         "In Mongo, look at the analyticsdailies collection."
       ],
       "expect": "One period:\"day\" row per day of the last 90 days and a period:\"month\" row for this month; today's row counts the pages you just browsed. Running it again changes nothing."
+    },
+    {
+      "title": "Analytics smoke test: attribution and actions",
+      "where": "Local (Docker), fresh private window",
+      "steps": [
+        "Open http://localhost:5173/?utm_source=instagram&utm_medium=social&utm_campaign=test.",
+        "Search for an activity, apply an age and a city filter, open an event, click Book, share the event and a blog.",
+        "Register a new account in the same window.",
+        "As admin, open Traffic: check Overview, Marketing (Social media row, 'test' campaign), Conversions, Behaviour (your search and filters), Events, Content & SEO, Organisers. Export a CSV from one tab.",
+        "In Mongo, find the new user and look at its acquisition field."
+      ],
+      "expect": "Each tab shows your visit and actions; acquisition.channel is \"social\" and utmCampaign \"test\". The CSV opens with the same rows."
+    },
+    {
+      "title": "Analytics: returning visitors and privacy signals",
+      "where": "Local (Docker)",
+      "steps": [
+        "In a normal window, open the site, close the tab, open it again and browse.",
+        "Turn on Global Privacy Control (Brave, or Firefox privacy.globalprivacycontrol.enabled) or Do Not Track, reload, and watch DevTools Network.",
+        "Open the admin Traffic page on a phone-width window."
+      ],
+      "expect": "The second visit counts as returning (Overview new/returning). With GPC or DNT on there are no requests to /track/pageview, /track/engagement or /analytics/track. The tabs scroll sideways instead of overflowing the page."
     }
   ]
 }
