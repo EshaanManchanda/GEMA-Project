@@ -343,6 +343,13 @@
       "commit": "fe8b390",
       "title": "Two trackers counted the same visit as two sessions",
       "text": "Page views and event clicks each kept their own session id, so they couldn't be joined into a funnel. One tracker now sends a shared session id and an anonymous visitor id, captures the landing UTM tags and referrer, and stops entirely when the browser has Global Privacy Control or Do Not Track on. The admin Traffic page gets seven report tabs with CSV export."
+    },
+    {
+      "area": "Analytics",
+      "sev": "low",
+      "commit": "26a6532",
+      "title": "Highlights report didn't show where visitors come from",
+      "text": "The Platform Highlights PDF now has a 'Where visitors come from' chart (search engines, social media, WhatsApp, email, ads, other websites, direct), counted per visitor. It only appears once page views with a known source exist."
     }
   ],
   "tests": [
@@ -470,6 +477,14 @@
         "Open the admin Traffic page on a phone-width window."
       ],
       "expect": "The second visit counts as returning (Overview new/returning). With GPC or DNT on there are no requests to /track/pageview, /track/engagement or /analytics/track. The tabs scroll sideways instead of overflowing the page."
+    },
+    {
+      "title": "Highlights PDF shows visitor sources",
+      "where": "Local (Docker), after the smoke test above",
+      "steps": [
+        "As admin, open Analytics and download the Platform Highlights report for the last 30 days."
+      ],
+      "expect": "The Platform Engagement card has a 'Where visitors come from' chart that includes Social media."
     }
   ]
 }
