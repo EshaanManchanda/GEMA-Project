@@ -24,6 +24,17 @@ import {
   useSearchConsolePagesQuery,
   useSyncSearchConsoleMutation,
 } from '@/hooks/queries/useAdminQuery';
+import { GrowthReport, GrowthSummary, GrowthTab } from '@/components/admin/GrowthReports';
+
+const TABS: { id: 'overview' | GrowthTab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'acquisition', label: 'Marketing' },
+  { id: 'funnel', label: 'Conversions' },
+  { id: 'behaviour', label: 'Behaviour' },
+  { id: 'events', label: 'Events' },
+  { id: 'content', label: 'Content & SEO' },
+  { id: 'organisers', label: 'Organisers' },
+];
 
 ChartJS.register(
   CategoryScale,
@@ -129,6 +140,7 @@ const baseOptions = {
 // ─── Main Page ────────────────────────────────────────────────
 const AdminTrafficPage: React.FC = () => {
   const [days, setDays] = useState<DayRange>(28);
+  const [tab, setTab] = useState<'overview' | GrowthTab>('overview');
   const [gscSite, setGscSite] = useState<string | undefined>(undefined);
 
   const sitesQ = useSearchConsoleSitesQuery();
@@ -296,6 +308,29 @@ const AdminTrafficPage: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Tabs */}
+      <div role="tablist" className="flex gap-1 overflow-x-auto border-b border-gray-200">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition ${
+              tab === t.id ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab !== 'overview' ? (
+        <GrowthReport tab={tab} days={days} />
+      ) : (
+      <>
+      <GrowthSummary days={days} />
 
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -599,6 +634,8 @@ const AdminTrafficPage: React.FC = () => {
           <p className="text-center text-gray-400 text-xs py-8">No referrer data yet. Referrer data appears once users arrive from external sources.</p>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 };

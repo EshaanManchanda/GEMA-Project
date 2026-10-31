@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import favoritesAPI from '@services/api/favoritesAPI';
 import { Event } from '@/types/event';
+import { trackEvent } from '../../services/api/analyticsEventsAPI';
 import { toast } from 'react-hot-toast';
 
 interface FavoritesState {
@@ -76,6 +77,7 @@ export const toggleFavorite = createAsyncThunk(
         return { eventId, action: 'remove' as const };
       } else {
         await favoritesAPI.addToFavorites(eventId);
+        trackEvent('favouriteAdded', { eventId });
         toast.success('Added to favorites!');
         // Refetch to get full event data (slug, images, etc.) in Redux state
         dispatch(fetchFavorites());

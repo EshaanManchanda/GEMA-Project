@@ -678,6 +678,7 @@ const EventDetailPage: React.FC = () => {
       toast.error('Event information is not available');
       return;
     }
+    analyticsEventsAPI.trackEvent('bookingClicked', { eventId: event._id });
     // Handle external booking (Affiliate or Vendor-configured)
     if (event.externalBookingLink) {
       try {
@@ -843,6 +844,7 @@ const EventDetailPage: React.FC = () => {
   // Share handler
   const handleShare = async () => {
     if (!event) return;
+    analyticsEventsAPI.trackEvent('eventShared', { eventId: event._id, meta: { platform: 'share' in navigator ? 'native' : 'copy' } });
 
     if (navigator.share) {
       try {
@@ -875,6 +877,7 @@ const EventDetailPage: React.FC = () => {
   // View vendor profile handler
   const handleViewVendorProfile = () => {
     if (!event?.vendorId?._id) return;
+    analyticsEventsAPI.trackEvent('organiserProfileClicked', { eventId: event._id, meta: { method: 'profile' } });
     navigate(`/vendors/${event.vendorId._id}`);
   };
 
@@ -895,6 +898,7 @@ const EventDetailPage: React.FC = () => {
   // Share location handler
   const handleShareLocation = async () => {
     if (!event) return;
+    analyticsEventsAPI.trackEvent('eventShared', { eventId: event._id, meta: { platform: 'location' } });
     const { address, city } = (event.location as any) || {};
     const locationText = [address, city].filter(Boolean).join(', ');
     const shareText = `${event.title}${locationText ? ' — ' + locationText : ''}`;

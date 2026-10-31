@@ -1511,6 +1511,11 @@ const adminAPI = {
     }
   },
 
+  getTrafficReport: async (name: string, days = 28) => {
+    const response = await ApiService.get(`/admin/traffic/${name}`, { params: { days } });
+    return response.data;
+  },
+
   getTrafficReferrers: async (days = 30) => {
     try {
       const response = await ApiService.get('/admin/traffic/referrers', { params: { days } });

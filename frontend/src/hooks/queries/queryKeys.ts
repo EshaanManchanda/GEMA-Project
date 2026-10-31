@@ -139,6 +139,7 @@ export const adminKeys = {
   traffic: {
     overview: (days: number) => [...adminKeys.all, 'traffic', 'overview', days] as const,
     referrers: (days: number) => [...adminKeys.all, 'traffic', 'referrers', days] as const,
+    report: (name: string, days: number) => [...adminKeys.all, 'traffic', name, days] as const,
   },
 
   // Google Search Console

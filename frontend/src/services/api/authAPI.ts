@@ -14,11 +14,17 @@ import {
   PrivacySettings
 } from '@/types/auth';
 import logger from '@/utils/logger';
+import { getSignupAttribution, trackEvent } from './analyticsEventsAPI';
+
+/** Sign-up vs login analytics for the Google (Firebase) flow. */
+const trackFirebaseAuth = (data: { isNewUser?: boolean } | undefined) =>
+  trackEvent(data?.isNewUser ? 'registrationCompleted' : 'loginCompleted', { meta: { method: 'google' } });
 
 export const authAPI = {
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
     try {
       const response = await ApiService.post('/auth/login', credentials);
+      trackEvent('loginCompleted', { meta: { method: 'email' } });
       return response.data;
     } catch (error) {
       throw error;
@@ -34,12 +40,14 @@ export const authAPI = {
         email: userData.email,
         password: userData.password,
         phone: userData.phone,
-        role: userData.role
+        role: userData.role,
+        attribution: getSignupAttribution(),
       };
       // ApiService.post already returns the HTTP body — do not unwrap `.data` again.
       // Backend returns two shapes: new email -> { data: { user } }; existing email
       // (enumeration protection) -> no `data` at all. Both are valid 200/201s.
       const response = await ApiService.post<{ user?: User }>('/auth/register', apiData);
+      trackEvent('registrationCompleted', { meta: { method: 'email' } });
       return response as RegisterResponse;
     } catch (error) {
       throw error;
@@ -57,7 +65,8 @@ export const authAPI = {
 
   firebaseAuth: async (idToken: string, role?: string): Promise<AuthResponse> => {
     try {
-      const response = await ApiService.post('/auth/firebase', { idToken, ...(role ? { role } : {}) });
+      const response = await ApiService.post('/auth/firebase', { idToken, attribution: getSignupAttribution(), ...(role ? { role } : {}) });
+      trackFirebaseAuth(response.data);
       return response.data;
     } catch (error) {
       throw error;
@@ -369,7 +378,8 @@ export const authAPI = {
 
   authenticateWithFirebase: async (idToken: string): Promise<AuthResponse> => {
     try {
-      const response = await ApiService.post('/auth/firebase', { idToken });
+      const response = await ApiService.post('/auth/firebase', { idToken, attribution: getSignupAttribution() });
+      trackFirebaseAuth(response.data);
       return response.data;
     } catch (error) {
       throw error;

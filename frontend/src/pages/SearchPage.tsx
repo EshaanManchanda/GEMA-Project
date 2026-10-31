@@ -15,6 +15,7 @@ import EventCard from '@/components/client/EventCard';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/store';
 import { toggleFavorite } from '@/store/slices/favoritesSlice';
+import { trackEvent } from '@/services/api/analyticsEventsAPI';
 
 // ── Dual Range Slider ─────────────────────────────────────────────────────────
 interface DualRangeSliderProps {
@@ -292,6 +293,21 @@ const SearchPage: React.FC = () => {
 
   const searchParamsRef = useRef(searchParams);
   searchParamsRef.current = searchParams;
+
+  // Analytics: one searchPerformed / filterApplied per distinct result set (paging/sorting ignored)
+  const lastTracked = useRef('');
+  useEffect(() => {
+    if (!searchData) return;
+    const filterParams: Record<string, string> = {};
+    searchParams.forEach((v, k) => {
+      if (!['q', 'page', 'sortBy', 'sortOrder', 'organizer'].includes(k)) filterParams[k] = v;
+    });
+    const key = JSON.stringify([query, filterParams]);
+    if (key === lastTracked.current) return;
+    lastTracked.current = key;
+    if (query) trackEvent('searchPerformed', { meta: { query, resultCount: searchData.pagination?.totalEvents ?? searchData.events?.length ?? 0 } });
+    if (Object.keys(filterParams).length) trackEvent('filterApplied', { meta: { filters: filterParams } });
+  }, [searchData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const p = new URLSearchParams();

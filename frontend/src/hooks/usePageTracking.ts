@@ -1,31 +1,41 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { ApiService } from '@/services/api';
-import { v4 as uuidv4 } from 'uuid';
+import { trackEngagement, trackPageView } from '@/services/api/analyticsEventsAPI';
 
-const getSessionId = (): string => {
-  const key = 'gema_sid';
-  let sid = sessionStorage.getItem(key);
-  if (!sid) {
-    sid = uuidv4();
-    sessionStorage.setItem(key, sid);
-  }
-  return sid;
-};
-
+/** Page views on route change, plus visible time per page (sent when it's left or hidden). */
 export const usePageTracking = (): void => {
   const location = useLocation();
   const lastPath = useRef('');
+  const visibleSince = useRef<number | null>(null);
+  const visibleMs = useRef(0);
+
+  const flush = () => {
+    if (visibleSince.current !== null) {
+      visibleMs.current += Date.now() - visibleSince.current;
+      visibleSince.current = document.visibilityState === 'visible' ? Date.now() : null;
+    }
+    if (lastPath.current) trackEngagement(lastPath.current, visibleMs.current);
+    visibleMs.current = 0;
+  };
 
   useEffect(() => {
     if (location.pathname === lastPath.current) return;
+    flush();
     lastPath.current = location.pathname;
-
-    // Fire-and-forget — never await, never show errors to user
-    ApiService.post('/track/pageview', {
-      path: location.pathname,
-      referrer: document.referrer || null,
-      sessionId: getSessionId(),
-    }).catch(() => {});
+    visibleSince.current = document.visibilityState === 'visible' ? Date.now() : null;
+    trackPageView(location.pathname);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush();
+      else visibleSince.current = Date.now();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, []);
 };

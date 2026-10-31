@@ -63,6 +63,8 @@ export interface RegisterAPIData {
   password: string;
   phone?: string;
   role?: 'customer' | 'vendor' | 'employee' | 'teacher';
+  /** First-touch marketing attribution (analytics only). */
+  attribution?: import('@/services/api/analyticsEventsAPI').Attribution & { visitorId?: string };
 }
 
 // Auth response from API

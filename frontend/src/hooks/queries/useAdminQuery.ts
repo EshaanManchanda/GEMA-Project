@@ -354,6 +354,16 @@ export function useTrafficOverviewQuery(days = 30, options?: Omit<UseQueryOption
   });
 }
 
+/** Growth reports: summary | acquisition | funnel | behaviour | content | events | organisers */
+export function useTrafficReportQuery<T = any>(name: string, days = 28) {
+  return useQuery<T>({
+    queryKey: adminKeys.traffic.report(name, days),
+    queryFn: () => adminAPI.getTrafficReport(name, days),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  });
+}
+
 export function useTrafficReferrersQuery(days = 30, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
   return useQuery({
     queryKey: adminKeys.traffic.referrers(days),

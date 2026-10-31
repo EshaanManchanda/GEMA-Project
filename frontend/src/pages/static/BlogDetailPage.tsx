@@ -22,6 +22,7 @@ import { getCurrentPageUrl } from '../../utils/urlHelper';
 import CommentSection from '../../components/blog/CommentSection';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
+import { trackEvent } from '../../services/api/analyticsEventsAPI';
 
 const BlogDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -54,6 +55,7 @@ const BlogDetailPage: React.FC = () => {
       ]);
 
       if (blogResponse.blog) {
+        trackEvent('blogViewed', { blogId: blogResponse.blog._id });
         setBlog(blogResponse.blog);
         setLikeCount(blogResponse.blog.likeCount);
         // Initialize liked state from API response
@@ -101,6 +103,7 @@ const BlogDetailPage: React.FC = () => {
 
   const handleShare = async (platform?: string) => {
     if (!blog) return;
+    trackEvent('blogShared', { blogId: blog._id, meta: { platform: platform || 'native' } });
 
     try {
       await blogAPI.shareBlog(blog.slug);
