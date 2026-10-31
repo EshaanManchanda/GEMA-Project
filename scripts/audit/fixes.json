@@ -350,6 +350,34 @@
       "commit": "26a6532",
       "title": "Highlights report didn't show where visitors come from",
       "text": "The Platform Highlights PDF now has a 'Where visitors come from' chart (search engines, social media, WhatsApp, email, ads, other websites, direct), counted per visitor. It only appears once page views with a known source exist."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "6c981d2",
+      "title": "Anyone with a National Day reference could read or replace the entry",
+      "text": "References are nearly sequential, and lookup and artwork upload needed only the reference, so a stranger could read a child's details and overwrite their artwork. Both now need the parent email too, and a wrong email looks the same as a missing entry. Lookups also no longer miss entries older than the newest 100."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "6c981d2",
+      "title": "Paying for a National Day entry could attach a child to someone else's account",
+      "text": "Finalize looked up the parent account by the email typed on the form and added the child to it, so anyone could add children to an existing account. Children are now only added to an account that finalize itself just created."
+    },
+    {
+      "area": "Payments",
+      "sev": "high",
+      "commit": "6c981d2",
+      "title": "Competition payment could be skipped, and the school price chosen freely",
+      "text": "Sending session_id=TEST_PAYMENT_SKIP finalized National Day and AI Art entries without paying in any non-production setup, and anyone could choose the AED 40 school bulk price. The skip now needs ALLOW_TEST_PAYMENT_SKIP=true, and the school price needs a code listed in NATIONAL_DAY_SCHOOL_CODES."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "6c981d2",
+      "title": "National Day artwork public, email HTML injection, leaked test credentials",
+      "text": "Artwork downloads are now admin-only, names in emails are HTML-escaped, the admin search escapes regex input, temp passwords use a secure random generator, and the hard-coded Ethereal mailbox login was removed (it is still in git history, so treat that mailbox as public)."
     }
   ],
   "tests": [
@@ -485,6 +513,15 @@
         "As admin, open Analytics and download the Platform Highlights report for the last 30 days."
       ],
       "expect": "The Platform Engagement card has a 'Where visitors come from' chart that includes Social media."
+    },
+    {
+      "title": "National Day entry needs the parent email",
+      "where": "Local (Docker)",
+      "steps": [
+        "Register a National Day entry and note the reference (UAE2026-xxxxxxxx).",
+        "Open /national-day-art-competition/submit?ref=<reference> and look up with a different email, then with the parent email."
+      ],
+      "expect": "A different email says no registration was found; the parent email shows the entry. The link in the confirmation email fills in both."
     }
   ]
 }
