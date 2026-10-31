@@ -18,6 +18,7 @@ import {
   previousPeriod,
 } from "../services/businessReport.service";
 import { logReportGeneration } from "../services/reportObservability.service";
+import { runNightlyRollup } from "../services/analyticsRollup.service";
 import {
   ReportGenerationOperation,
   ReportGenerationStatus,
@@ -179,6 +180,9 @@ async function processBulkGenerate(
 }
 
 const processBusinessSnapshotJob = async (job: Job) => {
+  if (job.name === "traffic-rollup") {
+    return runNightlyRollup();
+  }
   if (job.name === "bulk-generate") {
     return processBulkGenerate(job as Job<BulkGenerateJobData>);
   }
@@ -221,6 +225,16 @@ if (analyticsQueue) {
     )
     .catch((err) =>
       logger.error("business-snapshot: failed to schedule monthly job", err),
+    );
+  // Traffic totals (models/AnalyticsDaily) — 00:15 daily, before raw PageViews expire.
+  analyticsQueue
+    .add(
+      "traffic-rollup",
+      {},
+      { jobId: "traffic-rollup-daily", repeat: { pattern: "15 0 * * *" } },
+    )
+    .catch((err) =>
+      logger.error(`analytics-rollup: failed to schedule daily job: ${err?.message}`),
     );
 }
 

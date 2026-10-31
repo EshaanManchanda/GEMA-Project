@@ -5,6 +5,7 @@ import { UserRole } from "../models/index";
 import PageView from "../models/PageView";
 import SearchConsoleHistory from "../models/SearchConsoleHistory";
 import * as gsc from "../services/searchConsole.service";
+import * as growth from "../services/growthAnalytics.service";
 
 const router = Router();
 
@@ -281,5 +282,36 @@ router.get(
     }
   },
 );
+
+// Growth reports — GET /api/admin/traffic/{report}?days=1..90
+// (summary also includes the previous equal period for comparison)
+router.get("/traffic/summary", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { current, previous, days } = growth.parseRange(req.query.days);
+    res.json({ success: true, data: { days, ...(await growth.overview(current, previous)) } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const reports = {
+  acquisition: growth.acquisition,
+  funnel: growth.funnel,
+  behaviour: growth.behaviour,
+  content: growth.content,
+  events: growth.events,
+  organisers: growth.organisers,
+} as const;
+
+for (const [name, build] of Object.entries(reports)) {
+  router.get(`/traffic/${name}`, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { current, days } = growth.parseRange(req.query.days);
+      res.json({ success: true, data: { days, ...(await build(current)) } });
+    } catch (err) {
+      next(err);
+    }
+  });
+}
 
 export default router;

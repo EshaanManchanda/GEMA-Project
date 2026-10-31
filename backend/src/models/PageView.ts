@@ -8,6 +8,15 @@ export interface IPageView extends Document {
   country: string | null;
   device: 'mobile' | 'tablet' | 'desktop' | 'bot' | 'unknown';
   sessionId: string | null;
+  visitorId: string | null;
+  isNewVisitor: boolean;
+  channel: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  browser: string | null;
+  os: string | null;
+  engagementMs: number;
   timestamp: Date;
 }
 
@@ -19,6 +28,15 @@ const PageViewSchema = new Schema<IPageView>({
   country:   { type: String, default: null },
   device:    { type: String, enum: ['mobile', 'tablet', 'desktop', 'bot', 'unknown'], default: 'unknown' },
   sessionId: { type: String, default: null },
+  visitorId: { type: String, default: null },
+  isNewVisitor: { type: Boolean, default: false },
+  channel:   { type: String, default: null },
+  utmSource: { type: String, default: null },
+  utmMedium: { type: String, default: null },
+  utmCampaign: { type: String, default: null },
+  browser:   { type: String, default: null },
+  os:        { type: String, default: null },
+  engagementMs: { type: Number, default: 0 },
   timestamp: { type: Date, default: Date.now },
 }, { timestamps: false });
 
@@ -26,5 +44,6 @@ const PageViewSchema = new Schema<IPageView>({
 PageViewSchema.index({ timestamp: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 });
 // Compound index for common query pattern
 PageViewSchema.index({ path: 1, timestamp: -1 });
+PageViewSchema.index({ sessionId: 1, timestamp: -1 });
 
 export default mongoose.model<IPageView>('PageView', PageViewSchema);

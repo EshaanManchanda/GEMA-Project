@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction, CookieOptions } from "express";
+import { toAcquisition } from "../utils/channel";
 import mongoose from "mongoose";
 import { getAuth } from "../config/firebase";
 import type { DecodedIdToken } from "firebase-admin/auth";
@@ -408,6 +409,7 @@ export const register = async (
       phone,
       role: newUserRole,
       status: UserStatus.PENDING,
+      acquisition: toAcquisition(req.body.attribution),
       emailVerification: {
         otpHash: await hashOTP(verificationOTP),
         expiresAt: otpExpiry,
@@ -1617,6 +1619,7 @@ export const firebaseAuth = async (
         isEmailVerified: decodedToken.email_verified,
         provider: "google",
         signupSource: "google",
+        acquisition: toAcquisition(req.body?.attribution),
       });
 
       logger.info("[FIREBASE_AUTH] New Google user created", {
@@ -1675,6 +1678,7 @@ export const firebaseAuth = async (
       data: {
         user: formatUserResponse(user),
         csrfToken,
+        isNewUser: authBranch === "new",
       },
     });
   } catch (error) {

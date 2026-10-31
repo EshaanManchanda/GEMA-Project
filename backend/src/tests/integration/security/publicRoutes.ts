@@ -105,6 +105,7 @@ export const PUBLIC_ROUTES: Record<string, string> = {
   "POST /api/insights/track": "analytics beacon",
   "POST /api/analytics/track": "analytics beacon",
   "POST /api/track/pageview": "analytics beacon",
+  "POST /api/track/engagement": "analytics beacon",
   "POST /api/affiliates/click/:affiliateCode": "affiliate click beacon",
 
   // Currency (read-only; /refresh is admin-only)

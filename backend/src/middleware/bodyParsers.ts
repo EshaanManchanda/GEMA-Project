@@ -16,6 +16,8 @@ export const LARGE_BODY_PATHS = [
 export const applyBodyParsers = (app: Application) => {
   app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
   app.use("/api/webhooks/cunnekt", express.raw({ type: "application/json" }));
+  // navigator.sendBeacon posts text/plain (no CORS preflight), parsed in the route.
+  app.use("/api/track/engagement", express.text({ type: "text/plain", limit: "2kb" }));
   app.use(LARGE_BODY_PATHS, express.json({ limit: "10mb" }));
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true, limit: "1mb" }));

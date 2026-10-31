@@ -176,6 +176,17 @@ export interface IUser extends Document {
   provider?: SocialProvider | "email";
   /** How the account was first created: "google" | "email". Analytics only. */
   signupSource?: string;
+  /** First-touch marketing attribution captured at sign-up. Analytics only. */
+  acquisition?: {
+    visitorId?: string;
+    channel?: string;
+    utmSource?: string;
+    utmMedium?: string;
+    utmCampaign?: string;
+    referrer?: string;
+    landingPath?: string;
+    at?: Date;
+  };
   favoriteEvents?: mongoose.Types.ObjectId[];
   hasReviewedEvents?: mongoose.Types.ObjectId[];
   preferences?: IPreferences;
@@ -415,6 +426,17 @@ const UserSchema = new Schema<IUser>(
     /** How the account was first created: "google" | "email". Analytics only. */
     signupSource: {
       type: String,
+    },
+    /** First-touch marketing attribution captured at sign-up. Analytics only. */
+    acquisition: {
+      visitorId: String,
+      channel: { type: String, index: true },
+      utmSource: String,
+      utmMedium: String,
+      utmCampaign: String,
+      referrer: String,
+      landingPath: String,
+      at: Date,
     },
     favoriteEvents: [
       {
