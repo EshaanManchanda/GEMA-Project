@@ -369,3 +369,17 @@ export type {
   IDeclarations,
   IConsentSection,
 } from "./CompetitionSubmission";
+
+// UAE National Day Art Competition 2026 Models
+export {
+  default as NationalDaySubmission,
+  GradeCategory as NationalDayCategory,
+  NationalDayGrade,
+  NationalDayMedium,
+  NationalDayThemePillar,
+  RegistrationType as NationalDayRegType,
+} from "./NationalDaySubmission";
+export type {
+  INationalDaySubmission,
+} from "./NationalDaySubmission";
+

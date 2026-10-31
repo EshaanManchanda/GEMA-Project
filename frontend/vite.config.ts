@@ -38,6 +38,8 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // Increase maximum file size limit for precaching from 2 MiB default to 5 MiB
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // SEO Optimization: Exclude HTML from precaching - always fetch fresh
         // No png: images are cached on first view by the CacheFirst rule below.
         // Precaching them made every new visitor download ~8.6 MB of PNGs.

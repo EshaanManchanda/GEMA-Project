@@ -171,6 +171,12 @@ const AiArtCompetitionPage = React.lazy(() => import(/* webpackChunkName: "compe
 const AiArtSponsorshipPage = React.lazy(() => import(/* webpackChunkName: "competition" */ './pages/AiArtSponsorshipPage'));
 const CompetitionPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "competition" */ './pages/CompetitionPaymentSuccessPage'));
 
+// UAE National Day Art Competition 2026
+const NationalDayCompetitionPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/NationalDayCompetitionPage'));
+const NationalDayPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/NationalDayPaymentSuccessPage'));
+const NationalDayArtworkSubmitPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/NationalDayArtworkSubmitPage'));
+
+
 // Analytics Pages
 const EventPerformance = React.lazy(() => import(/* webpackChunkName: "analytics" */ './pages/analytics/EventPerformance'));
 
@@ -379,6 +385,26 @@ function AppContent() {
               </Suspense>
             } />
           </Route>
+
+          {/* UAE National Day Art Competition 2026 */}
+          <Route path="national-day-art-competition">
+            <Route index element={
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <NationalDayCompetitionPage />
+              </Suspense>
+            } />
+            <Route path="payment-success" element={
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <NationalDayPaymentSuccessPage />
+              </Suspense>
+            } />
+            <Route path="submit" element={
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <NationalDayArtworkSubmitPage />
+              </Suspense>
+            } />
+          </Route>
+
           {/* Legacy: redirect old teaching-events detail URLs to the unified search page */}
           <Route path="teaching-events/:id" element={<Navigate to="/search" replace />} />
 
