@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
-
+frontend/prerender-routes.json
+frontend/public/sitemap.xml
 # Build output
 dist/
 build/
