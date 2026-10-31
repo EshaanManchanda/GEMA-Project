@@ -345,7 +345,10 @@ function engagementCard(r: TrustReport): string {
     `Visitor activity from ${fmtDate(e.coverage.start)} to ${fmtDate(lastDay(e.coverage.end))}.`,
     `<div class="stats">${stats}</div>` +
       sub("Page views per day", daily) +
-      sub("How visitors browse", devices),
+      sub("How visitors browse", devices) +
+      (e.channels?.length
+        ? sub("Where visitors come from", svgDonut(e.channels, { ariaLabel: "Visitors by source", centerLabel: "visitors" }))
+        : ""),
   );
 }
 

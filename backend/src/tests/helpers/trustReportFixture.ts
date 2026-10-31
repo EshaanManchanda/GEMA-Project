@@ -34,6 +34,7 @@ export function fixtureReport(overrides: Partial<TrustReport["sections"]> = {}):
       uniqueVisitors: 1800,
       eventPageOpens: 0,
       devices: [{ label: "Mobile", count: 4000, pct: 74 }, { label: "Desktop", count: 1400, pct: 26 }],
+      channels: [{ label: "Search engines", count: 900, pct: 60 }, { label: "WhatsApp", count: 600, pct: 40 }],
       daily: [{ key: "2026-10-11", value: 50 }, { key: "2026-10-12", value: 70 }],
     },
     search: {

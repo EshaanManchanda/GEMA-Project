@@ -121,6 +121,8 @@ export interface EngagementSection {
   uniqueVisitors: number;
   eventPageOpens: number;
   devices: RankRow[];
+  /** Visitors by marketing channel; empty until attributed page views exist. */
+  channels: RankRow[];
   daily: SeriesPoint[];
 }
 export interface SearchSection {
@@ -562,10 +564,26 @@ async function locationsSection(period: ReportPeriod, now: Date): Promise<Sectio
   return { status: "ok", data };
 }
 
+export const CHANNEL_LABELS: Record<string, string> = {
+  organic_search: "Search engines",
+  social: "Social media",
+  whatsapp: "WhatsApp",
+  email: "Email",
+  paid: "Ads",
+  referral: "Other websites",
+  direct: "Direct visits",
+};
+
+function channelRows(rows: { _id: string; n: number }[]): RankRow[] {
+  const known = rows.filter((r) => CHANNEL_LABELS[r._id] && r.n > 0);
+  const pcts = toPercentages(known.map((r) => r.n));
+  return known.map((r, i) => ({ label: CHANNEL_LABELS[r._id], count: r.n, pct: pcts[i] }));
+}
+
 async function engagementSection(period: ReportPeriod, now: Date): Promise<SectionResult<EngagementSection>> {
   const win = visitorWindow(period, now);
   const match = { ...HUMAN_VIEW, timestamp: { $gte: win.start, $lt: win.end } };
-  const [pageViews, sessions, devices, daily, earliest, eventPageOpens] = await Promise.all([
+  const [pageViews, sessions, devices, daily, earliest, eventPageOpens, channels] = await Promise.all([
     PageView.countDocuments(match),
     // One group per session, then $count — never a single unbounded array.
     PageView.aggregate<{ n: number }>([
@@ -589,6 +607,13 @@ async function engagementSection(period: ReportPeriod, now: Date): Promise<Secti
       type: "eventViewed",
       createdAt: { $gte: win.start, $lt: win.end },
     }),
+    // Visitors (not views) per channel; rows from before attribution have no channel.
+    PageView.aggregate<{ _id: string; n: number }>([
+      { $match: { ...match, channel: { $ne: null } } },
+      { $group: { _id: { c: "$channel", v: { $ifNull: ["$visitorId", "$sessionId"] } } } },
+      { $group: { _id: "$_id.c", n: { $sum: 1 } } },
+      { $sort: { n: -1 } },
+    ]).allowDiskUse(true),
   ]);
   if (pageViews === 0) return { status: "empty" };
 
@@ -609,6 +634,7 @@ async function engagementSection(period: ReportPeriod, now: Date): Promise<Secti
       uniqueVisitors: sessions[0]?.n ?? 0,
       eventPageOpens,
       devices: deviceRows.map((d, i) => ({ ...d, pct: pcts[i] })),
+      channels: channelRows(channels),
       daily: fillSeries({ start: coverage.start, end: coverage.end }, "day", daily),
     },
   };

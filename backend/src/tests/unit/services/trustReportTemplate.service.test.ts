@@ -21,6 +21,13 @@ describe("buildTrustReportHtml", () => {
     expect(html).not.toMatch(/<script/i);
   });
 
+  it("shows where visitors come from only when attributed visits exist", () => {
+    const report = fixtureReport();
+    expect(buildTrustReportHtml(report)).toContain("Where visitors come from");
+    report.sections.engagement!.channels = [];
+    expect(buildTrustReportHtml(report)).not.toContain("Where visitors come from");
+  });
+
   it("leaks no vendor sales, exact location counts or Search Console properties", () => {
     const html = buildTrustReportHtml(fixtureReport());
     expect(html).not.toMatch(/tickets issued|check-ins/i);
