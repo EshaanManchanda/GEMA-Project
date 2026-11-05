@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+﻿import React, { useEffect, useState, useRef } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import logger from '@/utils/logger';
@@ -295,16 +295,18 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
               {[
                 { path: '/search', label: 'Find Activities' },
                 { path: '/search?type=Course%2CWorkshop%2CClass%2CBootcamp%2CMasterclass', label: 'Explore Classes' },
+                { path: '/competitions', label: 'Competitions' },
                 { path: '/blog', label: 'Blog' },
                 { path: '/about', label: 'Kidrove Go' },
-                { path: '/faq', label: 'FAQ' },
                 { path: '/contact', label: 'Get In Touch' },
               ].map((link) => {
                 const isActive = link.path === '/search' 
                   ? location.pathname === '/search' && !location.search.includes('type=Course')
                   : link.path.includes('type=Course')
                     ? location.pathname === '/search' && location.search.includes('type=Course')
-                    : location.pathname === link.path;
+                    : link.path === '/competitions'
+                      ? location.pathname.startsWith('/competitions')
+                      : location.pathname === link.path;
                 return (
                   <Link
                     key={link.path}
@@ -612,16 +614,18 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                     {[
                       { path: '/search', label: 'Find Activities', icon: <FaSearch size={14} /> },
                       { path: '/search?type=Course%2CWorkshop%2CClass%2CBootcamp%2CMasterclass', label: 'Explore Classes', icon: <FaGraduationCap size={14} /> },
+                      { path: '/competitions', label: 'Competitions', icon: <FaAward size={14} /> },
                       { path: '/blog', label: 'Blog', icon: <FaFileAlt size={14} /> },
                       { path: '/about', label: 'Kidrove Go', icon: <FaUser size={14} /> },
-                      { path: '/faq', label: 'FAQ', icon: <FaChartBar size={14} /> },
                       { path: '/contact', label: 'Get In Touch', icon: <FaCalendarPlus size={14} /> },
                     ].map((link) => {
                       const isActive = link.path === '/search' 
                         ? location.pathname === '/search' && !location.search.includes('type=Course')
                         : link.path.includes('type=Course')
                           ? location.pathname === '/search' && location.search.includes('type=Course')
-                          : location.pathname === link.path;
+                          : link.path === '/competitions'
+                            ? location.pathname.startsWith('/competitions')
+                            : location.pathname === link.path;
                       return (
                         <Link
                           key={link.path}
@@ -815,7 +819,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 <li><Link to="/about" className="text-gray-700 hover:text-gray-900 text-sm">About Us</Link></li>
                 <li><Link to="/blog" className="text-gray-700 hover:text-gray-900 text-sm">Blog</Link></li>
                 <li><Link to="/contact" className="text-gray-700 hover:text-gray-900 text-sm">Contact Us</Link></li>
-                <li><Link to="/faq" className="text-gray-700 hover:text-gray-900 text-sm">FAQs</Link></li>
+                <li><Link to="/about#faqs" className="text-gray-700 hover:text-gray-900 text-sm">FAQs</Link></li>
                 <li><Link to="/partner-with-us" className="text-gray-700 hover:text-gray-900 text-sm">Partner with Us</Link></li>
               </ul>
 
@@ -854,13 +858,13 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
               <h3 className="font-semibold mt-10 mb-4 text-gray-900">Featured</h3>
               <ul className="space-y-2">
                 <li>
-                  <Link to="/ai-art-competition" className="text-gray-700 hover:text-gray-900 text-sm">
-                    AI Art Competition
+                  <Link to="/competitions" className="text-gray-700 hover:text-gray-900 text-sm">
+                    Competitions
                   </Link>
                 </li>
                 <li>
-                  <Link to="/national-day-art-competition" className="text-gray-700 hover:text-gray-900 text-sm">
-                    UAE National Day Art Competition
+                  <Link to="/winter-camp" className="text-gray-700 hover:text-gray-900 text-sm">
+                    Winter Camp
                   </Link>
                 </li>
                 <li>

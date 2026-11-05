@@ -55,6 +55,7 @@ const StudentSummerRegPage = React.lazy(() => import(/* webpackChunkName: "stude
 const SummerPartnersDirectoryPage = React.lazy(() => import(/* webpackChunkName: "summer" */ './pages/SummerPartnersDirectoryPage'));
 const SummerPartnerDetailPage = React.lazy(() => import(/* webpackChunkName: "summer" */ './pages/SummerPartnerDetailPage'));
 const ComingJuly26Page = React.lazy(() => import(/* webpackChunkName: "summer" */ './pages/ComingJuly26Page'));
+const WinterCampPage = React.lazy(() => import(/* webpackChunkName: "winter-camp" */ './pages/WinterCampPage'));
 
 // Auth Pages
 const LoginPage = React.lazy(() => import(/* webpackChunkName: "auth" */ './pages/auth/LoginPage'));
@@ -167,14 +168,21 @@ const AdminLeadPagesPage = React.lazy(() => import(/* webpackChunkName: "admin" 
 const LeadPage = React.lazy(() => import(/* webpackChunkName: "lead" */ './pages/LeadPage'));
 
 // Competition Pages (AI Art Competition 2026)
-const AiArtCompetitionPage = React.lazy(() => import(/* webpackChunkName: "competition" */ './pages/AiArtCompetitionPage'));
-const AiArtSponsorshipPage = React.lazy(() => import(/* webpackChunkName: "competition" */ './pages/AiArtSponsorshipPage'));
-const CompetitionPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "competition" */ './pages/CompetitionPaymentSuccessPage'));
+const CompetitionsListingPage = React.lazy(() => import(/* webpackChunkName: "competitions" */ './pages/competitions/CompetitionsListingPage'));
+const AiArtCompetitionPage = React.lazy(() => import(/* webpackChunkName: "competitions" */ './pages/competitions/AiArtCompetitionPage'));
+const AiArtSponsorshipPage = React.lazy(() => import(/* webpackChunkName: "competition" */ './pages/competitions/AiArtSponsorshipPage'));
+const CompetitionPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "competition" */ './pages/competitions/CompetitionPaymentSuccessPage'));
 
 // UAE National Day Art Competition 2026
-const NationalDayCompetitionPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/NationalDayCompetitionPage'));
-const NationalDayPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/NationalDayPaymentSuccessPage'));
-const NationalDayArtworkSubmitPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/NationalDayArtworkSubmitPage'));
+const NationalDayCompetitionPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/competitions/NationalDayCompetitionPage'));
+const NationalDayPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/competitions/NationalDayPaymentSuccessPage'));
+const NationalDayArtworkSubmitPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/competitions/NationalDayArtworkSubmitPage'));
+const YoungVoicesGCCPage = React.lazy(() => import(/* webpackChunkName: "gcc-competition" */ './pages/competitions/YoungVoicesGCCPage'));
+const YoungVoicesPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "gcc-competition" */ './pages/competitions/YoungVoicesPaymentSuccessPage'));
+const GCCReelChallengePage = React.lazy(() => import(/* webpackChunkName: "reel-competition" */ './pages/competitions/GCCReelChallengePage'));
+const GCCReelPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "reel-competition" */ './pages/competitions/GCCReelPaymentSuccessPage'));
+const YoungVoicesGCCSubmitPage = React.lazy(() => import(/* webpackChunkName: "gcc-competition" */ './pages/competitions/YoungVoicesGCCSubmitPage'));
+const GCCReelSubmitPage = React.lazy(() => import(/* webpackChunkName: "reel-competition" */ './pages/competitions/GCCReelSubmitPage'));
 
 
 // Analytics Pages
@@ -196,7 +204,6 @@ const BlogDetailPage = React.lazy(() => import(/* webpackChunkName: "static" */ 
 const ContactPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/ContactPage'));
 const PrivacyPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/PrivacyPage'));
 const TermsPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/TermsPage'));
-const FAQPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/FAQPage'));
 const HelpPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/HelpPage'));
 const PartnerWithUsPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/PartnerWithUsPage'));
 const ForOrganizationsPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/ForOrganizationsPage'));
@@ -360,43 +367,96 @@ function AppContent() {
             </Suspense>
           } />
 
-          {/* AI Art Competition 2026 */}
-          <Route path="ai-art-competition">
+          {/* Competitions Hub & Nested Sub-routes */}
+          <Route path="competitions">
             <Route index element={
               <Suspense fallback={<GenericPageSkeleton />}>
-                <AiArtCompetitionPage />
+                <CompetitionsListingPage />
               </Suspense>
             } />
-            <Route path="payment-success" element={
-              <Suspense fallback={<GenericPageSkeleton />}>
-                <CompetitionPaymentSuccessPage />
-              </Suspense>
-            } />
-            <Route path="sponsorship" element={
-              <Suspense fallback={<GenericPageSkeleton />}>
-                <AiArtSponsorshipPage />
-              </Suspense>
-            } />
+            <Route path="ai-art-competition">
+              <Route index element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <AiArtCompetitionPage />
+                </Suspense>
+              } />
+              <Route path="payment-success" element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <CompetitionPaymentSuccessPage />
+                </Suspense>
+              } />
+              <Route path="sponsorship" element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <AiArtSponsorshipPage />
+                </Suspense>
+              } />
+            </Route>
+            <Route path="national-day-art-competition">
+              <Route index element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <NationalDayCompetitionPage />
+                </Suspense>
+              } />
+              <Route path="payment-success" element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <NationalDayPaymentSuccessPage />
+                </Suspense>
+              } />
+              <Route path="submit" element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <NationalDayArtworkSubmitPage />
+                </Suspense>
+              } />
+            </Route>
+            <Route path="young-voices-of-the-gcc">
+              <Route index element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <YoungVoicesGCCPage />
+                </Suspense>
+              } />
+              <Route path="payment-success" element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <YoungVoicesPaymentSuccessPage />
+                </Suspense>
+              } />
+              <Route path="submit" element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <YoungVoicesGCCSubmitPage />
+                </Suspense>
+              } />
+            </Route>
+            <Route path="gcc-reel-challenge">
+              <Route index element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <GCCReelChallengePage />
+                </Suspense>
+              } />
+              <Route path="payment-success" element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <GCCReelPaymentSuccessPage />
+                </Suspense>
+              } />
+              <Route path="submit" element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <GCCReelSubmitPage />
+                </Suspense>
+              } />
+            </Route>
           </Route>
 
-          {/* UAE National Day Art Competition 2026 */}
-          <Route path="national-day-art-competition">
-            <Route index element={
-              <Suspense fallback={<GenericPageSkeleton />}>
-                <NationalDayCompetitionPage />
-              </Suspense>
-            } />
-            <Route path="payment-success" element={
-              <Suspense fallback={<GenericPageSkeleton />}>
-                <NationalDayPaymentSuccessPage />
-              </Suspense>
-            } />
-            <Route path="submit" element={
-              <Suspense fallback={<GenericPageSkeleton />}>
-                <NationalDayArtworkSubmitPage />
-              </Suspense>
-            } />
-          </Route>
+          {/* Backward-Compatible Redirects for Active Live Competitions */}
+          <Route path="ai-art-competition" element={<Navigate to="/competitions/ai-art-competition" replace />} />
+          <Route path="ai-art-competition/payment-success" element={<Navigate to="/competitions/ai-art-competition/payment-success" replace />} />
+          <Route path="ai-art-competition/sponsorship" element={<Navigate to="/competitions/ai-art-competition/sponsorship" replace />} />
+          <Route path="national-day-art-competition" element={<Navigate to="/competitions/national-day-art-competition" replace />} />
+          <Route path="national-day-art-competition/payment-success" element={<Navigate to="/competitions/national-day-art-competition/payment-success" replace />} />
+          <Route path="national-day-art-competition/submit" element={<Navigate to="/competitions/national-day-art-competition/submit" replace />} />
+          <Route path="young-voices-of-the-gcc" element={<Navigate to="/competitions/young-voices-of-the-gcc" replace />} />
+          <Route path="young-voices-of-the-gcc/payment-success" element={<Navigate to="/competitions/young-voices-of-the-gcc/payment-success" replace />} />
+          <Route path="gcc-reel-challenge" element={<Navigate to="/competitions/gcc-reel-challenge" replace />} />
+          <Route path="gcc-reel-challenge/payment-success" element={<Navigate to="/competitions/gcc-reel-challenge/payment-success" replace />} />
+          <Route path="young-voices-of-the-gcc/submit" element={<Navigate to="/competitions/young-voices-of-the-gcc/submit" replace />} />
+          <Route path="gcc-reel-challenge/submit" element={<Navigate to="/competitions/gcc-reel-challenge/submit" replace />} />
 
           {/* Legacy: redirect old teaching-events detail URLs to the unified search page */}
           <Route path="teaching-events/:id" element={<Navigate to="/search" replace />} />
@@ -551,6 +611,7 @@ function AppContent() {
               <SummerPartnerDetailPage />
             </Suspense>
           } />
+          <Route path="winter-camp" element={<Suspense fallback={<GenericPageSkeleton />}><WinterCampPage /></Suspense>} />
           <Route path="workshops" element={
             <Suspense fallback={<GenericPageSkeleton />}>
               <ComingJuly26Page />
@@ -591,11 +652,7 @@ function AppContent() {
               <TermsPage />
             </Suspense>
           } />
-          <Route path="faq" element={
-            <Suspense fallback={<GenericPageSkeleton />}>
-              <FAQPage />
-            </Suspense>
-          } />
+          <Route path="faq" element={<Navigate to="/about" replace />} />
           <Route path="help" element={
             <Suspense fallback={<GenericPageSkeleton />}>
               <HelpPage />

@@ -16,6 +16,7 @@ import fs from "fs";
 import { stripe } from "../config/stripe";
 import { AuthRequest } from "../types";
 import { certificateService } from "../modules/certificates/services/certificate.service";
+import { createCompetitionOrder } from "../utils/competitionOrder.utils";
 
 // Helper: map grade string to category
 export const getCategoryFromGrade = (grade: string): string => {
@@ -160,8 +161,8 @@ export const createCheckoutSession = catchAsync(
         submissionId: submission._id.toString(),
         studentName: submission.participant.studentFullName,
       },
-      success_url: `${frontendUrl}/national-day-art-competition/payment-success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submission._id.toString()}`,
-      cancel_url: `${frontendUrl}/national-day-art-competition?payment=cancelled&submission_id=${submission._id.toString()}`,
+      success_url: `${frontendUrl}/competitions/national-day-art-competition/payment-success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submission._id.toString()}`,
+      cancel_url: `${frontendUrl}/competitions/national-day-art-competition?payment=cancelled&submission_id=${submission._id.toString()}`,
     });
 
     submission.checkoutSessionId = session.id;
@@ -243,135 +244,8 @@ export const finalizeSubmission = catchAsync(
 
     logger.info(`[national-day] Registration finalized & paid: ${submission._id} — ${submission.participant.studentFullName}`);
 
-    // Create / link Parent & Student record (matches competition.controller.ts)
-    const parentEmail = submission.participant.parentEmail;
-    const parentName = submission.participant.parentName;
-    const studentFullName = submission.participant.studentFullName;
-
-    if (parentEmail && studentFullName) {
-      try {
-        let parentUser = await User.findOne({ email: parentEmail });
-        let isNewUser = false;
-        let tempPassword = "";
-
-        if (!parentUser) {
-          isNewUser = true;
-          tempPassword = Math.random().toString(36).slice(-8) + "!1A";
-
-          const nameParts = parentName ? parentName.trim().split(/\s+/) : ["Parent"];
-          const parentFirstName = nameParts[0] || "Parent";
-          const parentLastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "User";
-
-          parentUser = await User.create({
-            firstName: parentFirstName,
-            lastName: parentLastName,
-            email: parentEmail,
-            phone: submission.participant.parentPhone,
-            passwordHash: tempPassword,
-            role: UserRole.CUSTOMER,
-            status: UserStatus.ACTIVE,
-            isEmailVerified: true,
-          });
-          logger.info(`[national-day] Created new parent account for ${parentEmail}`);
-        }
-
-        const studentParts = studentFullName.trim().split(/\s+/);
-        const firstName = studentParts[0] || "Student";
-        const lastName = studentParts.length > 1 ? studentParts.slice(1).join(" ") : "Student";
-
-        const existingStudent = await Student.findOne({
-          parentUserId: parentUser._id,
-          firstName,
-          lastName,
-        });
-
-        if (!existingStudent) {
-          await Student.create({
-            parentUserId: parentUser._id,
-            email: parentEmail,
-            firstName,
-            lastName,
-            grade: submission.participant.grade,
-            phone: submission.participant.parentPhone,
-            schoolId: submission.participant.schoolName,
-          });
-          logger.info(`[national-day] Created student record for ${studentFullName}`);
-        }
-
-        if (isNewUser) {
-          try {
-            const welcomeHtml = `
-              <!DOCTYPE html>
-              <html>
-              <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Welcome to KidRove</title></head>
-              <body style="font-family:'Helvetica Neue',Arial,sans-serif;margin:0;padding:40px 20px;background:#f8fafc;">
-                <div style="max-width:600px;margin:0 auto;background:white;border-radius:20px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.1);">
-                  <div style="background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:40px 30px;text-align:center;">
-                    <div style="font-size:42px;margin-bottom:12px;">🇦🇪</div>
-                    <h1 style="margin:0;color:white;font-size:26px;font-weight:800;">Welcome to KidRove!</h1>
-                    <p style="margin:10px 0 0;color:rgba(255,255,255,0.9);font-size:15px;">Your parent account has been created</p>
-                  </div>
-                  <div style="padding:35px 30px;">
-                    <p style="font-size:16px;color:#374151;line-height:1.7;margin-top:0;">Hi <strong>${parentUser.firstName}</strong>,</p>
-                    <p style="font-size:15px;color:#4b5563;line-height:1.7;">
-                      Thank you for registering for the <strong style="color:#059669;">Eid Al Etihad Children's Art Competition 2026</strong>. We've created a parent account for you so you can track your child's entry and submit their artwork.
-                    </p>
-                    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #059669;border-radius:12px;padding:20px;margin:24px 0;">
-                      <p style="margin:0 0 5px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#166534;">Your Login Credentials</p>
-                      <table style="width:100%;border-collapse:collapse;margin-top:10px;">
-                        <tr>
-                          <td style="padding:8px 0;border-bottom:1px dashed #bbf7d0;color:#6b7280;font-size:13px;width:40%;">Login Email</td>
-                          <td style="padding:8px 0;border-bottom:1px dashed #bbf7d0;color:#1f2937;font-size:13px;font-weight:700;">${parentEmail}</td>
-                        </tr>
-                        <tr>
-                          <td style="padding:8px 0;color:#6b7280;font-size:13px;">Temporary Password</td>
-                          <td style="padding:8px 0;"><code style="background:#1f2937;color:#34d399;padding:4px 10px;border-radius:6px;font-size:13px;letter-spacing:1px;">${tempPassword}</code></td>
-                        </tr>
-                      </table>
-                    </div>
-                    <div style="text-align:center;margin:28px 0;">
-                      <a href="${config.frontendUrl}/login" style="display:inline-block;background:#059669;color:white;text-decoration:none;padding:12px 28px;border-radius:50px;font-weight:700;font-size:14px;">Login to Your Account →</a>
-                    </div>
-                  </div>
-                </div>
-              </body>
-              </html>
-            `;
-            await emailService.sendEmail({
-              to: parentEmail,
-              subject: "Welcome to KidRove — Your Account Details",
-              html: welcomeHtml,
-              text: `Welcome to KidRove, ${parentUser.firstName}! Your account has been created. Login at ${config.frontendUrl}/login with email: ${parentEmail} and password: ${tempPassword}`,
-              notificationType: "essential",
-            });
-            logger.info(`[national-day] Sent welcome email with credentials to ${parentEmail}`);
-          } catch (welcomeErr) {
-            logger.error(`[national-day] Failed to send welcome email to ${parentEmail}`, welcomeErr);
-          }
-        }
-      } catch (err) {
-        logger.error("[national-day] Post-finalization parent/student user creation error:", err);
-      }
-    }
-
-    // Send automated Phase 1 Registration email with template / submit instructions
-    try {
-      logger.info(`[national-day] Dispatching Phase 1 registration confirmation email to: ${parentEmail}`);
-      await emailService.sendNationalDayRegistrationEmail({
-        to: parentEmail,
-        parentName: submission.participant.parentName,
-        studentName: submission.participant.studentFullName,
-        refNo: subRef,
-        grade: submission.participant.grade,
-        category: submission.participant.category,
-        isLittleArtist,
-      });
-      logger.info(`[national-day] Phase 1 confirmation email successfully sent to ${parentEmail}`);
-    } catch (emailErr) {
-      logger.error(`[national-day] Confirmation email delivery failed for ${parentEmail}:`, emailErr);
-    }
-
-    return res.status(200).json({
+    // ── Respond immediately to caller ─────────────────────────────────────────
+    res.status(200).json({
       success: true,
       message: "Registration received and confirmed!",
       data: {
@@ -385,6 +259,150 @@ export const finalizeSubmission = catchAsync(
         hasArtwork: Boolean(submission.artworkUpload?.artworkUrl),
       },
     });
+
+    // ── Background Tasks: Accounts, Orders, Emails ───────────────────────────
+    (async () => {
+      try {
+        const parentEmail = submission.participant.parentEmail;
+        const parentName = submission.participant.parentName;
+        const studentFullName = submission.participant.studentFullName;
+
+        if (parentEmail && studentFullName) {
+          let parentUser = await User.findOne({ email: parentEmail });
+          let isNewUser = false;
+          let tempPassword = "";
+
+          if (!parentUser) {
+            isNewUser = true;
+            tempPassword = Math.random().toString(36).slice(-8) + "!1A";
+
+            const nameParts = parentName ? parentName.trim().split(/\s+/) : ["Parent"];
+            const parentFirstName = nameParts[0] || "Parent";
+            const parentLastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "User";
+
+            parentUser = await User.create({
+              firstName: parentFirstName,
+              lastName: parentLastName,
+              email: parentEmail,
+              phone: submission.participant.parentPhone,
+              passwordHash: tempPassword,
+              role: UserRole.CUSTOMER,
+              status: UserStatus.ACTIVE,
+              isEmailVerified: true,
+            });
+            logger.info(`[national-day] Created new parent account for ${parentEmail}`);
+          }
+
+          const studentParts = studentFullName.trim().split(/\s+/);
+          const firstName = studentParts[0] || "Student";
+          const lastName = studentParts.length > 1 ? studentParts.slice(1).join(" ") : "Student";
+
+          const existingStudent = await Student.findOne({
+            parentUserId: parentUser._id,
+            firstName,
+            lastName,
+          });
+
+          if (!existingStudent) {
+            await Student.create({
+              parentUserId: parentUser._id,
+              email: parentEmail,
+              firstName,
+              lastName,
+              grade: submission.participant.grade,
+              phone: submission.participant.parentPhone,
+              schoolId: submission.participant.schoolName,
+            });
+            logger.info(`[national-day] Created student record for ${studentFullName}`);
+          }
+
+          if (isNewUser) {
+            try {
+              const welcomeHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Welcome to KidRove</title></head>
+                <body style="font-family:'Helvetica Neue',Arial,sans-serif;margin:0;padding:40px 20px;background:#f8fafc;">
+                  <div style="max-width:600px;margin:0 auto;background:white;border-radius:20px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.1);">
+                    <div style="background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:40px 30px;text-align:center;">
+                      <div style="font-size:42px;margin-bottom:12px;">🇦🇪</div>
+                      <h1 style="margin:0;color:white;font-size:26px;font-weight:800;">Welcome to KidRove!</h1>
+                      <p style="margin:10px 0 0;color:rgba(255,255,255,0.9);font-size:15px;">Your parent account has been created</p>
+                    </div>
+                    <div style="padding:35px 30px;">
+                      <p style="font-size:16px;color:#374151;line-height:1.7;margin-top:0;">Hi <strong>${parentUser.firstName}</strong>,</p>
+                      <p style="font-size:15px;color:#4b5563;line-height:1.7;">
+                        Thank you for registering for the <strong style="color:#059669;">Eid Al Etihad Children's Art Competition 2026</strong>. We've created a parent account for you so you can track your child's entry and submit their artwork.
+                      </p>
+                      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #059669;border-radius:12px;padding:20px;margin:24px 0;">
+                        <p style="margin:0 0 5px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#166534;">Your Login Credentials</p>
+                        <table style="width:100%;border-collapse:collapse;margin-top:10px;">
+                          <tr>
+                            <td style="padding:8px 0;border-bottom:1px dashed #bbf7d0;color:#6b7280;font-size:13px;width:40%;">Login Email</td>
+                            <td style="padding:8px 0;border-bottom:1px dashed #bbf7d0;color:#1f2937;font-size:13px;font-weight:700;">${parentEmail}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding:8px 0;color:#6b7280;font-size:13px;">Temporary Password</td>
+                            <td style="padding:8px 0;"><code style="background:#1f2937;color:#34d399;padding:4px 10px;border-radius:6px;font-size:13px;letter-spacing:1px;">${tempPassword}</code></td>
+                          </tr>
+                        </table>
+                      </div>
+                      <div style="text-align:center;margin:28px 0;">
+                        <a href="${config.frontendUrl}/login" style="display:inline-block;background:#059669;color:white;text-decoration:none;padding:12px 28px;border-radius:50px;font-weight:700;font-size:14px;">Login to Your Account →</a>
+                      </div>
+                    </div>
+                  </div>
+                </body>
+                </html>
+              `;
+              await emailService.sendEmail({
+                to: parentEmail,
+                subject: "Welcome to KidRove — Your Account Details",
+                html: welcomeHtml,
+                text: `Welcome to KidRove, ${parentUser.firstName}! Your account has been created. Login at ${config.frontendUrl}/login with email: ${parentEmail} and password: ${tempPassword}`,
+                notificationType: "essential",
+              });
+              logger.info(`[national-day] Sent welcome email with credentials to ${parentEmail}`);
+            } catch (welcomeErr) {
+              logger.error(`[national-day] Failed to send welcome email to ${parentEmail}`, welcomeErr);
+            }
+          }
+        }
+
+        // ── Create Order record (links payment to admin dashboard & revenue) ──
+        await createCompetitionOrder({
+          competitionKey: "national-day",
+          competitionTitle: "Kidrove Eid Al Etihad Children's Art Competition 2026 — Entry Fee",
+          submissionId: submission._id,
+          transactionId: sessionId,
+          amountAED: submission.paymentAmount || 50,
+          parentEmail: submission.participant.parentEmail,
+          parentName: submission.participant.parentName,
+          parentPhone: submission.participant.parentPhone,
+          studentName: submission.participant.studentFullName,
+          ipAddress: submission.metadata?.ipAddress,
+        });
+
+        // Send automated Phase 1 Registration email with template / submit instructions
+        try {
+          logger.info(`[national-day] Dispatching Phase 1 registration confirmation email to: ${parentEmail}`);
+          await emailService.sendNationalDayRegistrationEmail({
+            to: parentEmail,
+            parentName: submission.participant.parentName,
+            studentName: submission.participant.studentFullName,
+            refNo: subRef,
+            grade: submission.participant.grade,
+            category: submission.participant.category,
+            isLittleArtist,
+          });
+          logger.info(`[national-day] Phase 1 confirmation email successfully sent to ${parentEmail}`);
+        } catch (emailErr) {
+          logger.error(`[national-day] Confirmation email delivery failed for ${parentEmail}:`, emailErr);
+        }
+      } catch (bgErr) {
+        logger.error("[national-day] Error in background finalization tasks:", bgErr);
+      }
+    })();
   }
 );
 

@@ -80,7 +80,7 @@ const AdminDashboardPage: React.FC = () => {
             },
             {
               title: 'Total Revenue',
-              value: `$${data.totalRevenue?.toLocaleString() || '0'}`,
+              value: `AED ${data.totalRevenue?.toLocaleString() || '0'}`,
               change: data.revenueGrowth || 0,
               icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

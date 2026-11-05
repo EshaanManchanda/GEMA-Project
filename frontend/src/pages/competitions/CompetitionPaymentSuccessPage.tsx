@@ -88,7 +88,7 @@ export default function CompetitionPaymentSuccessPage() {
           <p className="text-slate-400 text-sm mb-6 leading-relaxed">{errorMessage}</p>
           <div className="space-y-3">
             <a
-              href="/ai-art-competition"
+              href="/competitions/ai-art-competition"
               className="block w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm transition-all"
             >
               Return to Competition Page
@@ -194,7 +194,7 @@ export default function CompetitionPaymentSuccessPage() {
 
         <div className="mt-8">
           <a
-            href="/ai-art-competition"
+            href="/competitions/ai-art-competition"
             className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-xl transition-all border border-slate-600 inline-block"
           >
             Submit Another Entry

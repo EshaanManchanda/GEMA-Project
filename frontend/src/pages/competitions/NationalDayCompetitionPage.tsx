@@ -444,7 +444,7 @@ export default function NationalDayCompetitionPage() {
       if (!submissionId) {
         throw new Error(regRes?.message || 'Failed to save test registration');
       }
-      window.location.href = `/national-day-art-competition/payment-success?session_id=TEST_PAYMENT_SKIP&submission_id=${submissionId}`;
+      window.location.href = `/competitions/national-day-art-competition/payment-success?session_id=TEST_PAYMENT_SKIP&submission_id=${submissionId}`;
     } catch (err: any) {
       toast.error(err?.message || 'Bypass failed');
       setIsSubmitting(false);
@@ -592,7 +592,7 @@ export default function NationalDayCompetitionPage() {
                   <FiChevronRight className="stroke-[3]" />
                 </button>
                 <Link
-                  to="/national-day-art-competition/submit"
+                  to="/competitions/national-day-art-competition/submit"
                   className="px-6 py-3.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-black text-sm transition-all shadow-md shadow-amber-500/25 flex items-center gap-2"
                 >
                   <span>Already Registered? Submit Artwork</span>
