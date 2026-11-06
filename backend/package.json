@@ -33,7 +33,7 @@
     "db:seed-production-seo": "ts-node src/scripts/seed-production-seo.ts",
     "db:seed-all": "npm run db:seed && npm run db:seed-blogs && npm run db:seed-categories && npm run db:seed-banners && npm run db:seed-seo && npm run db:seed-faqs",
     "migrate:cloudinary": "ts-node src/scripts/migrate-cloudinary-assets.ts",
-    "migrate:competition-orders": "node dist/scripts/migrations/backfillCompetitionOrders.js",
+    "migrate:competition-orders": "npx ts-node --transpile-only src/scripts/migrations/backfillCompetitionOrders.ts",
     "migrate:blog-images": "ts-node src/scripts/migrate-blog-images.ts",
     "migrate:event-images": "ts-node src/scripts/migrate-event-images.ts",
     "migrate:uuid": "ts-node src/scripts/migrate-add-uuid-to-media.ts",
