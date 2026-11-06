@@ -15,8 +15,10 @@ export const registerWinterCamp = async (
   try {
     const {
       studentName,
+      email,
       studentEmail,
       parentEmail,
+      phone,
       parentPhone,
       grade,
       selectedPrograms,
@@ -24,19 +26,22 @@ export const registerWinterCamp = async (
       message,
     } = req.body;
 
-    if (!studentName || !studentEmail || !parentEmail || !grade) {
+    const resolvedEmail = (email || studentEmail || parentEmail || "").trim().toLowerCase();
+    const resolvedPhone = (phone || parentPhone || "").trim();
+
+    if (!studentName || !resolvedEmail || !grade) {
       res.status(400).json({
         success: false,
-        message: "Student name, student email, parent email, and grade are required.",
+        message: "Student name, email, and grade are required.",
       });
       return;
     }
 
     const registration = await WinterCampRegistration.create({
       studentName: studentName.trim(),
-      studentEmail: studentEmail.trim().toLowerCase(),
-      parentEmail: parentEmail.trim().toLowerCase(),
-      parentPhone: parentPhone ? parentPhone.trim() : undefined,
+      studentEmail: studentEmail?.trim().toLowerCase() || resolvedEmail,
+      parentEmail: parentEmail?.trim().toLowerCase() || resolvedEmail,
+      parentPhone: resolvedPhone || undefined,
       grade: grade.trim(),
       selectedPrograms: Array.isArray(selectedPrograms) ? selectedPrograms : [],
       interests: Array.isArray(interests) ? interests : [],

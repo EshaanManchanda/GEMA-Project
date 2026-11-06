@@ -2,9 +2,11 @@ import { ApiService } from '../api';
 
 export interface WinterCampRegisterPayload {
   studentName: string;
-  studentEmail: string;
-  parentEmail: string;
+  email?: string;
+  studentEmail?: string;
+  parentEmail?: string;
   parentPhone?: string;
+  phone?: string;
   grade: string;
   selectedPrograms: string[];
   interests?: string[];
@@ -14,8 +16,8 @@ export interface WinterCampRegisterPayload {
 export interface WinterCampRegistrationItem {
   _id: string;
   studentName: string;
-  studentEmail: string;
-  parentEmail: string;
+  studentEmail?: string;
+  parentEmail?: string;
   parentPhone?: string;
   grade: string;
   selectedPrograms: string[];

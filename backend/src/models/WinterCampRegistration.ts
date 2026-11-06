@@ -9,8 +9,8 @@ export enum WinterCampStatus {
 
 export interface IWinterCampRegistration extends Document {
   studentName: string;
-  studentEmail: string;
-  parentEmail: string;
+  studentEmail?: string;
+  parentEmail?: string;
   parentPhone?: string;
   grade: string;
   selectedPrograms: string[];
@@ -31,13 +31,11 @@ const WinterCampRegistrationSchema = new Schema<IWinterCampRegistration>(
     },
     studentEmail: {
       type: String,
-      required: [true, "Student email is required"],
       trim: true,
       lowercase: true,
     },
     parentEmail: {
       type: String,
-      required: [true, "Parent email is required"],
       trim: true,
       lowercase: true,
     },

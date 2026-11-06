@@ -145,8 +145,10 @@ export const WinterCampTab: React.FC = () => {
                                             )}
                                         </td>
                                         <td className="px-5 py-4 text-xs space-y-0.5">
-                                            <div className="text-gray-900">{reg.studentEmail}</div>
-                                            <div className="text-gray-400">Parent: {reg.parentEmail}</div>
+                                            <div className="text-gray-900">{reg.studentEmail || reg.parentEmail}</div>
+                                            {reg.parentEmail && reg.studentEmail && reg.parentEmail !== reg.studentEmail && (
+                                                <div className="text-gray-400">Alt: {reg.parentEmail}</div>
+                                            )}
                                         </td>
                                         <td className="px-5 py-4">
                                             <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-100">

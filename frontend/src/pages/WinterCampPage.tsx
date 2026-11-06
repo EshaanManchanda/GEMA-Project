@@ -143,9 +143,8 @@ const WinterCampPage: React.FC = () => {
 
   const [form, setForm] = useState({
     studentName: '',
-    studentEmail: '',
-    parentEmail: '',
-    parentPhone: '',
+    email: '',
+    phone: '',
     grade: '',
     selectedPrograms: [] as string[],
     interests: [] as string[],
@@ -182,14 +181,25 @@ const WinterCampPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!form.studentName || !form.studentEmail || !form.parentEmail || !form.grade) {
+    if (!form.studentName || !form.email || !form.grade) {
       toast.error('Please complete all required fields (*)');
       return;
     }
 
     try {
       setSubmitting(true);
-      const res = await winterCampAPI.register(form);
+      const res = await winterCampAPI.register({
+        studentName: form.studentName,
+        email: form.email,
+        studentEmail: form.email,
+        parentEmail: form.email,
+        phone: form.phone,
+        parentPhone: form.phone,
+        grade: form.grade,
+        selectedPrograms: form.selectedPrograms,
+        interests: form.interests,
+        message: form.message
+      });
       if (res?.data?.success || res?.success) {
         toast.success('❄️ Winter Camp registration submitted successfully! Check your inbox soon.', {
           duration: 5000,
@@ -197,9 +207,8 @@ const WinterCampPage: React.FC = () => {
         });
         setForm({
           studentName: '',
-          studentEmail: '',
-          parentEmail: '',
-          parentPhone: '',
+          email: '',
+          phone: '',
           grade: '',
           selectedPrograms: [],
           interests: [],
@@ -361,46 +370,31 @@ const WinterCampPage: React.FC = () => {
                 />
               </div>
 
-              {/* Emails */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                    Student Email Address <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={form.studentEmail}
-                    onChange={e => setForm({ ...form, studentEmail: e.target.value })}
-                    placeholder="student@example.com"
-                    className="w-full px-4 py-3.5 border border-slate-200 bg-white rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all font-medium"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                    Parent Email Address <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={form.parentEmail}
-                    onChange={e => setForm({ ...form, parentEmail: e.target.value })}
-                    placeholder="parent@example.com"
-                    className="w-full px-4 py-3.5 border border-slate-200 bg-white rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all font-medium"
-                  />
-                </div>
+              {/* Email (Student / Parent) */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+                  Email (Student / Parent) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  placeholder="name@example.com"
+                  className="w-full px-4 py-3.5 border border-slate-200 bg-white rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all font-medium"
+                />
               </div>
 
-              {/* Phone & Grade */}
+              {/* Contact Number & Grade */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                    Parent / Contact Phone (Optional)
+                    Contact Number (Student / Parent) (Optional)
                   </label>
                   <input
                     type="tel"
-                    value={form.parentPhone}
-                    onChange={e => setForm({ ...form, parentPhone: e.target.value })}
+                    value={form.phone}
+                    onChange={e => setForm({ ...form, phone: e.target.value })}
                     placeholder="+971 50 123 4567"
                     className="w-full px-4 py-3.5 border border-slate-200 bg-white rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all font-medium"
                   />
