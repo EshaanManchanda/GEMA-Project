@@ -226,17 +226,22 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
 
       {/* Dot Indicators */}
       {loaded && validBanners.length > 1 && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex z-10">
           {validBanners.map((_, idx) => (
             <button
               key={idx}
               onClick={() => instanceRef.current?.moveToIdx(idx)}
-              className={`w-3 h-3 rounded-full transition-all duration-300 ${idx === currentSlide
-                ? 'bg-white w-8'
-                : 'bg-white/50 hover:bg-white/75'
-                }`}
+              className="group p-1.5"
               aria-label={`Go to slide ${idx + 1}`}
-            />
+              aria-current={idx === currentSlide}
+            >
+              <span
+                className={`block h-3 rounded-full transition-all duration-300 ${idx === currentSlide
+                  ? 'bg-white w-8'
+                  : 'w-3 bg-white/50 group-hover:bg-white/75'
+                  }`}
+              />
+            </button>
           ))}
         </div>
       )}

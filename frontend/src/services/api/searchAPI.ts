@@ -29,19 +29,6 @@ const searchAPI = {
     }
   },
 
-  searchVendors: async (query: string, filters?: any) => {
-    try {
-      const response = await ApiService.get('/search/vendors', {
-        params: {
-          q: query,
-          ...filters,
-        },
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
   searchCategories: async (query: string) => {
     try {

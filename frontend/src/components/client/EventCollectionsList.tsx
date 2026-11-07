@@ -187,18 +187,20 @@ const CollectionBlock: React.FC<{ collection: CollectionInfo }> = ({ collection 
 
         {/* Dot indicators */}
         {loaded && sortedEvents.length > 1 && (
-          <div className="flex justify-center gap-2 mt-4">
+          <div className="flex justify-center mt-4">
             {sortedEvents.map((_, idx) => (
               <button
                 key={idx}
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${currentSlide === idx ? 'w-8' : 'w-2'
-                  }`}
-                style={{
-                  backgroundColor: currentSlide === idx ? 'var(--primary-color, #4F46E5)' : '#D1D5DB'
-                }}
+                className="p-2"
                 onClick={() => instanceRef.current?.moveToIdx(idx)}
                 aria-label={`Go to slide ${idx + 1}`}
-              />
+                aria-current={currentSlide === idx}
+              >
+                <span
+                  className={`block h-2 rounded-full transition-all duration-300 ${currentSlide === idx ? 'w-8' : 'w-2'}`}
+                  style={{ backgroundColor: currentSlide === idx ? 'var(--primary-color, #4F46E5)' : '#D1D5DB' }}
+                />
+              </button>
             ))}
           </div>
         )}

@@ -1159,12 +1159,12 @@ const EventDetailPage: React.FC = () => {
 
             {/* Class Insights */}
             <div className="mb-8">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
                 <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
                 Class Insights
-              </h3>
+              </h2>
               <div className={`grid grid-cols-1 gap-4 ${event.externalBookingLink ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
                 <StatCard
                   title="Views"
@@ -1608,7 +1608,7 @@ const EventDetailPage: React.FC = () => {
                   href="https://wa.me/971529881170"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="shrink-0 px-7 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-full transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] flex items-center gap-2 active:scale-95"
+                  className="shrink-0 px-7 py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-full transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] flex items-center gap-2 active:scale-95"
                 >
                   Message Us <ChevronRight className="w-5 h-5 stroke-[3]" />
                 </a>
@@ -1696,7 +1696,7 @@ const EventDetailPage: React.FC = () => {
                         <div className="flex items-center justify-between mt-2">
                           <span className="text-sm text-gray-600">Starting from</span>
                           <div className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
-                            {isFree ? <span className="text-green-600">Free</span> : `${event.currency || 'AED'} ${currentPrice}`}
+                            {isFree ? <span className="text-green-700">Free</span> : `${event.currency || 'AED'} ${currentPrice}`}
                           </div>
                         </div>
                         {/* Enhanced Progress Bar */}
@@ -1861,7 +1861,7 @@ const EventDetailPage: React.FC = () => {
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-600">Starting from</span>
                           <div className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
-                            {isFree ? <span className="text-green-600">Free</span> : `${event.currency || 'AED'} ${currentPrice}`}
+                            {isFree ? <span className="text-green-700">Free</span> : `${event.currency || 'AED'} ${currentPrice}`}
                           </div>
                         </div>
                         {/* Enhanced Progress Bar */}
@@ -2085,7 +2085,8 @@ const EventDetailPage: React.FC = () => {
                           </label>
                           <div className="flex items-center bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-2 border border-gray-200 shadow-inner">
                             <button
-                              className="flex items-center justify-center w-12 h-12 bg-white text-gray-700 rounded-xl hover:bg-gray-100 hover:shadow-md transition-all focus:outline-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="flex items-center justify-center w-12 h-12 bg-white text-gray-700 rounded-xl hover:bg-gray-100 hover:shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              aria-label="Decrease quantity"
                               onClick={() => setQuantity(Math.max(1, quantity - 1))}
                               disabled={quantity <= 1}
                             >
@@ -2097,7 +2098,8 @@ const EventDetailPage: React.FC = () => {
                               {quantity}
                             </div>
                             <button
-                              className="flex items-center justify-center w-12 h-12 bg-white text-gray-700 rounded-xl hover:bg-gray-100 hover:shadow-md transition-all focus:outline-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="flex items-center justify-center w-12 h-12 bg-white text-gray-700 rounded-xl hover:bg-gray-100 hover:shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              aria-label="Increase quantity"
                               onClick={() => setQuantity(isUnlimited ? quantity + 1 : Math.min(currentAvailableSeats, quantity + 1))}
                               disabled={!isUnlimited && quantity >= currentAvailableSeats}
                             >
@@ -2125,7 +2127,7 @@ const EventDetailPage: React.FC = () => {
                                 <div className="flex justify-between font-bold text-lg items-center">
                                   <span className="text-gray-900">Total</span>
                                   {bookingType === 'intro' ? (
-                                    <span className="text-green-600 text-2xl">Free</span>
+                                    <span className="text-green-700 text-2xl">Free</span>
                                   ) : (
                                     <span className="text-primary-600 text-2xl">{event.currency || 'AED'} {(totalProgramPrice * quantity).toFixed(2)}</span>
                                   )}
@@ -2135,7 +2137,7 @@ const EventDetailPage: React.FC = () => {
                           ) : isFree ? (
                             <div className="flex justify-between font-bold text-lg items-center">
                               <span className="text-gray-900">Total</span>
-                              <span className="text-green-600 text-2xl">Free</span>
+                              <span className="text-green-700 text-2xl">Free</span>
                             </div>
                           ) : (() => {
                             const vatRate = resolveVatRate(undefined);
@@ -2348,10 +2350,10 @@ const EventDetailPage: React.FC = () => {
                   })()}
 
                   <div className="flex space-x-2">
-                    <button onClick={handleGetDirections} className="flex-1 py-2 px-3 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors">
+                    <button onClick={handleGetDirections} className="flex-1 py-2 px-3 bg-green-700 text-white text-sm rounded-lg hover:bg-green-800 transition-colors">
                       Get Directions
                     </button>
-                    <button onClick={handleShareLocation} className="flex-1 py-2 px-3 border border-green-200 text-green-600 text-sm rounded-lg hover:bg-green-50 transition-colors">
+                    <button onClick={handleShareLocation} className="flex-1 py-2 px-3 border border-green-200 text-green-700 text-sm rounded-lg hover:bg-green-50 transition-colors">
                       Share Location
                     </button>
                   </div>

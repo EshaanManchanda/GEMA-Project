@@ -133,7 +133,7 @@ export default function ReviewCarouselSwiper() {
                       </div>
                     )}
                   </div>
-                  <h4 className="font-semibold text-lg line-clamp-1" style={{ color: 'var(--primary-color)' }}>{review.title}</h4>
+                  <h3 className="font-semibold text-lg line-clamp-1" style={{ color: 'var(--primary-color)' }}>{review.title}</h3>
                   <p className="text-gray-700 flex-grow line-clamp-4">{review.comment}</p>
                   <div className="pt-4 mt-auto border-t border-gray-100 flex gap-4 items-center">
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>

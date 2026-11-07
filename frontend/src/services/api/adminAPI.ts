@@ -763,23 +763,7 @@ const adminAPI = {
     }
   },
 
-  getEmailSettings: async () => {
-    try {
-      const response = await ApiService.get('/admin/settings/email');
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
-  updateEmailSettings: async (emailSettings: any) => {
-    try {
-      const response = await ApiService.put('/admin/settings/email', emailSettings);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
   getPaymentSettings: async () => {
     try {
@@ -1219,33 +1203,8 @@ const adminAPI = {
     }
   },
 
-  updatePaymentMethod: async (id: string, methodData: any) => {
-    try {
-      const response = await ApiService.put(`/admin/payment-methods/${id}`, methodData);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
-  deletePaymentMethod: async (id: string) => {
-    try {
-      const response = await ApiService.delete(`/admin/payment-methods/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
-  // Financial Reports
-  getFinancialSummary: async (params?: any) => {
-    try {
-      const response = await ApiService.get('/admin/financial-summary', { params });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
   getRevenueReport: async (params?: any) => {
     try {

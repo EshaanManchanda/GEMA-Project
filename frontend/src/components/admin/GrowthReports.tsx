@@ -57,10 +57,12 @@ const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNo
     <div className="flex items-start justify-between gap-3 mb-4">
       <div>
         <h2 className="text-base font-semibold text-gray-800">{title}</h2>
-        {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
       </div>
       {csv && csv.rows.length > 0 && (
         <button
+          type="button"
+          aria-label={`Export CSV: ${title}`}
           onClick={() => download(csv.name, toCsv(csv.rows, csv.cols))}
           className="text-xs font-medium text-blue-600 hover:text-blue-800 whitespace-nowrap"
         >
@@ -74,14 +76,14 @@ const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNo
 
 const Table: React.FC<{ rows: Row[]; cols: Col[]; empty?: string }> = ({ rows, cols, empty = 'No data for this period yet.' }) =>
   rows.length === 0 ? (
-    <p className="text-center text-gray-400 text-xs py-6">{empty}</p>
+    <p className="text-center text-gray-500 text-xs py-6">{empty}</p>
   ) : (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-xs text-gray-500 border-b">
             {cols.map((c) => (
-              <th key={c.key} className={`py-2 pr-3 font-medium ${c.num ? 'text-right' : ''}`}>
+              <th key={c.key} scope="col" className={`py-2 pr-3 font-medium ${c.num ? 'text-right' : ''}`}>
                 {c.label}
               </th>
             ))}
@@ -91,7 +93,11 @@ const Table: React.FC<{ rows: Row[]; cols: Col[]; empty?: string }> = ({ rows, c
           {rows.map((r, i) => (
             <tr key={i} className="border-b last:border-0">
               {cols.map((c) => (
-                <td key={c.key} className={`py-2 pr-3 text-gray-700 ${c.num ? 'text-right tabular-nums' : 'max-w-[260px] truncate'}`}>
+                <td
+                  key={c.key}
+                  title={c.num || c.render ? undefined : String(r[c.key] ?? '')}
+                  className={`py-2 pr-3 text-gray-700 ${c.num ? 'text-right tabular-nums' : 'max-w-[260px] truncate'}`}
+                >
                   {c.render ? c.render(r) : c.num ? fmt(r[c.key]) : String(r[c.key] ?? '—')}
                 </td>
               ))}
@@ -120,7 +126,7 @@ const Stat: React.FC<{ label: string; value: React.ReactNode; hint?: string }> =
   <div className="rounded-xl border border-gray-200 bg-white p-4">
     <p className="text-xs font-medium text-gray-500">{label}</p>
     <p className="text-2xl font-bold text-gray-800 mt-1 tabular-nums">{value}</p>
-    {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+    {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
   </div>
 );
 
@@ -142,8 +148,9 @@ const delta = (now: number, prev: number) => {
 
 // ── Summary (shown on the Overview tab) ─────────────────────────────────────
 export const GrowthSummary: React.FC<{ days: number }> = ({ days }) => {
-  const { data, isLoading } = useTrafficReportQuery<Row>('summary', days);
-  if (isLoading || !data) return <div className="h-24 bg-gray-100 rounded-xl animate-pulse" />;
+  const { data, isLoading, error } = useTrafficReportQuery<Row>('summary', days);
+  if (isLoading) return <div className="h-24 bg-gray-100 rounded-xl animate-pulse" aria-busy="true" aria-label="Loading summary" />;
+  if (error || !data) return <p className="text-sm text-red-600">Couldn't load the visitor summary.</p>;
   const t = data.totals;
   const p = data.previous;
   const monthly: Row[] = data.monthly ?? [];
@@ -163,6 +170,8 @@ export const GrowthSummary: React.FC<{ days: number }> = ({ days }) => {
         <Card title="Monthly unique visitors" subtitle="Kept beyond the 90-day raw window by the nightly rollup">
           <div className="h-56">
             <Line
+              aria-label="Line chart of monthly unique visitors and registrations"
+              role="img"
               data={{
                 labels: monthly.map((m) => new Date(m.start).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })),
                 datasets: [
@@ -188,12 +197,14 @@ const Acquisition: React.FC<{ d: Row }> = ({ d }) => {
         {channels.length ? (
           <div className="h-64">
             <Bar
+              aria-label="Bar chart of visitors by source; the table below has the numbers"
+              role="img"
               data={{ labels: channels.map(channelName), datasets: [{ data: channels.map((c) => c.visitors), backgroundColor: '#3b82f6' }] }}
               options={barOptions(true)}
             />
           </div>
         ) : (
-          <p className="text-center text-gray-400 text-xs py-6">No tracked visits yet.</p>
+          <p className="text-center text-gray-500 text-xs py-6">No tracked visits yet.</p>
         )}
       </Card>
       <TableCard
@@ -241,7 +252,9 @@ const Funnel: React.FC<{ d: Row }> = ({ d }) => {
       <Card title="Visitor → booking funnel" subtitle={`Checkout abandonment: ${d.checkoutAbandonmentRate ?? 0}%`}>
         <div className="h-64">
           <Bar
-            data={{ labels: steps.map((s) => s.step), datasets: [{ data: steps.map((s) => s.n), backgroundColor: '#8b5cf6' }] }}
+            aria-label="Bar chart of the funnel steps; the figures above give each step"
+            role="img"
+            data={{ labels: steps.map((s) => s.step), datasets: [{ data: steps.map((s) => s.n), backgroundColor: '#3b82f6' }] }}
             options={barOptions(true)}
           />
         </div>
@@ -402,7 +415,7 @@ const TABS: Record<GrowthTab, React.FC<{ d: Row }>> = {
 
 export const GrowthReport: React.FC<{ tab: GrowthTab; days: number }> = ({ tab, days }) => {
   const { data, isLoading, error } = useTrafficReportQuery<Row>(tab, days);
-  if (isLoading) return <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />;
+  if (isLoading) return <div className="h-64 bg-gray-100 rounded-xl animate-pulse" aria-busy="true" aria-label="Loading report" />;
   if (error || !data) return <p className="text-sm text-red-600">Couldn't load this report.</p>;
   const View = TABS[tab];
   return (

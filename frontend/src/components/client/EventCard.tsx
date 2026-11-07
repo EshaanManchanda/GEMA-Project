@@ -1158,7 +1158,8 @@ const EventCard: React.FC<EventCardProps> = (props) => {
       to={event.customLink || `/events/${eventSlug}`}
       className={`${cardClasses} ${className} block`}
       onClick={onClick ? handleLinkClick : undefined}
-      aria-label={label}
+      // no default label: the card's own text (title, price, date, place) names the link
+      aria-label={ariaLabel}
     >
       {renderVariant()}
     </Link>

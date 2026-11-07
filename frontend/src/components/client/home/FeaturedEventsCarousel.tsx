@@ -124,14 +124,14 @@ const FeaturedEventsCarousel: React.FC<{
                     )) : (
                         <div className="keen-slider__slide flex items-center justify-center p-8">
                             <div className="text-center py-16 px-6">
-                                <div className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center bg-primary-50 text-primary-DEFAULT">
+                                <div className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center bg-primary-50 text-primary">
                                     <div className="text-4xl">🎪</div>
                                 </div>
                                 <h3 className="text-xl font-semibold mb-3 text-gray-700">No Events Yet</h3>
                                 <p className="text-gray-700 mb-6 max-w-md mx-auto">We're working on bringing you amazing events. Check back soon for exciting activities!</p>
                                 <AnimatedButton
                                     onClick={() => navigate('/search')}
-                                    className="px-6 py-3 text-white rounded-lg font-medium transition-all duration-300 hover:shadow-lg hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 bg-primary-DEFAULT"
+                                    className="px-6 py-3 text-white rounded-lg font-medium transition-all duration-300 hover:shadow-lg hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 bg-primary"
                                     aria-label="Explore all events"
                                 >
                                     Explore All Events

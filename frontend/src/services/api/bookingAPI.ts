@@ -201,15 +201,6 @@ const bookingAPI = {
     }
   },
 
-  // Tickets
-  getUserTickets: async () => {
-    try {
-      const response = await ApiService.get('/tickets');
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
   getTicketById: async (id: string) => {
     try {

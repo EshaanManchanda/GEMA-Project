@@ -864,26 +864,6 @@ const AdminUsersPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-900 mb-4">Two-Factor Authentication</h4>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-700">2FA Status</span>
-                          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${selectedUser.twoFactorAuth?.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                            }`}>
-                            {selectedUser.twoFactorAuth?.enabled ? 'Enabled' : 'Disabled'}
-                          </span>
-                        </div>
-                        {selectedUser.twoFactorAuth?.enabled && (
-                          <div>
-                            <span className="text-sm font-medium text-gray-700">Backup Codes</span>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {selectedUser.twoFactorAuth.backupCodesCount ?? 0} backup codes generated
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
 
                     {selectedUser.emailVerification && (
                       <div className="bg-gray-50 rounded-lg p-4">

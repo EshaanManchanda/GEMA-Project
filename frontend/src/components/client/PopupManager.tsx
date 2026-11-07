@@ -12,13 +12,19 @@ interface DismissalRecord {
   frequency: 'once' | 'session' | 'daily' | 'always';
 }
 
+// Sign-in, sign-up, password, booking and payment pages.
+const TASK_PAGES = /^\/(login|register|forgot-password|reset-password|verify-email|teacher\/register|teach\/register|book|booking|payment)(\/|$)|\/payment-success|\/submit$/;
+const NO_POPUPS: PopupNotification[] = []; // stable reference for effect deps
+
 const PopupManager: React.FC = () => {
   const location = useLocation();
   const [currentPopup, setCurrentPopup] = useState<PopupNotification | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [hasTriggered, setHasTriggered] = useState(false);
 
-  const { data: popups = [], isLoading } = useActivePopups(location.pathname);
+  const { data: activePopups = [], isLoading } = useActivePopups(location.pathname);
+  // Never cover a form the visitor is filling in, whatever the popup targets.
+  const popups = TASK_PAGES.test(location.pathname) ? NO_POPUPS : activePopups;
   const recordImpression = useRecordImpressionMutation();
   const recordClick = useRecordClickMutation();
   const recordDismissal = useRecordDismissalMutation();

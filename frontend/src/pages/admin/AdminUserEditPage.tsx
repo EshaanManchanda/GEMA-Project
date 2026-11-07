@@ -51,7 +51,6 @@ const AdminUserEditPage: React.FC = () => {
   // Security
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
-  const [twoFAEnabled, setTwoFAEnabled] = useState(false);
 
   // Social media
   const [smFacebook, setSmFacebook] = useState('');
@@ -122,7 +121,6 @@ const AdminUserEditPage: React.FC = () => {
         // Security
         setIsEmailVerified(u.isEmailVerified ?? false);
         setIsPhoneVerified(u.isPhoneVerified ?? false);
-        setTwoFAEnabled(u.twoFactorAuth?.enabled ?? false);
         // Social media
         setSmFacebook(u.socialMedia?.facebook ?? '');
         setSmInstagram(u.socialMedia?.instagram ?? '');
@@ -221,8 +219,6 @@ const AdminUserEditPage: React.FC = () => {
       payload.isEmailVerified = isEmailVerified;
       payload.isPhoneVerified = isPhoneVerified;
 
-      // 2FA
-      payload.twoFactorAuth = { enabled: twoFAEnabled };
 
       // Social media
       const sm: Record<string, string> = {};
@@ -459,8 +455,7 @@ const AdminUserEditPage: React.FC = () => {
                   enabled={isEmailVerified} onChange={setIsEmailVerified} />
                 <Toggle label="Phone Verified" description="Mark user's phone number as verified"
                   enabled={isPhoneVerified} onChange={setIsPhoneVerified} />
-                <Toggle label="Two-Factor Authentication" description="Enable or disable 2FA for this user"
-                  enabled={twoFAEnabled} onChange={setTwoFAEnabled} />
+                {/* No 2FA toggle: login has no second factor, so a toggle would only pretend to protect the account. */}
               </div>
             </div>
           )}

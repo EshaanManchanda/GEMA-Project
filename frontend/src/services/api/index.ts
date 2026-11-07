@@ -17,7 +17,6 @@ export { default as paymentAPI } from './paymentAPI';
 // User Management APIs
 export { default as adminAPI } from './adminAPI';
 export { default as vendorAPI } from './vendorAPI';
-export { default as employeeAPI } from './employeeAPI';
 
 // Content & Communication APIs
 export { default as blogAPI } from './blogAPI';

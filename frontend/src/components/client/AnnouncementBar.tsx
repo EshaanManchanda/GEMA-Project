@@ -389,20 +389,25 @@ const AnnouncementBar: React.FC = () => {
             
             {/* Dots */}
             {multiSlide && (
-              <div className="flex items-center justify-center gap-2 mt-4 flex-shrink-0 relative z-10">
+              <div className="flex items-center justify-center mt-4 flex-shrink-0 relative z-10">
                 {activeAnnouncements.map((ann, i) => (
                   <button
                     key={ann._id}
                     onClick={() => goToSlide(i)}
                     aria-label={`Announcement ${i + 1}`}
-                    className="transition-all duration-300 rounded-full"
-                    style={{
-                      width: i === activeIndex ? 18 : 6,
-                      height: 6,
-                      backgroundColor: txtColor,
-                      opacity: i === activeIndex ? 1 : 0.4,
-                    }}
-                  />
+                    aria-current={i === activeIndex}
+                    className="p-[9px]"
+                  >
+                    <span
+                      className="block transition-all duration-300 rounded-full"
+                      style={{
+                        width: i === activeIndex ? 18 : 6,
+                        height: 6,
+                        backgroundColor: txtColor,
+                        opacity: i === activeIndex ? 1 : 0.4,
+                      }}
+                    />
+                  </button>
                 ))}
               </div>
             )}

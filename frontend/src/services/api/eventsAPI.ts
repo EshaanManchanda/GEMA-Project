@@ -269,14 +269,6 @@ const eventsAPI = {
     }
   },
 
-  getVendorAnalytics: async () => {
-    try {
-      const response = await ApiService.get('/events/vendor/analytics');
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 };
 
 export default eventsAPI;

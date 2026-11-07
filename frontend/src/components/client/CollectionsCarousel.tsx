@@ -341,18 +341,19 @@ const CollectionsCarousel: React.FC<CollectionsCarouselProps> = ({ collections: 
 
         {collections.length > 4 && (
           <div className="flex justify-center mt-8">
-            <div className="flex space-x-2">
+            <div className="flex">
               {[...Array(Math.min(collections.length, 7))].map((_, i) => (
                 <button
                   key={i}
                   onClick={() => instanceRef.current?.moveToIdx(i)}
-                  className="w-2 h-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-white"
-                  style={{
-                    backgroundColor: 'white',
-                    opacity: instanceRef.current?.track.details.abs === i ? 1 : 0.5
-                  }}
+                  className="p-2 rounded-full focus:outline-none focus-visible:ring-1 focus-visible:ring-white"
                   aria-label={`Go to slide ${i + 1}`}
-                />
+                >
+                  <span
+                    className="block w-2 h-2 rounded-full transition-all duration-300"
+                    style={{ backgroundColor: 'white', opacity: instanceRef.current?.track.details.abs === i ? 1 : 0.5 }}
+                  />
+                </button>
               ))}
             </div>
           </div>

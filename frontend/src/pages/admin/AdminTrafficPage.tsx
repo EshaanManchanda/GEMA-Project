@@ -141,6 +141,10 @@ const baseOptions = {
 const AdminTrafficPage: React.FC = () => {
   const [days, setDays] = useState<DayRange>(28);
   const [tab, setTab] = useState<'overview' | GrowthTab>('overview');
+  // On a phone the tab bar scrolls; keep the selected tab in view.
+  useEffect(() => {
+    document.getElementById(`traffic-tab-${tab}`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [tab]);
   const [gscSite, setGscSite] = useState<string | undefined>(undefined);
 
   const sitesQ = useSearchConsoleSitesQuery();
@@ -309,16 +313,31 @@ const AdminTrafficPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div role="tablist" className="flex gap-1 overflow-x-auto border-b border-gray-200">
+      {/* Tabs: arrow keys move between tabs (WAI-ARIA tabs pattern) */}
+      <div
+        role="tablist"
+        aria-label="Traffic reports"
+        className="flex gap-1 overflow-x-auto border-b border-gray-200"
+        onKeyDown={(e) => {
+          if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+          const i = TABS.findIndex((t) => t.id === tab);
+          const next = TABS[(i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length].id;
+          setTab(next);
+          document.getElementById(`traffic-tab-${next}`)?.focus();
+        }}
+      >
         {TABS.map((t) => (
           <button
             key={t.id}
+            id={`traffic-tab-${t.id}`}
+            type="button"
             role="tab"
             aria-selected={tab === t.id}
+            aria-controls="traffic-tabpanel"
+            tabIndex={tab === t.id ? 0 : -1}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition ${
-              tab === t.id ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'
+            className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+              tab === t.id ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-600 hover:text-gray-800'
             }`}
           >
             {t.label}
@@ -326,6 +345,7 @@ const AdminTrafficPage: React.FC = () => {
         ))}
       </div>
 
+      <div id="traffic-tabpanel" role="tabpanel" aria-labelledby={`traffic-tab-${tab}`} className="space-y-8">
       {tab !== 'overview' ? (
         <GrowthReport tab={tab} days={days} />
       ) : (
@@ -636,6 +656,7 @@ const AdminTrafficPage: React.FC = () => {
       </div>
       </>
       )}
+      </div>
     </div>
   );
 };

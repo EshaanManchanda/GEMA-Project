@@ -47,7 +47,7 @@ const StatsSection: React.FC<StatsProps> = ({ stats }) => {
                 <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
                     {/* Trusted Partners Card */}
                     <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-4 sm:p-8 flex flex-col items-center text-center transition-all duration-300 border border-gray-100 hover:border-primary-100">
-                        <div className="mb-4 text-primary-DEFAULT">
+                        <div className="mb-4 text-primary">
                             <div className="relative">
                                 <FaStar size={36} />
                                 <FaStar className="absolute -top-2 right-0 text-sm" size={16} />
@@ -64,7 +64,7 @@ const StatsSection: React.FC<StatsProps> = ({ stats }) => {
 
                     {/* Stats Cards */}
                     <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-4 sm:p-8 flex flex-col items-center text-center transition-all duration-300 border border-gray-100 hover:border-gray-200">
-                        <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center bg-primary-50 text-primary-DEFAULT">
+                        <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center bg-primary-50 text-primary">
                             <span className="text-xl font-bold">🎯</span>
                         </div>
                         <p className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
@@ -74,7 +74,7 @@ const StatsSection: React.FC<StatsProps> = ({ stats }) => {
                     </div>
 
                     <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-4 sm:p-8 flex flex-col items-center text-center transition-all duration-300 border border-gray-100 hover:border-gray-200">
-                        <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center bg-primary-50 text-primary-DEFAULT">
+                        <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center bg-primary-50 text-primary">
                             <span className="text-xl font-bold">🏢</span>
                         </div>
                         <p className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
@@ -84,7 +84,7 @@ const StatsSection: React.FC<StatsProps> = ({ stats }) => {
                     </div>
 
                     <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-4 sm:p-8 flex flex-col items-center text-center transition-all duration-300 border border-gray-100 hover:border-gray-200">
-                        <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center bg-primary-50 text-primary-DEFAULT">
+                        <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center bg-primary-50 text-primary">
                             <span className="text-xl font-bold">🎓</span>
                         </div>
                         <p className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">

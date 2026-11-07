@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Image, Plus, Trash2, FolderOpen, RefreshCw } from 'lucide-react';
+import { Image, Plus, Trash2, FolderOpen } from 'lucide-react';
 import { galleryAPI, type Gallery, type GalleryImage } from '../../services/api/reviewLinkAPI';
 import api from '../../services/api';
 import MediaPickerModal from '../admin/media/MediaPickerModal';
@@ -124,23 +124,6 @@ const EventGalleryEditor: React.FC<EventGalleryEditorProps> = ({ eventId }) => {
       toast.success('Gallery saved');
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to save gallery');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleRepair = async () => {
-    if (!gallery) return;
-    setSaving(true);
-    try {
-      const res = await api.post(`/galleries/repair/${gallery._id}`);
-      toast.success(res.data?.message || 'Gallery repaired');
-      // Refresh gallery
-      const fresh = await galleryAPI.getByEvent(eventId!);
-      setGallery(fresh.data?.data?.gallery);
-      setImages(fresh.data?.data?.gallery?.images || []);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to repair gallery');
     } finally {
       setSaving(false);
     }
@@ -289,14 +272,6 @@ const EventGalleryEditor: React.FC<EventGalleryEditorProps> = ({ eventId }) => {
         <div className="flex gap-2">
           {gallery && (
             <>
-              <button
-                type="button"
-                onClick={handleRepair}
-                disabled={saving}
-                className="px-3 py-1.5 text-xs font-medium text-orange-600 border border-orange-200 bg-orange-50 rounded-lg hover:bg-orange-100 flex items-center gap-1.5 transition-colors"
-              >
-                <RefreshCw className="w-3.5 h-3.5" /> Repair Sync
-              </button>
               <button
                 type="button"
                 onClick={handleDelete}

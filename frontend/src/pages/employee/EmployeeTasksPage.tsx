@@ -27,13 +27,7 @@ const EmployeeTasksPage: React.FC = () => {
       const response = await ApiService.get('/employees/assigned-events');
       setEvents(response.data?.data || response.data || []);
     } catch {
-      // Fallback to employee check-in events endpoint
-      try {
-        const response = await ApiService.get('/checkin/events');
-        setEvents(response.data?.data?.events || response.data?.events || []);
-      } catch {
-        setEvents([]);
-      }
+      setEvents([]);
     } finally {
       setLoading(false);
     }

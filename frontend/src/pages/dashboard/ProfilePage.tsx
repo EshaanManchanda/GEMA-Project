@@ -51,6 +51,7 @@ import {
 import EmailVerificationSection from '@/components/profile/EmailVerificationSection';
 import PhoneVerificationSection from '@/components/profile/PhoneVerificationSection';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
+import AccountDataSection from '@/components/profile/AccountDataSection';
 import PhoneInput, { Country } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import '@/styles/phoneInput.css';
@@ -1481,18 +1482,8 @@ const ProfilePage: React.FC = () => {
                             </AnimatedButton>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                            <div className="flex items-center gap-3">
-                              <FaShieldAlt className="text-gray-600" />
-                              <div>
-                                <h4 className="font-medium">Two-Factor Authentication</h4>
-                                <p className="text-sm text-gray-600">Add an extra layer of security</p>
-                              </div>
-                            </div>
-                            <AnimatedButton className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
-                              Enable
-                            </AnimatedButton>
-                          </div>
+                          {/* No 2FA row: login has no second factor yet, and the old "Enable" button did nothing */}
+                          <AccountDataSection />
                         </div>
                       </HoverCard>
                     </motion.div>

@@ -11,8 +11,13 @@ export const ThemeController = () => {
 
             if (theme) {
                 // Set basic colors
-                root.style.setProperty('--color-primary-DEFAULT', hexToRgb(theme.colors.DEFAULT));
-                root.style.setProperty('--color-primary-dark', hexToRgb(theme.colors.dark || theme.colors[600]));
+                // The primary colour is used as text on white and as a background
+                // behind white text, so it must reach WCAG AA (4.5:1) on white.
+                // Most daily palettes' DEFAULT doesn't; use the first shade that does.
+                const shades = ACCESSIBLE_ORDER.map((k) => theme.colors[k as keyof typeof theme.colors]).filter(Boolean) as string[];
+                const i = Math.max(0, shades.findIndex((hex) => contrastOnWhite(hex) >= 4.5));
+                root.style.setProperty('--color-primary-DEFAULT', hexToRgb(shades[i]));
+                root.style.setProperty('--color-primary-dark', hexToRgb(shades[i + 1] || shades[i]));
 
                 // Set shade colors
                 Object.entries(theme.colors).forEach(([key, value]) => {
@@ -32,6 +37,17 @@ export const ThemeController = () => {
     }, []);
 
     return null;
+};
+
+const ACCESSIBLE_ORDER = ['DEFAULT', '600', '700', '800', '900'];
+
+// WCAG 2.1 relative luminance → contrast ratio against white
+const contrastOnWhite = (hex: string) => {
+    const [r, g, b] = hexToRgb(hex).split(' ').map((v) => {
+        const c = Number(v) / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    return 1.05 / (0.2126 * r + 0.7152 * g + 0.0722 * b + 0.05);
 };
 
 // Helper to convert hex to space-separated RGB for Tailwind opacity modifier support

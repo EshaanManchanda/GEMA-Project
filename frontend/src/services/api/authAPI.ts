@@ -1,4 +1,4 @@
-import { ApiService } from '../api';
+import { ApiService, setCsrfToken } from '../api';
 import {
   LoginCredentials,
   RegisterData,
@@ -10,21 +10,28 @@ import {
   UserProfile,
   AvatarUploadData,
   Address,
-  SecuritySettings,
-  PrivacySettings
 } from '@/types/auth';
 import logger from '@/utils/logger';
 import { getSignupAttribution, trackEvent } from './analyticsEventsAPI';
 
+/**
+ * Analytics fired right after sign-in already carries the new session cookie,
+ * so it needs the new CSRF token first (authSlice stores it only later).
+ */
+const trackSignIn = (data: { csrfToken?: string } | undefined, ...event: Parameters<typeof trackEvent>) => {
+  if (data?.csrfToken) setCsrfToken(data.csrfToken);
+  trackEvent(...event);
+};
+
 /** Sign-up vs login analytics for the Google (Firebase) flow. */
-const trackFirebaseAuth = (data: { isNewUser?: boolean } | undefined) =>
-  trackEvent(data?.isNewUser ? 'registrationCompleted' : 'loginCompleted', { meta: { method: 'google' } });
+const trackFirebaseAuth = (data: { isNewUser?: boolean; csrfToken?: string } | undefined) =>
+  trackSignIn(data, data?.isNewUser ? 'registrationCompleted' : 'loginCompleted', { meta: { method: 'google' } });
 
 export const authAPI = {
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
     try {
       const response = await ApiService.post('/auth/login', credentials);
-      trackEvent('loginCompleted', { meta: { method: 'email' } });
+      trackSignIn(response.data, 'loginCompleted', { meta: { method: 'email' } });
       return response.data;
     } catch (error) {
       throw error;
@@ -228,32 +235,8 @@ export const authAPI = {
     }
   },
 
-  updateSecuritySettings: async (settings: Partial<SecuritySettings>): Promise<SecuritySettings> => {
-    try {
-      const response = await ApiService.put('/auth/security', settings);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
-  updatePrivacySettings: async (settings: Partial<PrivacySettings>): Promise<PrivacySettings> => {
-    try {
-      const response = await ApiService.put('/auth/privacy', settings);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
-  getSecuritySettings: async (): Promise<SecuritySettings> => {
-    try {
-      const response = await ApiService.get('/auth/security');
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
   enableTwoFactor: async (): Promise<{ qrCode: string; secret: string }> => {
     try {
@@ -282,32 +265,10 @@ export const authAPI = {
     }
   },
 
-  getActiveDevices: async (): Promise<Array<{
-    id: string;
-    device: string;
-    browser: string;
-    location: string;
-    lastActive: string;
-    current: boolean;
-  }>> => {
-    try {
-      const response = await ApiService.get('/auth/devices');
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
-  revokeDevice: async (deviceId: string): Promise<{ success: boolean }> => {
-    try {
-      const response = await ApiService.delete(`/auth/devices/${deviceId}`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
-  exportData: async (): Promise<{ downloadUrl: string }> => {
+  /** Everything Kidrove holds about the caller (profile, orders, tickets, reviews). */
+  exportData: async (): Promise<Record<string, unknown>> => {
     try {
       const response = await ApiService.post('/auth/export-data');
       return response.data;
@@ -316,23 +277,17 @@ export const authAPI = {
     }
   },
 
-  deleteAccount: async (password: string, reason?: string): Promise<{ success: boolean }> => {
+  /** Google-only accounts have no password; they confirm by typing DELETE. */
+  deleteAccount: async (passwordOrDelete: string): Promise<{ success: boolean }> => {
     try {
-      const response = await ApiService.post('/auth/delete-account', { password, reason });
+      const body = passwordOrDelete === 'DELETE' ? { confirm: 'DELETE' } : { password: passwordOrDelete };
+      const response = await ApiService.post('/auth/delete-account', body);
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  deactivateAccount: async (password: string): Promise<{ success: boolean }> => {
-    try {
-      const response = await ApiService.post('/auth/deactivate', { password });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
   changePassword: async (currentPassword: string, newPassword: string): Promise<{ success: boolean }> => {
     try {

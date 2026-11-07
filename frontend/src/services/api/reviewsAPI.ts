@@ -81,14 +81,6 @@ const reviewsAPI = {
     }
   },
 
-  getReviewById: async (id: string) => {
-    try {
-      const response = await ApiService.get(`/reviews/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
   updateReview: async (id: string, reviewData: any) => {
     try {

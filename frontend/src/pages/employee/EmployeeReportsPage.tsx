@@ -45,22 +45,8 @@ const EmployeeReportsPage: React.FC = () => {
       });
       setRecentCheckins(data.recentCheckins || []);
     } catch {
-      // Fallback: try checkin logs endpoint
-      try {
-        const response = await ApiService.get('/checkin/my-logs');
-        const logs: RecentCheckin[] = response.data?.data || response.data || [];
-        setRecentCheckins(logs);
-        setSummary({
-          totalShifts: 0,
-          totalCheckins: logs.length,
-          todayCheckins: logs.filter((l) =>
-            new Date(l.checkedInAt).toDateString() === new Date().toDateString()
-          ).length,
-          avgCheckinsPerShift: 0,
-        });
-      } catch {
-        setSummary({ totalShifts: 0, totalCheckins: 0, todayCheckins: 0, avgCheckinsPerShift: 0 });
-      }
+      setSummary({ totalShifts: 0, totalCheckins: 0, todayCheckins: 0, avgCheckinsPerShift: 0 });
+      setRecentCheckins([]);
     } finally {
       setLoading(false);
     }

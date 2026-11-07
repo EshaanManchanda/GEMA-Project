@@ -60,7 +60,8 @@ const SummerPartnersDirectoryPage: React.FC = () => {
             return { partnerships: [] };
           }),
           collectionsAPI.getCollectionById('summer-camp-collections').catch(err => {
-            console.error('Error fetching summer camp collection:', err);
+            // The collection is optional content: no collection just means no events listed
+            if (err?.response?.status !== 404) console.error('Error fetching summer camp collection:', err);
             return { collection: { events: [] } } as any;
           })
         ]);

@@ -16,9 +16,12 @@
     --border: 215 16% 87%;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
-    /* Default Primary Color (Orange) - fallback for dynamic theme */
-    --color-primary-DEFAULT: 248 150 43;
-    --color-primary-dark: 224 125 20;
+    /* Default Primary Color (Orange) - fallback for dynamic theme.
+     * Orange 800, not 500: the primary is used as text on white and behind
+     * white text, so it must reach WCAG AA 4.5:1 (500 was 2.2:1). Same rule
+     * ThemeController applies to each daily theme. */
+    --color-primary-DEFAULT: 150 78 13;
+    --color-primary-dark: 122 63 11;
     --color-primary-50: 255 248 240;
     --color-primary-100: 255 240 219;
     --color-primary-200: 255 221 179;

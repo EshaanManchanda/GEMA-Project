@@ -211,7 +211,7 @@ const CollectionPills: React.FC<CollectionPillsProps> = ({ maxDisplay = 12, coll
             <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-[#005580]/10">
               <span className="text-3xl">📚</span>
             </div>
-            <h3 className="text-xl font-semibold mb-2 text-gray-900">No Collections Available</h3>
+            <p className="text-xl font-semibold mb-2 text-gray-900">No Collections Available</p>
             <p className="text-gray-600 mb-6">We're working on creating amazing collections for you.</p>
             <button
               onClick={handleRetry}

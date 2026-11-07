@@ -456,18 +456,20 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
 
       {/* Dot indicators */}
       {loaded && showDots && displayedEvents.length > 1 && (
-        <div className="flex justify-center gap-2 mt-4">
+        <div className="flex justify-center mt-4">
           {displayedEvents.map((_, idx) => (
             <button
               key={idx}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${currentSlide === idx ? 'w-8' : 'w-2'
-                }`}
-              style={{
-                backgroundColor: currentSlide === idx ? 'var(--primary-color)' : '#D1D5DB'
-              }}
+              className="p-2"
               onClick={() => instanceRef.current?.moveToIdx(idx)}
               aria-label={`Go to slide ${idx + 1}`}
-            />
+              aria-current={currentSlide === idx}
+            >
+              <span
+                className={`block h-2 rounded-full transition-all duration-300 ${currentSlide === idx ? 'w-8' : 'w-2'}`}
+                style={{ backgroundColor: currentSlide === idx ? 'var(--primary-color)' : '#D1D5DB' }}
+              />
+            </button>
           ))}
         </div>
       )}
