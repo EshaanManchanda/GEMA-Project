@@ -108,25 +108,22 @@ jest.mock('@tiptap/core', () => ({
 // ---------------------------------------------------------------------------
 // Mock all TipTap extensions
 // ---------------------------------------------------------------------------
-const extensionMock = {
-  configure: jest.fn(() => ({})),
-  extend: jest.fn(() => ({ configure: jest.fn(() => ({})) })),
-};
+const mockExt = (): any => ({
+  configure: jest.fn(() => mockExt()),
+  extend: jest.fn(() => mockExt()),
+});
+const extensionMock = mockExt();
 jest.mock('@tiptap/starter-kit', () => ({
   __esModule: true,
   default: { configure: jest.fn(() => ({})) },
 }));
 jest.mock('@tiptap/extension-image', () => ({
   __esModule: true,
-  default: {
-    extend: jest.fn(() => ({ configure: jest.fn(() => ({})) })),
-  },
+  default: mockExt(),
 }));
 jest.mock('@tiptap/extension-link', () => ({
   __esModule: true,
-  default: {
-    extend: jest.fn(() => ({ configure: jest.fn(() => ({})) })),
-  },
+  default: mockExt(),
 }));
 jest.mock('@tiptap/extension-youtube', () => ({
   __esModule: true,
@@ -321,7 +318,7 @@ describe('TipTapEditor', () => {
     it('switches to HTML mode when HTML button is clicked', () => {
       renderEditor();
 
-      const htmlButton = screen.getByRole('button', { name: /HTML/i });
+      const htmlButton = screen.getByRole('button', { name: /^HTML$/ });
       act(() => {
         fireEvent.click(htmlButton);
       });
@@ -343,7 +340,7 @@ describe('TipTapEditor', () => {
 
       // Go to HTML
       act(() => {
-        fireEvent.click(screen.getByRole('button', { name: /HTML/i }));
+        fireEvent.click(screen.getByRole('button', { name: /^HTML$/ }));
       });
 
       // Go back to Visual
@@ -367,7 +364,7 @@ describe('TipTapEditor', () => {
 
       // Switch to HTML mode
       act(() => {
-        fireEvent.click(screen.getByRole('button', { name: /HTML/i }));
+        fireEvent.click(screen.getByRole('button', { name: /^HTML$/ }));
       });
 
       // Clear calls from the mode switch
@@ -396,7 +393,7 @@ describe('TipTapEditor', () => {
 
       // Switch to HTML mode
       act(() => {
-        fireEvent.click(screen.getByRole('button', { name: /HTML/i }));
+        fireEvent.click(screen.getByRole('button', { name: /^HTML$/ }));
       });
       onChange.mockClear();
 
@@ -423,7 +420,7 @@ describe('TipTapEditor', () => {
 
       // Switch to HTML
       act(() => {
-        fireEvent.click(screen.getByRole('button', { name: /HTML/i }));
+        fireEvent.click(screen.getByRole('button', { name: /^HTML$/ }));
       });
       onChange.mockClear();
 
@@ -458,7 +455,7 @@ describe('TipTapEditor', () => {
 
       // Visual -> HTML -> Visual with no edits in between
       act(() => {
-        fireEvent.click(screen.getByRole('button', { name: /HTML/i }));
+        fireEvent.click(screen.getByRole('button', { name: /^HTML$/ }));
       });
 
       act(() => {
@@ -490,7 +487,7 @@ describe('TipTapEditor', () => {
       renderEditor();
 
       act(() => {
-        fireEvent.click(screen.getByRole('button', { name: /HTML/i }));
+        fireEvent.click(screen.getByRole('button', { name: /^HTML$/ }));
       });
 
       act(() => {
@@ -527,7 +524,7 @@ describe('TipTapEditor', () => {
         screen.queryByRole('button', { name: /^Visual$/i }),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole('button', { name: /HTML/i }),
+        screen.queryByRole('button', { name: /^HTML$/ }),
       ).not.toBeInTheDocument();
     });
 
@@ -538,7 +535,7 @@ describe('TipTapEditor', () => {
         screen.getByRole('button', { name: /^Visual$/i }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: /HTML/i }),
+        screen.getByRole('button', { name: /^HTML$/ }),
       ).toBeInTheDocument();
     });
   });

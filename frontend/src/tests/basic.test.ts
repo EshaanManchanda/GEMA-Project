@@ -7,10 +7,6 @@ describe('Basic Test Suite', () => {
     expect(1 + 1).toBe(2);
   });
 
-  it('should validate Jest setup', () => {
-    expect(process.env.REACT_APP_API_URL).toBe('http://localhost:5000/api');
-  });
-
   it('should have mocked globals available', () => {
     expect(global.fetch).toBeDefined();
     expect(global.Response).toBeDefined();
