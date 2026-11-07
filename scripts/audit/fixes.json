@@ -1,5 +1,5 @@
 {
-  "testsPassing": "1172 / 1204",
+  "testsPassing": "1190 / 1214",
   "issues": [
     {
       "area": "Security",
@@ -392,6 +392,62 @@
       "commit": "63e4d4d",
       "title": "Refund tests flaky under the full suite",
       "text": "Refund transactions sometimes aborted while other test files were still building indexes. Refunds now retry transient transaction errors with a short backoff and the refund tests build their indexes first. They pass on their own every time but can still fail when the whole suite runs at once; see the known failures note."
+    },
+    {
+      "area": "Events & Admin",
+      "sev": "medium",
+      "commit": "0b56f9e",
+      "title": "Missing events return 404 and drafts explain themselves",
+      "text": "Event lookups that found nothing returned 500 and unpublished events leaked a generic error. They now return a proper 404 and a clear draft message (N25, N27)."
+    },
+    {
+      "area": "Events & Admin",
+      "sev": "medium",
+      "commit": "0b56f9e",
+      "title": "Delete guards for vendors, teachers and admin events",
+      "text": "Permanent delete is blocked when the record still has bookings or live events (N26)."
+    },
+    {
+      "area": "Imports & Tickets",
+      "sev": "medium",
+      "commit": "0b56f9e",
+      "title": "Teacher/vendor import and ticket generation fixes",
+      "text": "Imported bookings now carry source, payment method and phone; ticket generate works; temp passwords come from one helper; vendor-scoped queries use the vendor profile id (N03, N04, N05, N08, N21)."
+    },
+    {
+      "area": "Employees",
+      "sev": "medium",
+      "commit": "0b56f9e",
+      "title": "Employee API is self-service only",
+      "text": "Legacy /api/employees management routes are removed; assigned events and my-reports added; dead fallbacks removed (N01, N02, N06)."
+    },
+    {
+      "area": "Analytics & CSRF",
+      "sev": "low",
+      "commit": "0b56f9e",
+      "title": "Analytics beacons no longer 403",
+      "text": "Tracking beacons are exempt from CSRF, and the CSRF token is stored before post-login tracking fires (N10, N11)."
+    },
+    {
+      "area": "Privacy",
+      "sev": "high",
+      "commit": "0b56f9e",
+      "title": "Self-service data export and account deletion",
+      "text": "New endpoints let users download their data and anonymise their account; the fake 2FA toggle is gone (N09)."
+    },
+    {
+      "area": "Frontend UX",
+      "sev": "low",
+      "commit": "2a069f0",
+      "title": "Accessibility and contrast pass",
+      "text": "Daily theme colours meet WCAG AA, carousel dots have touch targets and focus rings, heading levels fixed, popups suppressed on task-critical pages, invalid Tailwind tokens fixed, 16 dead API helpers removed."
+    },
+    {
+      "area": "Dependencies",
+      "sev": "medium",
+      "commit": "dfd8ac6",
+      "title": "npm audit fixes",
+      "text": "Backend and frontend dependencies updated for known advisories (N23, N24)."
     }
   ],
   "tests": [
@@ -546,6 +602,15 @@
         "Start another booking and apply the same coupon."
       ],
       "expect": "The second booking accepts the coupon (the cancelled order gave its use back). After paying, a third attempt says the coupon has reached its usage limit."
+    },
+    {
+      "title": "Account data export and deletion",
+      "where": "Local (Docker)",
+      "steps": [
+        "Log in as a customer and open Profile.",
+        "Click Download my data, then Delete account and confirm."
+      ],
+      "expect": "A JSON export downloads; after deletion the account is anonymised and you can no longer log in."
     }
   ]
 }
