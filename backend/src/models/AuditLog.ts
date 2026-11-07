@@ -14,6 +14,7 @@ export enum AuditAction {
   ACCOUNT_LOCKED = "account_locked",
   SESSION_REVOKED = "session_revoked",
   SETTINGS_UPDATE = "settings_update",
+  ACCOUNT_DELETED = "account_deleted",
 }
 
 export interface IAuditLog extends Document {

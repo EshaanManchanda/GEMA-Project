@@ -67,9 +67,8 @@ export const getGalleryByEvent = async (req: Request, res: Response, next: NextF
       return next(new AppError("Event not found", 404));
     }
 
+    // No gallery yet is a normal state, not an error (every event page asks).
     const gallery = await Gallery.findOne({ eventId });
-    if (!gallery) return next(new AppError("Gallery not found", 404));
-
     res.status(200).json({ success: true, data: { gallery } });
   } catch (error) {
     next(error);

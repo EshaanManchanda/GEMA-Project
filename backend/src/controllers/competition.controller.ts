@@ -21,6 +21,7 @@ import { AuthRequest } from "../types";
 import { certificateService } from "../modules/certificates/services/certificate.service";
 import { escapeRegex } from "../utils/regexHelpers";
 import { activatePaidSubmission } from "../services/competition.service";
+import { generateTempPassword } from "../utils/otp";
 
 // ─── Create Payment Intent ──────────────────────────────────────────────────
 
@@ -460,7 +461,7 @@ export const submitCompetition = catchAsync(
 
         if (!parent) {
           isNewUser = true;
-          tempPassword = Math.random().toString(36).slice(-8) + "!1A";
+          tempPassword = generateTempPassword();
           
           const nameParts = parentName ? parentName.split(/\s+/) : ["Parent"];
           const parentFirstName = nameParts[0] || "Parent";

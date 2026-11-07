@@ -1,51 +1,15 @@
 import { Router } from "express";
-import {
-  createEmployee,
-  getEmployeeDetails,
-  updateEmployee,
-  deleteEmployee,
-  assignEmployeeToEvent,
-  removeEmployeeFromEvent,
-} from "../controllers/employee.controller";
+import { getMyAssignedEvents, getMyReports } from "../controllers/employee.controller";
 import { authenticate, authorize } from "../middleware/auth";
+import { UserRole } from "../models/User";
 
+// The logged-in employee's own data. Employee management lives under
+// /api/vendors/employees and /api/admin/employees.
 const router = Router();
 
-// Protect all routes with authentication and authorization middleware
-router.use(authenticate);
+router.use(authenticate, authorize([UserRole.EMPLOYEE]));
 
-// Create Employee (Vendor/Admin only)
-router.post("/", authorize(["vendor", "admin"]), createEmployee);
-
-// Get Employee Details (Vendor/Admin, or employee themselves)
-router.get(
-  "/:employeeId",
-  authorize(["vendor", "admin", "employee"]),
-  getEmployeeDetails,
-);
-
-// Update Employee (Vendor/Admin, or employee themselves)
-router.put(
-  "/:employeeId",
-  authorize(["vendor", "admin", "employee"]),
-  updateEmployee,
-);
-
-// Delete Employee (Vendor/Admin only)
-router.delete("/:employeeId", authorize(["vendor", "admin"]), deleteEmployee);
-
-// Assign Employee to Event (Vendor/Admin only)
-router.post(
-  "/assign-event",
-  authorize(["vendor", "admin"]),
-  assignEmployeeToEvent,
-);
-
-// Remove Employee from Event (Vendor/Admin only)
-router.post(
-  "/remove-event",
-  authorize(["vendor", "admin"]),
-  removeEmployeeFromEvent,
-);
+router.get("/assigned-events", getMyAssignedEvents);
+router.get("/my-reports", getMyReports);
 
 export default router;

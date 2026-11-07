@@ -295,6 +295,9 @@ router.get(
   mediaController.getMediaUsage,
 );
 
+// Does a media-library file exist (gallery editor URL check) — before "/:id"
+router.get("/validate/:uuid", authorize(MEDIA_UPLOAD_ROLES), mediaController.validateMediaUuid);
+
 // Get single media asset by ID — Admin + Vendor
 router.get("/:id", authorize(MEDIA_UPLOAD_ROLES), mediaController.getMediaById);
 

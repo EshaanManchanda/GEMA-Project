@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { randomInt } from "crypto";
+import { randomBytes, randomInt } from "crypto";
 
 /** OTP validity window. Keep in sync with any user-facing "valid for N minutes" copy. */
 export const OTP_EXPIRY_MINUTES = 10;
@@ -11,6 +11,13 @@ export const OTP_RESEND_COOLDOWN_SECONDS = 60;
 export const MAX_OTP_RESENDS = 3;
 
 const OTP_HASH_SALT_ROUNDS = 10;
+
+/**
+ * Random first password for an account created on someone's behalf (emailed
+ * to them, or never shown when they must reset it). The suffix satisfies the
+ * upper/lower/digit/symbol rule.
+ */
+export const generateTempPassword = (): string => randomBytes(9).toString("base64url") + "!1A";
 
 /**
  * Generate a cryptographically random 6-digit OTP code

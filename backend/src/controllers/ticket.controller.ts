@@ -13,6 +13,7 @@ import { sendTicketViaWhatsAppOrSms } from "../services/communication/ticketDeli
 import { v4 as uuidv4 } from "uuid";
 import logger from "../config/logger";
 import { canStaffAccessVendor } from "../utils/vendorResolve";
+import { generateTempPassword } from "../utils/otp";
 
 /** Vendor that owns a ticket: stored on the ticket, else on its event. */
 async function ticketVendorId(ticket: { vendorId?: unknown; eventId?: unknown }): Promise<unknown> {
@@ -110,8 +111,10 @@ export const generateTickets = async (
           firstName: name.split(" ")[0] || "Guest",
           lastName: name.split(" ").slice(1).join(" ") || "",
           role: "customer", // Default role for ticket holders
-          status: "ACTIVE",
+          status: "active",
           isEmailVerified: false, // Mark as unverified, they can verify later
+          // never shown: the holder sets their own with "Forgot password"
+          passwordHash: generateTempPassword(),
         });
       }
 

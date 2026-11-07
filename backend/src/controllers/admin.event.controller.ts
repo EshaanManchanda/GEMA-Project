@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { Event,  IEvent } from "../models/index";
+import { permanentDeleteBlocker } from "../utils/eventBookings";
 import Vendor from "../models/Vendor";
 import Teacher from "../models/Teacher";
 import { AppError } from "../middleware/index";
@@ -825,7 +826,8 @@ export const deleteEvent = async (
     }
 
     if (permanent === "true") {
-      // Hard delete
+      const blocked = await permanentDeleteBlocker(event._id);
+      if (blocked) return next(blocked);
       await Event.findByIdAndDelete(id);
     } else {
       // Soft delete

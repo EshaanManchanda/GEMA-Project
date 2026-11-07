@@ -12,7 +12,7 @@ import Event from "../models/Event";
 import Order from "../models/Order";
 import Vendor from "../models/Vendor";
 import { Blog } from "../models/Blog";
-import { AUDIENCE_ROLES, HUMAN, VISITOR, trafficStats } from "./analyticsRollup.service";
+import { AUDIENCE_ROLES, HUMAN, TOTALS, VISITOR, countBy } from "./analyticsRollup.service";
 
 export interface Range {
   from: Date;
@@ -47,10 +47,30 @@ const distinctActors = async (r: Range, type: string) =>
   )[0]?.n ?? 0;
 
 // ── Overview ────────────────────────────────────────────────────────────────
+type Totals = { views: number; visitors: number; sessions: number; newVisitors: number; engagementMs: number };
+const NO_TOTALS: Totals = { views: 0, visitors: 0, sessions: 0, newVisitors: 0, engagementMs: 0 };
+const registrations = (r: Range) =>
+  User.countDocuments({ createdAt: { $gte: r.from, $lt: r.to }, role: { $in: AUDIENCE_ROLES } });
+
 export async function overview(current: Range, previous: Range) {
-  const [now, prev, byDay, monthly] = await Promise.all([
-    trafficStats(current.from, current.to),
-    trafficStats(previous.from, previous.to),
+  // Only what the tab shows: the previous period needs totals alone.
+  const [[cur], [prev], regsNow, regsPrev, byDay, monthly] = await Promise.all([
+    PageView.aggregate([
+      { $match: pvIn(current) },
+      {
+        $facet: {
+          totals: TOTALS,
+          byDevice: countBy("$device", 10),
+          byBrowser: countBy("$browser", 10),
+          byOs: countBy("$os", 10),
+          byCountry: countBy("$country", 20),
+          topPaths: countBy("$path", 20),
+        },
+      },
+    ]),
+    PageView.aggregate<Totals>([{ $match: pvIn(previous) }, ...(TOTALS as PipelineStage[])]),
+    registrations(current),
+    registrations(previous),
     PageView.aggregate([
       { $match: pvIn(current) },
       {
@@ -69,7 +89,7 @@ export async function overview(current: Range, previous: Range) {
       .select("start visitors sessions views newVisitors registrations -_id")
       .lean(),
   ]);
-  const pick = (s: typeof now) => ({
+  const pick = (s: Totals, registrations: number) => ({
     visitors: s.visitors,
     newVisitors: s.newVisitors,
     returningVisitors: Math.max(s.visitors - s.newVisitors, 0),
@@ -77,17 +97,17 @@ export async function overview(current: Range, previous: Range) {
     views: s.views,
     pagesPerSession: s.sessions ? Math.round((s.views / s.sessions) * 10) / 10 : 0,
     avgEngagementSec: s.sessions ? Math.round(s.engagementMs / s.sessions / 1000) : 0,
-    registrations: s.registrations,
+    registrations,
   });
   return {
-    totals: pick(now),
-    previous: pick(prev),
+    totals: pick(cur.totals[0] ?? NO_TOTALS, regsNow),
+    previous: pick(prev ?? NO_TOTALS, regsPrev),
     byDay,
-    byDevice: now.byDevice,
-    byBrowser: now.byBrowser,
-    byOs: now.byOs,
-    byCountry: now.byCountry,
-    topPages: now.topPaths,
+    byDevice: cur.byDevice,
+    byBrowser: cur.byBrowser,
+    byOs: cur.byOs,
+    byCountry: cur.byCountry,
+    topPages: cur.topPaths,
     monthly: monthly.reverse(),
   };
 }

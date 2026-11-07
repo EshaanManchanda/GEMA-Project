@@ -91,9 +91,9 @@ export const errorHandler = (
  * Not found middleware
  */
 export const notFound = (req: Request, res: Response, next: NextFunction) => {
-  const error = new Error(`Not Found - ${req.originalUrl}`);
-  res.status(404);
-  next(error);
+  // statusCode, not res.status(): errorHandler answers err.statusCode || 500,
+  // so a bare Error turned every unknown route into a 500 "Server Error".
+  next(Object.assign(new Error(`Not Found - ${req.originalUrl}`), { statusCode: 404 }));
 };
 
 /**

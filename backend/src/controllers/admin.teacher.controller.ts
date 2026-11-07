@@ -9,6 +9,7 @@ import Teacher, {
 import User from "../models/User";
 import logger from "../config/logger";
 import { escapeRegex } from "../utils/regexHelpers";
+import { generateTempPassword } from "../utils/otp";
 
 /**
  * Get all teachers with pagination
@@ -39,7 +40,7 @@ export const getAllTeachers = async (
     if (!affiliateUser) {
       // Create Affiliate User
       // Generate a random password if needed, or use a placeholder since this is system managed
-      const randomPassword = Math.random().toString(36).slice(-8) + "Aa1!";
+      const randomPassword = generateTempPassword();
 
       affiliateUser = await User.create({
         firstName: "Platform",

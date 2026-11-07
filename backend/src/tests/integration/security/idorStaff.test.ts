@@ -261,41 +261,17 @@ describe("vendor employees", () => {
     expect((await call(a, "get", `/api/vendors/employees/${id}`)).status).toBe(200);
   });
 
-  it("another vendor cannot read, edit or delete an employee (legacy /api/employees); the owner can read it", async () => {
-    const [a, b] = await twoVendors();
-    const id = await employeeOf(a.userId); // legacy router keys employees by the vendor's User._id
-
-    expect((await call(b, "get", `/api/employees/${id}`)).status).toBe(404);
-    expect((await call(b, "put", `/api/employees/${id}`, { firstName: "Pwned" })).status).toBe(404);
-    expect((await call(b, "delete", `/api/employees/${id}`)).status).toBe(404);
-    expect((await Employee.findById(id).lean())!.firstName).toBe("Staff");
-
-    expect((await call(a, "get", `/api/employees/${id}`)).status).toBe(200);
-  });
-
-  // employee.controller.ts updateEmployee: `$set: req.body` (userId/vendorId writable) and then
-  // copies body.email onto User(employee.userId) — any vendor can rewrite any account's email.
-  it("a vendor cannot change any user's login email via PUT /api/employees/:id", async () => {
-    const [vendor, admin] = [await signUp(app, "vendor"), await signUpAdmin(app)];
-    const adminEmail = (await User.findById(admin.userId).lean())!.email;
+  // The legacy /api/employees management API (it allowed account takeover and
+  // matched vendors by the wrong id) was removed; /api/employees now only
+  // serves the logged-in employee.
+  it("the removed legacy employee management routes are gone, and the employee-only ones refuse vendors", async () => {
+    const vendor = await signUp(app, "vendor");
     const id = await employeeOf(vendor.userId);
-
-    await call(vendor, "put", `/api/employees/${id}`, { userId: admin.userId, email: "attacker@evil.test" });
-
-    expect((await User.findById(admin.userId).lean())!.email).toBe(adminEmail);
-  });
-
-  it("a vendor cannot move their employee onto another vendor to read its attendees", async () => {
-    const [a, b] = await twoVendors();
-    const insider = await signUpAs(app, "employee");
-    const insiderEmail = (await User.findById(insider.userId).lean())!.email;
-    const created = await call(a, "post", "/api/employees", { firstName: "In", lastName: "Sider", email: insiderEmail, role: "scanner" });
-    expect(created.status).toBe(201);
-    const bEvent = await vendorEvent(b);
-
-    await call(a, "put", `/api/employees/${created.body.data._id}`, { vendorId: await vendorIdOf(b) });
-
-    expect((await call(insider, "get", `/api/tickets/event/${bEvent}`)).status).toBe(403);
+    for (const [method, url] of [["post", "/api/employees"], ["get", `/api/employees/${id}`], ["put", `/api/employees/${id}`], ["delete", `/api/employees/${id}`], ["post", "/api/employees/assign-event"]] as const) {
+      expect([403, 404]).toContain((await call(vendor, method, url, { email: "attacker@evil.test" })).status);
+    }
+    expect((await call(vendor, "get", "/api/employees/assigned-events")).status).toBe(403);
+    expect((await Employee.findById(id).lean())!.firstName).toBe("Staff");
   });
 });
 

@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from "express";
+import mongoose from "mongoose";
 import { validationResult } from "express-validator";
 import { Order, Event, Ticket, User, Coupon } from "../models/index";
 import AdminRevenueSettings from "../models/AdminRevenueSettings";
+import { resolveVendorId } from "../utils/vendorResolve";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { emailService } from "../services/email.service";
@@ -778,7 +780,8 @@ export const getVendorOrders = async (
   next: NextFunction,
 ) => {
   try {
-    const vendorId = req.user?._id || req.user?.id;
+    // Orders store the Vendor profile id as eventVendorId; aggregate() doesn't cast strings
+    const vendorId = new mongoose.Types.ObjectId(await resolveVendorId(req));
     const {
       page = 1,
       limit = 10,

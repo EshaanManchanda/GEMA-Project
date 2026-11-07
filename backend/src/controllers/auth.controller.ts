@@ -226,7 +226,7 @@ const clearCookieAllDomains = (
 /**
  * Clear auth cookies on response
  */
-const clearAuthCookies = (res: Response): void => {
+export const clearAuthCookies = (res: Response): void => {
   clearCookieAllDomains(res, "accessToken", "/");
   clearCookieAllDomains(res, "refreshToken", "/api/auth");
   clearCsrfToken(res);

@@ -193,7 +193,12 @@ describe("rollup + admin reports", () => {
 
     for (const r of REPORTS) expect(await get(r)).toBeDefined();
 
-    expect((await get("summary")).totals).toMatchObject({ visitors: 2, sessions: 2, views: 3, newVisitors: 1, returningVisitors: 1 });
+    // one view in the previous 7 days; the admin account is not an audience sign-up
+    await PageView.create({ path: "/", sessionId: "old", visitorId: "vold", device: "mobile", timestamp: new Date(Date.now() - 10 * 86_400_000) });
+    const summary = await get("summary");
+    expect(summary.totals).toMatchObject({ visitors: 2, sessions: 2, views: 3, newVisitors: 1, returningVisitors: 1, registrations: 1 });
+    expect(summary.previous).toMatchObject({ visitors: 1, sessions: 1, views: 1, registrations: 0 });
+    expect(summary.byDevice).toEqual(expect.arrayContaining([{ key: "mobile", n: 2 }, { key: "desktop", n: 1 }]));
     const channels = (await get("acquisition")).channels;
     expect(channels.find((c: { channel: string }) => c.channel === "social")).toMatchObject({ visitors: 1, views: 2 });
     expect((await get("funnel")).steps.map((s: { n: number }) => s.n).slice(0, 3)).toEqual([2, 1, 1]);

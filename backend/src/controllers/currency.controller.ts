@@ -14,8 +14,10 @@ export const detectCurrency = catchAsync(
       // Calling ipapi.co/json/ without an IP returned the server's own currency
       // for everyone and burned the shared free quota on every page view.
       const ip = (req.ip || "").replace(/^::ffff:/, "");
+      // "Can't tell" is a normal answer (local network, unknown IP), not an
+      // error: a 404 here logged a console error on every page view.
       if (!ip || isPrivateIp(ip)) {
-        return res.status(404).json({ success: false, message: "Currency not detectable for local address" });
+        return res.status(200).json({ success: true, data: { currency: null } });
       }
       const cacheKey = `currency:detect:${ip}`;
       const cached = await cacheService.get<string>(cacheKey);
@@ -30,10 +32,7 @@ export const detectCurrency = catchAsync(
       if (currency) await cacheService.set(cacheKey, currency, { ttl: 24 * 3600 });
 
       if (!currency) {
-        return res.status(404).json({
-          success: false,
-          message: "Currency not detected from ipapi.co",
-        });
+        return res.status(200).json({ success: true, data: { currency: null } });
       }
 
       res.status(200).json({

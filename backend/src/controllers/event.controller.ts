@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import mongoose from "mongoose";
 import { validationResult } from "express-validator";
 import { Event, User, Order, AnalyticsEvent } from "../models/index";
 import Vendor, { VerificationStatus } from "../models/Vendor";
@@ -617,13 +618,8 @@ export const getEvent = async (
           `Event ${lookupValue} found but filtered out. Reasons: ${reasons.join(", ")}`,
         );
 
-        // Return a more descriptive error for debugging (you might want to revert this for production security)
-        return next(
-          new AppError(
-            `Event found but not visible: ${reasons.join(", ")}`,
-            404,
-          ),
-        );
+        // Reasons stay in the log: telling the caller would confirm an
+        // unpublished event exists and what state it is in.
       }
 
       return next(new AppError("Event not found", 404));
@@ -909,7 +905,8 @@ export const getVendorEvents = async (
   next: NextFunction,
 ) => {
   try {
-    const userId = req.user?._id || req.user?.id;
+    // Events store the Vendor profile id, not the vendor's user id
+    const vendorId = await resolveVendorId(req);
     const {
       page = 1,
       limit = 12,
@@ -924,7 +921,7 @@ export const getVendorEvents = async (
 
     // Build filter query
     const filter: any = {
-      vendorId: userId,
+      vendorId,
       isDeleted: false,
     };
 
@@ -1014,12 +1011,13 @@ export const getVendorEventAnalytics = async (
   next: NextFunction,
 ) => {
   try {
-    const userId = req.user?._id || req.user?.id;
+    // Events store the Vendor profile id; aggregate() doesn't cast strings
+    const vendorId = new mongoose.Types.ObjectId(await resolveVendorId(req));
 
     const analytics = await Event.aggregate([
       {
         $match: {
-          vendorId: userId,
+          vendorId,
           isDeleted: false,
         },
       },

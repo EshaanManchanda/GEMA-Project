@@ -61,11 +61,6 @@ export interface ICoupon extends Document {
   ): boolean;
   calculateDiscount(orderAmount: number): number;
   canBeUsed(): boolean;
-  incrementUsage(
-    userId: mongoose.Types.ObjectId,
-    orderId: mongoose.Types.ObjectId,
-    discountAmount: number,
-  ): Promise<void>;
 }
 
 // Static methods interface
@@ -529,21 +524,6 @@ couponSchema.methods.canBeUsed = function (): boolean {
     now <= this.validUntil &&
     (!this.usageLimit || this.usageCount < this.usageLimit)
   );
-};
-
-// Method to increment usage — throws when a limit is already reached.
-couponSchema.methods.incrementUsage = async function (
-  userId: mongoose.Types.ObjectId,
-  orderId: mongoose.Types.ObjectId,
-  discountAmount: number,
-): Promise<void> {
-  const ok = await (this.constructor as ICouponModel).reserveUsage(
-    this._id,
-    userId,
-    orderId,
-    discountAmount,
-  );
-  if (!ok) throw new Error("Coupon usage limit reached");
 };
 
 /**

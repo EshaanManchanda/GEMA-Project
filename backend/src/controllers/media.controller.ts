@@ -1,5 +1,6 @@
 import { Response, NextFunction } from "express";
 import mediaService from "../services/media.service";
+import MediaAsset from "../models/MediaAsset";
 import { AppError } from "../middleware/error";
 import { AuthRequest } from "../types/express";
 import { config } from "../config/env";
@@ -258,6 +259,24 @@ export const getMediaById = async (
       success: true,
       data: media,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Does a media-library file exist? Used by the gallery editor before it
+ * accepts a pasted /media/file/<uuid> URL.
+ * GET /api/media/validate/:uuid
+ */
+export const validateMediaUuid = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const exists = !!(await MediaAsset.exists({ uuid: String(req.params.uuid) }));
+    res.status(200).json({ success: true, exists });
   } catch (error) {
     next(error);
   }

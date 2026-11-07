@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as authController from "../controllers/auth.controller";
+import { exportMyData, deleteMyAccount } from "../controllers/account.controller";
 import {
   authenticate,
   authenticateOptional,
@@ -114,6 +115,10 @@ router.get("/csrf-token", authenticate, authController.getCsrfToken);
  * @access  Private
  */
 router.get("/profile", authenticate, authController.getFullProfile);
+
+// Privacy requests: a copy of my data, and deleting my account
+router.post("/export-data", authenticate, exportMyData);
+router.post("/delete-account", authenticate, deleteMyAccount);
 
 /**
  * @route   PUT /api/auth/profile

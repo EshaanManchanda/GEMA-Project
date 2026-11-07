@@ -69,10 +69,12 @@ it("forbids customers", async () => {
   expect((await send(customer, "post", "/api/galleries", { eventId, images })).status).toBe(403);
 });
 
-it("returns 400 for a malformed public eventId and 404 when no gallery exists", async () => {
+it("returns 400 for a malformed public eventId and an empty gallery when none exists", async () => {
   const { eventId } = await vendorEvent();
   expect((await request(app).get("/api/galleries/event/bad")).status).toBe(400);
-  expect((await request(app).get(`/api/galleries/event/${eventId}`)).status).toBe(404);
+  const none = await request(app).get(`/api/galleries/event/${eventId}`);
+  expect(none.status).toBe(200);
+  expect(none.body.data.gallery).toBeNull();
 });
 
 it("rejects an invalid gallery type", async () => {

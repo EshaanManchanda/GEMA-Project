@@ -32,6 +32,7 @@ import {
 import { escapeRegex } from "../utils/regexHelpers";
 import logger from "../config/logger";
 import { stripeConnectService } from "./stripe-connect.service";
+import { generateTempPassword } from "../utils/otp";
 
 // ==================== INTERFACES ====================
 
@@ -851,6 +852,13 @@ class VendorService {
           });
         }
 
+        // Orders require a billing phone; say so instead of a raw validation error
+        const phone = user.phone || row.customerPhone;
+        if (!phone) {
+          results.failed.push({ row: i + 1, reason: "Customer phone is required", data: row });
+          continue;
+        }
+
         const eventDate = row.eventDate ? new Date(row.eventDate) : new Date();
 
         const order = await Order.create({
@@ -878,19 +886,19 @@ class VendorService {
           currency: row.currency || event.currency || "AED",
           status: row.status || "confirmed",
           paymentStatus: row.paymentStatus || "paid",
-          paymentMethod: "imported",
+          // paid outside Kidrove: no paymentMethod (its enum lists online methods only)
           billingAddress: {
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
-            phone: user.phone || row.customerPhone || "",
+            phone,
             address: "Imported",
             city: "Imported",
             state: "Imported",
             zipCode: "00000",
             country: "UAE",
           },
-          source: "vendor_import",
+          source: "vendor",
           notes: `Imported by vendor on ${new Date().toISOString()}`,
         });
 
@@ -1517,9 +1525,7 @@ class VendorService {
     let tempPassword: string | null = null;
 
     if (!user) {
-      tempPassword =
-        Math.random().toString(36).slice(-8) +
-        Math.random().toString(36).slice(-8).toUpperCase();
+      tempPassword = generateTempPassword();
       user = await User.create({
         email: data.email,
         firstName: data.firstName,

@@ -14,6 +14,7 @@ import { cacheService } from "../services/cache.service";
 import { CacheTTL } from "../config/cache-tiers";
 import { transformEventResponse } from "../utils/event.utils";
 import { escapeRegex } from "../utils/regexHelpers";
+import { generateTempPassword } from "../utils/otp";
 
 const getScheduleCapacity = (schedule: any): number => {
   if (schedule?.unlimitedSeats) return 999999;
@@ -883,6 +884,8 @@ export const importTeacherBookings = catchAsync(
             phone: row.studentPhone || "",
             role: "student",
             status: "active",
+            // never shown: the student sets their own with "Forgot password"
+            passwordHash: generateTempPassword(),
           });
         }
 
@@ -928,7 +931,7 @@ export const importTeacherBookings = catchAsync(
             zipCode: "00000",
             country: "UAE",
           },
-          source: "teacher_import",
+          source: "teacher",
           teacherNotes: `Imported by teacher on ${new Date().toISOString()}`,
         });
 

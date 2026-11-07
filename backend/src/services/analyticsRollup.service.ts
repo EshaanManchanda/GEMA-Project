@@ -18,11 +18,37 @@ export const AUDIENCE_ROLES = [
   UserRole.TEACHER,
 ];
 
-const countBy = (field: string, limit = 20): PipelineStage.FacetPipelineStage[] => [
+export const countBy = (field: string, limit = 20): PipelineStage.FacetPipelineStage[] => [
   { $group: { _id: { $ifNull: [field, "unknown"] }, n: { $sum: 1 } } },
   { $sort: { n: -1, _id: 1 } }, // tie-break so re-runs give identical rows
   { $limit: limit },
   { $project: { _id: 0, key: { $toString: "$_id" }, n: 1 } },
+];
+
+/** Page view totals: views, unique visitors, sessions, new visitors, engagement. */
+export const TOTALS: PipelineStage.FacetPipelineStage[] = [
+  {
+    $group: {
+      _id: null,
+      views: { $sum: 1 },
+      visitors: { $addToSet: VISITOR },
+      sessions: { $addToSet: "$sessionId" },
+      newVisitors: {
+        $addToSet: { $cond: ["$isNewVisitor", VISITOR, "$$REMOVE"] },
+      },
+      engagementMs: { $sum: "$engagementMs" },
+    },
+  },
+  {
+    $project: {
+      _id: 0,
+      views: 1,
+      engagementMs: 1,
+      visitors: { $size: "$visitors" },
+      sessions: { $size: "$sessions" },
+      newVisitors: { $size: "$newVisitors" },
+    },
+  },
 ];
 
 /**
@@ -35,30 +61,7 @@ export async function trafficStats(from: Date, to: Date) {
     { $match: match },
     {
       $facet: {
-        totals: [
-          {
-            $group: {
-              _id: null,
-              views: { $sum: 1 },
-              visitors: { $addToSet: VISITOR },
-              sessions: { $addToSet: "$sessionId" },
-              newVisitors: {
-                $addToSet: { $cond: ["$isNewVisitor", VISITOR, "$$REMOVE"] },
-              },
-              engagementMs: { $sum: "$engagementMs" },
-            },
-          },
-          {
-            $project: {
-              _id: 0,
-              views: 1,
-              engagementMs: 1,
-              visitors: { $size: "$visitors" },
-              sessions: { $size: "$sessions" },
-              newVisitors: { $size: "$newVisitors" },
-            },
-          },
-        ],
+        totals: TOTALS,
         byChannel: [
           // one row per visitor+channel so the number reads as "visitors"
           { $group: { _id: { c: "$channel", v: VISITOR } } },

@@ -34,6 +34,11 @@ const EXEMPT_EXACT_PATHS = new Set([
   "/api/auth/verify-email",
   "/api/auth/resend-verification-email",
   "/api/auth/firebase",
+  // Anonymous analytics beacons: they never run `authenticate` or read the
+  // session, so a forged request can only add noise. sendBeacon (visible
+  // time on page) cannot set the X-CSRF-Token header at all.
+  "/api/track/pageview",
+  "/api/track/engagement",
 ]);
 
 const cookieSameSite = (): "lax" | "none" | "strict" =>

@@ -1,4 +1,5 @@
 import { Event, Category, Vendor, VerificationStatus } from "../models/index";
+import { permanentDeleteBlocker } from "../utils/eventBookings";
 import { AppError, catchAsync } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { NextFunction, Response } from "express";
@@ -428,7 +429,8 @@ export const deleteVendorEvent = catchAsync(
     }
 
     if (permanent === "true") {
-      // Permanent delete
+      const blocked = await permanentDeleteBlocker(event._id);
+      if (blocked) return next(blocked);
       await Event.findByIdAndDelete(id);
 
       res.status(200).json({
