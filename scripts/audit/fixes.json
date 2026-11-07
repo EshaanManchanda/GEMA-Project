@@ -448,6 +448,20 @@
       "commit": "dfd8ac6",
       "title": "npm audit fixes",
       "text": "Backend and frontend dependencies updated for known advisories (N23, N24)."
+    },
+    {
+      "area": "Dependencies",
+      "sev": "medium",
+      "commit": "5310edd",
+      "title": "No high-severity advisories left in production dependencies",
+      "text": "Backend puppeteer moved to 25 (certificate and report PDFs still pass their tests). Frontend pins @grpc/grpc-js to 1.14 through an npm override, which clears the firebase advisories without the downgrade npm audit fix --force would have done."
+    },
+    {
+      "area": "Testing & CI",
+      "sev": "low",
+      "commit": "5dccc95",
+      "title": "Frontend unit tests run again",
+      "text": "Jest now loads the Vite code (import.meta rewrite, path aliases, uuid stub) and the TipTap tests pass. Five old suites that mocked fetch against removed Redux slices were deleted. 22 frontend tests pass."
     }
   ],
   "tests": [
