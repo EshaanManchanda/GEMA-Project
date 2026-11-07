@@ -3,6 +3,7 @@ export default {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   moduleNameMapper: {
+    '^uuid$': '<rootDir>/src/__mocks__/uuid.cjs',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(gif|ttf|eot|svg|png|jpg|jpeg)$': 'jest-transform-stub',
     '^@/(.*)$': '<rootDir>/src/$1',
@@ -10,7 +11,10 @@ export default {
     '^@pages/(.*)$': '<rootDir>/src/pages/$1',
     '^@hooks/(.*)$': '<rootDir>/src/hooks/$1',
     '^@utils/(.*)$': '<rootDir>/src/utils/$1',
+    '^@services/(.*)$': '<rootDir>/src/services/$1',
     '^@store/(.*)$': '<rootDir>/src/store/$1',
+    '^@assets/(.*)$': '<rootDir>/src/assets/$1',
+    '^@styles/(.*)$': '<rootDir>/src/styles/$1',
     '^@types/(.*)$': '<rootDir>/src/types/$1'
   },
   collectCoverageFrom: [
@@ -28,11 +32,8 @@ export default {
     '<rootDir>/src/tests/**/*.{test,spec}.{ts,tsx}'
   ],
   transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', {
-      useESM: true
-    }]
+    '^.+\\.(ts|tsx)$': '<rootDir>/jest.transform.cjs'
   },
-  extensionsToTreatAsEsm: ['.ts', '.tsx'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   testTimeout: 10000,
   maxWorkers: '50%'
