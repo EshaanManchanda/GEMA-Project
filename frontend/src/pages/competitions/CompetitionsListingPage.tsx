@@ -51,7 +51,7 @@ export const COMPETITIONS_DATA: CompetitionListingItem[] = [
     description: 'A regional short-story writing competition for young authors across Bahrain, Kuwait, Oman, Qatar, Saudi Arabia, and the UAE celebrating Gulf culture and traditions.',
     coverImage: '/assets/gulf.png',
     status: 'upcoming',
-    grades: 'Grades K–12',
+    grades: 'Grades 3–12',
     duration: 'Competition: January 2027',
     bgColor: 'bg-teal-50 text-teal-700 border-teal-200',
     link: '/competitions/young-voices-of-the-gcc'

@@ -8,7 +8,8 @@
  *   1. Pull latest code from GitHub
  *   2. cd backend
  *   3. NODE_OPTIONS=--max-old-space-size=4096 npm run build
- *   4. node dist/scripts/migrations/backfillCompetitionOrders.js   ← NEW STEP
+ *   4. 
+ *    ← NEW STEP
  *   5. pm2 restart all
  *
  * The script is 100% idempotent — safe to run multiple times. It will

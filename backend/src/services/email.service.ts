@@ -2517,9 +2517,6 @@ Submit your mobile reel: ${submitUrl}
 
     const getWordLimitByCategory = (cat: string) => {
       const normalized = (cat || "").toLowerCase();
-      if (normalized.includes("little storytellers") || normalized.includes("kg") || normalized.includes("kindergarten")) {
-        return "100 – 200 words (Dictation/transcription by parent or teacher allowed)";
-      }
       if (normalized.includes("young authors")) {
         return "200 – 400 words";
       }

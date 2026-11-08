@@ -3,16 +3,12 @@ import mongoose, { Document, Schema } from "mongoose";
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 export enum GCCGradeCategory {
-  CAT_1 = "Little Storytellers", // Kindergarten – Grade 2
   CAT_2 = "Young Authors",       // Grades 3–5
   CAT_3 = "Creative Voices",     // Grades 6–8
   CAT_4 = "Emerging Writers",    // Grades 9–12
 }
 
 export enum GCCGrade {
-  KINDERGARTEN = "Kindergarten",
-  GRADE_1 = "Grade 1",
-  GRADE_2 = "Grade 2",
   GRADE_3 = "Grade 3",
   GRADE_4 = "Grade 4",
   GRADE_5 = "Grade 5",

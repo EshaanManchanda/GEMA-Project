@@ -299,7 +299,7 @@ export default function YoungVoicesGCCSubmitPage() {
                 className="w-full bg-[#FAFDFD] border border-slate-300 rounded-xl p-4 text-sm text-slate-900 focus:border-teal-600 outline-none font-serif leading-relaxed"
               />
               <div className="flex justify-between text-[11px] text-slate-500 mt-1">
-                <span>Target: Little Storytellers (100–200w) · Young Authors (200–400w) · Creative Voices (400–700w) · Emerging Writers (700–1000w)</span>
+                <span>Target: Young Authors (200–400w) · Creative Voices (400–700w) · Emerging Writers (700–1000w)</span>
                 <span className="font-bold text-teal-800">
                   {storyContent.trim() ? `${storyContent.trim().split(/\s+/).filter(Boolean).length} words` : '0 words'}
                 </span>

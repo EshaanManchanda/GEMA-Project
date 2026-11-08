@@ -26,16 +26,6 @@ const GCC_COUNTRIES = [
 const CATEGORIES = [
   {
     id: 1,
-    name: 'Little Storytellers',
-    grades: 'Kindergarten – Grade 2',
-    wordLimit: '100 – 200 words',
-    icon: '🌱',
-    cardBg: 'bg-gradient-to-br from-teal-50 via-white to-cyan-50/60 border-teal-200/80',
-    badge: 'bg-teal-100 text-teal-900 border-teal-200',
-    desc: 'Simple, charming tales celebrating family, animals, traditions, or friends. (Parents/teachers may assist in typing the child’s own words).',
-  },
-  {
-    id: 2,
     name: 'Young Authors',
     grades: 'Grades 3 – 5',
     wordLimit: '200 – 400 words',
@@ -45,7 +35,7 @@ const CATEGORIES = [
     desc: 'Captivating stories exploring meaningful community moments, memorable places, and heritage journeys across the Gulf.',
   },
   {
-    id: 3,
+    id: 2,
     name: 'Creative Voices',
     grades: 'Grades 6 – 8',
     wordLimit: '400 – 700 words',
@@ -55,7 +45,7 @@ const CATEGORIES = [
     desc: 'Engaging narratives developing rich character journeys, cross-cultural friendships, and imaginative adventures.',
   },
   {
-    id: 4,
+    id: 3,
     name: 'Emerging Writers',
     grades: 'Grades 9 – 12',
     wordLimit: '700 – 1,000 words',
@@ -183,7 +173,7 @@ const FAQS = [
   },
   {
     q: 'Can parents or teachers help write the story?',
-    a: 'No. The story must be entirely conceived and composed by the student. For Kindergarten to Grade 2, parents or teachers may assist only with typing or transcribing the child’s spoken words. AI generation, plagiarism, and adult re-writing are strictly disallowed.',
+    a: 'No. The story must be entirely conceived and composed by the student. AI generation, plagiarism, and adult re-writing are strictly disallowed.',
   },
   {
     q: 'Are poetry, video, speeches, or illustrations accepted?',
@@ -191,7 +181,7 @@ const FAQS = [
   },
   {
     q: 'What are the word count requirements?',
-    a: 'Little Storytellers (KG–G2): 100–200 words; Young Authors (Grades 3–5): 200–400 words; Creative Voices (Grades 6–8): 400–700 words; Emerging Writers (Grades 9–12): 700–1,000 words.',
+    a: 'Young Authors (Grades 3–5): 200–400 words; Creative Voices (Grades 6–8): 400–700 words; Emerging Writers (Grades 9–12): 700–1,000 words.',
   },
   {
     q: 'How does School Bulk Registration work?',
@@ -200,13 +190,11 @@ const FAQS = [
 ];
 
 const GRADES = [
-  'Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4',
-  'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9',
-  'Grade 10', 'Grade 11', 'Grade 12',
+  'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8',
+  'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12',
 ];
 
 function getCategoryFromGrade(grade: string): string {
-  if (['Kindergarten', 'Grade 1', 'Grade 2'].includes(grade)) return 'Little Storytellers (KG–G2)';
   if (['Grade 3', 'Grade 4', 'Grade 5'].includes(grade)) return 'Young Authors (Grades 3–5)';
   if (['Grade 6', 'Grade 7', 'Grade 8'].includes(grade)) return 'Creative Voices (Grades 6–8)';
   return 'Emerging Writers (Grades 9–12)';
@@ -525,8 +513,8 @@ const YoungVoicesGCCPage: React.FC = () => {
                     🎓
                   </div>
                   <div className="text-left pr-1">
-                    <p className="text-xs font-black text-slate-900 leading-tight">Grades K–12</p>
-                    <p className="text-[10px] text-slate-500 font-semibold leading-tight">4 Age Categories</p>
+                    <p className="text-xs font-black text-slate-900 leading-tight">Grades 3–12</p>
+                    <p className="text-[10px] text-slate-500 font-semibold leading-tight">3 Age Categories</p>
                   </div>
                 </div>
 
@@ -607,15 +595,15 @@ const YoungVoicesGCCPage: React.FC = () => {
               <div className="bg-white/80 backdrop-blur-md border border-sky-200/90 rounded-3xl p-6 text-center shadow-sm hover:-translate-y-1 transition-all">
                 <span className="text-4xl block mb-3">🎓</span>
                 <h3 className="text-base font-black text-slate-900 mb-1">Eligible Students</h3>
-                <p className="text-sky-700 text-sm font-extrabold mb-1">Kindergarten to Grade 12</p>
-                <p className="text-slate-500 text-xs">4 Distinct Age Categories</p>
+                <p className="text-sky-700 text-sm font-extrabold mb-1">Grades 3 to 12</p>
+                <p className="text-slate-500 text-xs">3 Distinct Age Categories</p>
               </div>
 
               <div className="bg-white/80 backdrop-blur-md border border-indigo-200/90 rounded-3xl p-6 text-center shadow-sm hover:-translate-y-1 transition-all">
                 <span className="text-4xl block mb-3">🖋️</span>
                 <h3 className="text-base font-black text-slate-900 mb-1">Creative Format</h3>
                 <p className="text-indigo-700 text-sm font-extrabold mb-1">Original Short Stories</p>
-                <p className="text-slate-500 text-xs">100 to 1,000 words</p>
+                <p className="text-slate-500 text-xs">200 to 1,000 words</p>
               </div>
             </div>
           </div>
@@ -668,7 +656,7 @@ const YoungVoicesGCCPage: React.FC = () => {
 
           <div className="mt-12 flex items-center gap-3 border-t border-[#9DF4F3]/20 pt-5 relative z-10">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#9DF4F3]">Note</span>
-            <p className="text-xs text-slate-300">Registration and manuscript submissions are conducted online via Kidrove for all eligible GCC students (Kindergarten through Grade 12).</p>
+            <p className="text-xs text-slate-300">Registration and manuscript submissions are conducted online via Kidrove for all eligible GCC students (Grades 3 through 12).</p>
           </div>
         </div>
       </section>
@@ -743,14 +731,14 @@ const YoungVoicesGCCPage: React.FC = () => {
               Who Can Participate?
             </span>
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-4 mb-3">
-              Four Age Categories for Fair Evaluation
+              Three Age Categories for Fair Evaluation
             </h2>
             <p className="text-slate-600 text-sm sm:text-base">
-              The competition is open to students from Kindergarten to Grade 12 with specific word counts calibrated for each grade level.
+              The competition is open to students from Grade 3 to Grade 12 with specific word counts calibrated for each grade level.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {CATEGORIES.map((cat) => (
               <div
                 key={cat.id}
@@ -814,7 +802,7 @@ const YoungVoicesGCCPage: React.FC = () => {
                   {
                     num: '5',
                     title: 'Ensure Authenticity',
-                    desc: 'Keep your story completely original. (For KG to Grade 2, an adult may help transcribe the student’s own spoken words).',
+                    desc: 'Keep your story completely original. Generative AI tools and adult rewriting are strictly prohibited.',
                   },
                 ].map((step) => (
                   <div key={step.num} className="flex gap-4 items-start">
@@ -967,7 +955,7 @@ const YoungVoicesGCCPage: React.FC = () => {
                   School Bulk Registration <span className="whitespace-nowrap text-teal-700">(AED 40 / student)</span>
                 </h2>
                 <p className="text-slate-700 text-sm sm:text-base leading-relaxed">
-                  Inspire your entire school community to celebrate GCC heritage through creative storytelling! For schools registering 25 or more students across the Gulf, we provide a discounted bulk rate of <strong className="text-slate-900">AED 40 per child</strong> (saving AED 10 per entry vs AED 50 individual rate), teacher writing prompts & rubrics for Kindergarten to Grade 12, dedicated coordinator support, and entry into the prestigious <strong className="text-teal-800">Top GCC Literary School Trophy</strong>.
+                  Inspire your entire school community to celebrate GCC heritage through creative storytelling! For schools registering 25 or more students across the Gulf, we provide a discounted bulk rate of <strong className="text-slate-900">AED 40 per child</strong> (saving AED 10 per entry vs AED 50 individual rate), teacher writing prompts & rubrics for Grades 3 to 12, dedicated coordinator support, and entry into the prestigious <strong className="text-teal-800">Top GCC Literary School Trophy</strong>.
                 </p>
               </div>
 
@@ -1645,8 +1633,8 @@ const YoungVoicesGCCPage: React.FC = () => {
               <div className="space-y-3 text-xs text-slate-600 leading-relaxed">
                 <p><strong>1. Original Student Work:</strong> Every short story entered into the competition must be an original work crafted solely by the student. Plagiarism, ghostwriting, or copying existing literature will result in immediate disqualification.</p>
                 <p><strong>2. Artificial Intelligence Policy:</strong> The use of generative AI tools (such as ChatGPT or automated writers) to generate, compose, or edit entries is strictly prohibited.</p>
-                <p><strong>3. Age Category & Word Limits:</strong> Entries must strictly adhere to the designated word limits for their category: Little Storytellers (100–200 words), Young Authors (200–400 words), Creative Voices (400–700 words), Emerging Writers (700–1,000 words).</p>
-                <p><strong>4. Parent / Teacher Role:</strong> For Kindergarten to Grade 2, an adult may help transcribe the child's own spoken words. In all categories, adults may offer moral guidance, but must not rewrite the story.</p>
+                <p><strong>3. Age Category & Word Limits:</strong> Entries must strictly adhere to the designated word limits for their category: Young Authors (200–400 words), Creative Voices (400–700 words), Emerging Writers (700–1,000 words).</p>
+                <p><strong>4. Parent / Teacher Role:</strong> Adults may offer moral guidance and motivation, but must not compose or rewrite the story.</p>
                 <p><strong>5. Showcase Permission:</strong> Selected stories may be featured in the Kidrove digital compilation, exhibitions, or social channels based on parent authorization.</p>
               </div>
               <div className="mt-6 pt-4 border-t border-teal-100 text-right">

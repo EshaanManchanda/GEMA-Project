@@ -19,16 +19,8 @@ import { stripe } from "../config/stripe";
 
 // Helper: map grade string to category
 export const getGCCCategoryFromGrade = (grade: string): string => {
-  if (!grade) return "Little Storytellers";
+  if (!grade) return "Young Authors";
   const normalized = grade.toLowerCase();
-  if (
-    normalized.includes("kindergarten") ||
-    normalized.includes("kg") ||
-    normalized.includes("grade 1") ||
-    normalized.includes("grade 2")
-  ) {
-    return "Little Storytellers";
-  }
   if (
     normalized.includes("grade 3") ||
     normalized.includes("grade 4") ||
