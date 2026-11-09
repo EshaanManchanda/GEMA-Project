@@ -71,7 +71,7 @@ const AdminDashboardPage: React.FC = () => {
             {
               title: 'Total Bookings',
               value: data.totalTicketsSold || 0,
-              change: 0, // Backend doesn't provide booking growth yet
+              change: data.bookingGrowth || 0,
               icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -358,8 +358,8 @@ const AdminDashboardPage: React.FC = () => {
                   <div className="flex items-baseline justify-between">
                     <p className="text-3xl font-bold text-gray-900 group-hover:text-gray-800 transition-colors duration-300">{stat.value}</p>
                     <div className="flex flex-col items-end">
-                      <p className={`text-sm font-bold px-2 py-1 rounded-full ${stat.change >= 0 ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'} transition-all duration-300 group-hover:scale-105`}>
-                        {stat.change >= 0 ? '↗ +' : '↘ '}{Math.abs(stat.change).toFixed(1)}%
+                      <p className={`text-sm font-bold px-2 py-1 rounded-full ${stat.change > 0 ? 'text-green-700 bg-green-100' : stat.change < 0 ? 'text-red-700 bg-red-100' : 'text-gray-600 bg-gray-100'} transition-all duration-300 group-hover:scale-105`}>
+                        {stat.change > 0 ? '↗ +' : stat.change < 0 ? '↘ -' : '— '}{Math.abs(stat.change).toFixed(1)}%
                       </p>
                       <span className="text-xs text-gray-500 mt-1">vs last period</span>
                     </div>

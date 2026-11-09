@@ -148,7 +148,7 @@ export interface IVendorPaymentSettings {
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   firstName: string;
-  lastName: string;
+  lastName?: string;
   email: string;
   passwordHash: string;
   phone?: string;
@@ -206,7 +206,8 @@ const UserSchema = new Schema<IUser>(
     },
     lastName: {
       type: String,
-      required: [true, "Last name is required"],
+      required: false,
+      default: "",
       trim: true,
       maxlength: [50, "Last name cannot be more than 50 characters"],
     },
@@ -540,7 +541,7 @@ UserSchema.index({ createdAt: -1 }); // Recent signups (most common query)
 
 // Virtual for full name
 UserSchema.virtual("fullName").get(function (this: IUser) {
-  return `${this.firstName} ${this.lastName}`;
+  return [this.firstName, this.lastName].filter(Boolean).join(" ").trim();
 });
 
 // Method to compare password
@@ -552,7 +553,7 @@ UserSchema.methods.comparePassword = async function (
 
 // Method to get full name
 UserSchema.methods.getFullName = function (): string {
-  return `${this.firstName} ${this.lastName}`;
+  return [this.firstName, this.lastName].filter(Boolean).join(" ").trim();
 };
 
 // Pre-save middleware to hash password

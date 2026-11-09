@@ -75,7 +75,7 @@ export const validateGetAllUsers = [
 export const validateCreateUser = [
   // Basic Information
   validateStringLength("firstName", 1, 50, true),
-  validateStringLength("lastName", 1, 50, true),
+  validateStringLength("lastName", 1, 50, false),
   validateEmail("email", true),
   validatePhone("phone", false),
 
