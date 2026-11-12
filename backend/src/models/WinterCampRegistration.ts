@@ -13,6 +13,7 @@ export interface IWinterCampRegistration extends Document {
   parentEmail?: string;
   parentPhone?: string;
   grade: string;
+  city?: string;
   selectedPrograms: string[];
   interests?: string[];
   message?: string;
@@ -46,6 +47,10 @@ const WinterCampRegistrationSchema = new Schema<IWinterCampRegistration>(
     grade: {
       type: String,
       required: [true, "Grade is required"],
+      trim: true,
+    },
+    city: {
+      type: String,
       trim: true,
     },
     selectedPrograms: {

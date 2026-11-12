@@ -124,12 +124,16 @@ export const WINTER_CAMP_EVENTS: WinterCampEvent[] = [
 
 export const WINTER_CAMP_FAQS = [
   {
-    question: 'What is the schedule and format of the Winter Camp?',
-    answer: 'All sessions are live, interactive online workshops held during the winter break. Each cohort meets in small groups with certified educators, with recorded replays provided after each class.'
+    question: 'How do I join the live class?',
+    answer: 'You will receive a class link via email or WhatsApp before each session. Simply click the link at the scheduled time to join the live class on Zoom/google Meet. Make sure you have a stable internet connection and log in a few minutes early for a smooth experience!'
   },
   {
-    question: 'How do I receive the Certificate of Participation?',
-    answer: 'Upon completing the chosen camp modules and submitting final projects, students are awarded an official, verifiable KidRove Certificate of Participation featuring their name, program details, and a scannable QR verification code.'
+    question: 'How will I be contacted after registering interest?',
+    answer: 'Our academic advisory team will reach out to both email provided by you with specific cohort timings and camp links.'
+  },
+  {
+    question: 'Will I receive a certificate upon completing the course?',
+    answer: 'Yes! You will receive a certificate upon successful completion of the course.'
   },
   {
     question: 'Can my child register for more than one workshop?',
@@ -137,11 +141,7 @@ export const WINTER_CAMP_FAQS = [
   },
   {
     question: 'What devices or prerequisites are needed?',
-    answer: 'A computer or tablet with a stable internet connection, webcam, and microphone is all that is required. For coding and Python/Java classes, a laptop or desktop computer (Windows, Mac, or Chromebook) is recommended.'
-  },
-  {
-    question: 'How will I be contacted after registering interest?',
-    answer: 'Our academic advisory team will reach out to both parent and student emails with specific cohort timings, syllabus guides, and early bird enrollment links.'
+    answer: 'A computer or tablet with a stable internet connection is required. For coding and Python/Java classes, a laptop or desktop computer (Windows, Mac, or Chromebook) is recommended.'
   }
 ];
 

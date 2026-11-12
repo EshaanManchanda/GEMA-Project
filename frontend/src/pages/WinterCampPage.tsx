@@ -146,19 +146,10 @@ const WinterCampPage: React.FC = () => {
     email: '',
     phone: '',
     grade: '',
+    city: '',
     selectedPrograms: [] as string[],
-    interests: [] as string[],
     message: ''
   });
-
-  const availableInterests = [
-    'AI & Tech',
-    'Coding & Python',
-    'Creative Drawing',
-    'Public Speaking',
-    'Financial Literacy',
-    'Brain Games & Strategy'
-  ];
 
   const handleProgramToggle = (title: string) => {
     setForm(prev => ({
@@ -166,15 +157,6 @@ const WinterCampPage: React.FC = () => {
       selectedPrograms: prev.selectedPrograms.includes(title)
         ? prev.selectedPrograms.filter(t => t !== title)
         : [...prev.selectedPrograms, title]
-    }));
-  };
-
-  const handleInterestToggle = (interest: string) => {
-    setForm(prev => ({
-      ...prev,
-      interests: prev.interests.includes(interest)
-        ? prev.interests.filter(i => i !== interest)
-        : [...prev.interests, interest]
     }));
   };
 
@@ -196,8 +178,8 @@ const WinterCampPage: React.FC = () => {
         phone: form.phone,
         parentPhone: form.phone,
         grade: form.grade,
+        city: form.city,
         selectedPrograms: form.selectedPrograms,
-        interests: form.interests,
         message: form.message
       });
       if (res?.data?.success || res?.success) {
@@ -210,8 +192,8 @@ const WinterCampPage: React.FC = () => {
           email: '',
           phone: '',
           grade: '',
+          city: '',
           selectedPrograms: [],
-          interests: [],
           message: ''
         });
       } else {
@@ -345,7 +327,7 @@ const WinterCampPage: React.FC = () => {
               Register Interest for Winter Camp
             </h2>
             <p className="text-slate-600 text-base sm:text-lg max-w-xl mx-auto">
-              Fill in your details below to reserve your cohort spot and receive schedule schedules & syllabus guides.
+              Fill in your details below to reserve your cohort spot.
             </p>
           </div>
 
@@ -370,10 +352,10 @@ const WinterCampPage: React.FC = () => {
                 />
               </div>
 
-              {/* Email (Student / Parent) */}
+              {/* Email */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                  Email (Student / Parent) <span className="text-rose-500">*</span>
+                  Email <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -389,7 +371,7 @@ const WinterCampPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                    Contact Number (Student / Parent) (Optional)
+                    Contact Number (Optional)
                   </label>
                   <input
                     type="tel"
@@ -420,7 +402,7 @@ const WinterCampPage: React.FC = () => {
               {/* Select Programs from the Featured Workshops */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                  Select Workshop(s) of Interest
+                  Select course(s) of your Interest
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-56 overflow-y-auto p-2 bg-slate-50/80 rounded-xl border border-slate-200">
                   {(events.length > 0 ? events : WINTER_CAMP_EVENTS).map((ev, i) => {
@@ -431,8 +413,8 @@ const WinterCampPage: React.FC = () => {
                         key={i}
                         onClick={() => handleProgramToggle(ev.title)}
                         className={`p-3 rounded-lg text-left text-xs font-bold border transition-all flex items-start gap-2 ${isSelected
-                            ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
-                            : 'bg-white text-slate-700 border-slate-200 hover:border-sky-300'
+                          ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
+                          : 'bg-white text-slate-700 border-slate-200 hover:border-sky-300'
                           }`}
                       >
                         <div className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-white text-sky-600 border-white' : 'border-slate-300'
@@ -446,35 +428,24 @@ const WinterCampPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Focus Areas Tags */}
+              {/* City (Optional) */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                  Focus Areas
+                  City (Optional)
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {availableInterests.map((interest, idx) => {
-                    const isSelected = form.interests.includes(interest);
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleInterestToggle(interest)}
-                        className={`px-3.5 py-1.5 rounded-full border text-xs font-bold transition-all ${isSelected
-                            ? 'bg-slate-900 border-slate-900 text-white'
-                            : 'border-slate-200 bg-white text-slate-650 hover:border-sky-300'
-                          }`}
-                      >
-                        {interest}
-                      </button>
-                    );
-                  })}
-                </div>
+                <input
+                  type="text"
+                  value={form.city}
+                  onChange={e => setForm({ ...form, city: e.target.value })}
+                  placeholder="e.g. Dubai, Abu Dhabi, Sharjah..."
+                  className="w-full px-4 py-3.5 border border-slate-200 bg-white rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all font-medium"
+                />
               </div>
 
               {/* Message / Goals */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                  Goals or Questions (Optional)
+                  Any Questions? (Optional)
                 </label>
                 <textarea
                   rows={2}
@@ -534,9 +505,8 @@ const WinterCampPage: React.FC = () => {
                   <div className="space-y-3">
                     <div className="bg-slate-200 rounded-md h-4 w-24" />
                     <div className="bg-slate-200 rounded-md h-6 w-3/4" />
-                    <div className="border-t border-slate-200 pt-4 flex justify-between">
-                      <div className="bg-slate-200 rounded-md h-3 w-16" />
-                      <div className="bg-slate-200 rounded-md h-3 w-16" />
+                    <div className="border-t border-slate-200 pt-4 flex items-center">
+                      <div className="bg-slate-200 rounded-md h-3 w-28" />
                     </div>
                   </div>
                 </div>
@@ -590,10 +560,7 @@ const WinterCampPage: React.FC = () => {
                     <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-2">
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
                         <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
-                        <span>{card.grades}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium bg-slate-100 px-2.5 py-1 rounded-full">
-                        <span>{card.duration}</span>
+                        <span>1st Dec to 31st Jan</span>
                       </div>
                     </div>
                   </div>
@@ -739,8 +706,8 @@ const WinterCampPage: React.FC = () => {
                 <div
                   key={i}
                   className={`rounded-2xl border transition-all duration-300 overflow-hidden bg-white ${isOpen
-                      ? 'border-sky-300 bg-sky-50/20 shadow-md'
-                      : 'border-slate-200 hover:border-sky-200 hover:shadow-sm'
+                    ? 'border-sky-300 bg-sky-50/20 shadow-md'
+                    : 'border-slate-200 hover:border-sky-200 hover:shadow-sm'
                     }`}
                 >
                   <button

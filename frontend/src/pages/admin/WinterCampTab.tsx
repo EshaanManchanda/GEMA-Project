@@ -14,7 +14,6 @@ export const WinterCampTab: React.FC = () => {
     const [registrations, setRegistrations] = useState<WinterCampRegistrationItem[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState<{ total: number; page: number; limit: number; pages: number } | null>(null);
     const [selectedReg, setSelectedReg] = useState<WinterCampRegistrationItem | null>(null);
@@ -23,22 +22,34 @@ export const WinterCampTab: React.FC = () => {
     const fetchRegistrations = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await winterCampAPI.getRegistrations({
+            const res: any = await winterCampAPI.getRegistrations({
                 page,
                 limit: 15,
-                status: statusFilter,
-                search
+                search: search.trim() ? search.trim() : undefined
             });
-            if (res?.data?.data) {
-                setRegistrations(res.data.data.registrations || []);
-                setPagination(res.data.data.pagination);
+
+            // Handle both ApiResponse<WinterCampListResponse> unwrapped (res.data) and direct (res.data.data)
+            const listData = res?.data?.registrations
+                ? res.data
+                : res?.data?.data
+                ? res.data.data
+                : res?.registrations
+                ? res
+                : null;
+
+            if (listData) {
+                setRegistrations(listData.registrations || []);
+                setPagination(listData.pagination || null);
+            } else {
+                setRegistrations([]);
+                setPagination(null);
             }
         } catch (err: any) {
-            toast.error(err?.response?.data?.message || 'Failed to fetch winter camp registrations');
+            toast.error(err?.response?.data?.message || err?.message || 'Failed to fetch winter camp registrations');
         } finally {
             setIsLoading(false);
         }
-    }, [page, statusFilter, search]);
+    }, [page, search]);
 
     useEffect(() => {
         fetchRegistrations();
@@ -87,17 +98,6 @@ export const WinterCampTab: React.FC = () => {
                             className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500"
                         />
                     </div>
-                    <select
-                        value={statusFilter}
-                        onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-                        className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-                    >
-                        <option value="all">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="contacted">Contacted</option>
-                        <option value="enrolled">Enrolled</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -129,7 +129,8 @@ export const WinterCampTab: React.FC = () => {
                                     <th className="px-5 py-3">Student Name</th>
                                     <th className="px-5 py-3">Emails</th>
                                     <th className="px-5 py-3">Grade</th>
-                                    <th className="px-5 py-3">Selected Programs</th>
+                                    <th className="px-5 py-3">City</th>
+                                    <th className="px-5 py-3">Courses of Interest</th>
                                     <th className="px-5 py-3">Status</th>
                                     <th className="px-5 py-3">Submitted</th>
                                     <th className="px-5 py-3 text-right">Actions</th>
@@ -154,6 +155,15 @@ export const WinterCampTab: React.FC = () => {
                                             <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-100">
                                                 {reg.grade}
                                             </span>
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            {reg.city ? (
+                                                <span className="text-xs font-medium text-gray-700">
+                                                    {reg.city}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-gray-400 italic">—</span>
+                                            )}
                                         </td>
                                         <td className="px-5 py-4 max-w-xs">
                                             {reg.selectedPrograms && reg.selectedPrograms.length > 0 ? (
@@ -283,9 +293,16 @@ export const WinterCampTab: React.FC = () => {
                                 </div>
                             </div>
 
+                            {selectedReg.city && (
+                                <div>
+                                    <span className="text-xs uppercase font-bold text-gray-400">City</span>
+                                    <p className="font-medium text-gray-800">{selectedReg.city}</p>
+                                </div>
+                            )}
+
                             {selectedReg.selectedPrograms && selectedReg.selectedPrograms.length > 0 && (
                                 <div>
-                                    <span className="text-xs uppercase font-bold text-gray-400 block mb-1">Selected Workshops</span>
+                                    <span className="text-xs uppercase font-bold text-gray-400 block mb-1">Courses of Interest</span>
                                     <div className="flex flex-wrap gap-1.5">
                                         {selectedReg.selectedPrograms.map((p, i) => (
                                             <span key={i} className="px-2.5 py-1 rounded bg-sky-50 text-sky-800 text-xs font-semibold border border-sky-100">

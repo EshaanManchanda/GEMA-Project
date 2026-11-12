@@ -8,6 +8,7 @@ export interface WinterCampRegisterPayload {
   parentPhone?: string;
   phone?: string;
   grade: string;
+  city?: string;
   selectedPrograms: string[];
   interests?: string[];
   message?: string;
@@ -20,6 +21,7 @@ export interface WinterCampRegistrationItem {
   parentEmail?: string;
   parentPhone?: string;
   grade: string;
+  city?: string;
   selectedPrograms: string[];
   interests?: string[];
   message?: string;

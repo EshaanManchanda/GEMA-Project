@@ -1925,11 +1925,6 @@ type TabId = 'contact' | 'newsletter' | 'partnership' | 'competition' | 'winter-
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
     {
-        id: 'winter-camp',
-        label: 'Winter Camp',
-        icon: <Snowflake className="w-4 h-4 text-sky-500" />
-    },
-    {
         id: 'contact',
         label: 'Contact',
         icon: <Mail className="w-4 h-4" />
@@ -1948,6 +1943,11 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
         id: 'competition',
         label: 'Competition',
         icon: <Award className="w-4 h-4" />
+    },
+    {
+        id: 'winter-camp',
+        label: 'Winter Camp',
+        icon: <Snowflake className="w-4 h-4 text-sky-500" />
     }
 ];
 
