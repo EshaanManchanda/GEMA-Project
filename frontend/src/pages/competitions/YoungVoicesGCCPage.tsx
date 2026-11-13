@@ -5,7 +5,7 @@ import {
   FiUser, FiCheck, FiChevronRight, FiChevronLeft,
   FiAward, FiX, FiArrowRight,
   FiChevronDown, FiAlertCircle, FiCreditCard,
-  FiEdit3, FiPlay
+  FiEdit3
 } from 'react-icons/fi';
 import SEO from '@/components/common/SEO';
 import toast from 'react-hot-toast';
@@ -207,7 +207,7 @@ const YoungVoicesGCCPage: React.FC = () => {
   const [showDeclarationsModal, setShowDeclarationsModal] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isRegisteredSuccess, setIsRegisteredSuccess] = useState<boolean>(false);
-  const [registeredData, setRegisteredData] = useState<{ submissionRef?: string; amount?: number } | null>(null);
+  const [registeredData] = useState<{ submissionRef?: string; amount?: number } | null>(null);
 
   const registrationSectionRef = useRef<HTMLDivElement>(null);
 

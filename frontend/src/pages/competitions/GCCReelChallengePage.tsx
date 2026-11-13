@@ -211,7 +211,7 @@ const GCCReelChallengePage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [isRegisteredSuccess, setIsRegisteredSuccess] = useState(false);
-  const [registeredData, setRegisteredData] = useState<{ submissionRef?: string; amount?: number } | null>(null);
+  const [registeredData] = useState<{ submissionRef?: string; amount?: number } | null>(null);
   const [showBulkModal, setShowBulkModal] = useState(false);
 
   const registrationSectionRef = useRef<HTMLDivElement>(null);

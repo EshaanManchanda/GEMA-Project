@@ -1,6 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { FiAward, FiGlobe, FiCheckCircle } from 'react-icons/fi';
-import { FaGraduationCap } from 'react-icons/fa';
 import {
   FaTrophy,
   FaSearch,
