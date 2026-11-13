@@ -15,6 +15,7 @@ import { AuthRequest } from "../types";
 import { emailService } from "../services/email.service";
 import { certificateService } from "../modules/certificates/services/certificate.service";
 import { createCompetitionOrder } from "../utils/competitionOrder.utils";
+import { findBySubmissionRef } from "../utils/submissionRef.utils";
 import { stripe } from "../config/stripe";
 import { generateTempPassword } from "../utils/otp";
 import { escapeHtml } from "../utils/htmlHelpers";
@@ -472,11 +473,7 @@ export const lookupSubmissionByRef = catchAsync(
     if (rawRef.length === 24 && /^[0-9a-fA-F]{24}$/.test(rawRef)) {
       submission = await GCCSubmission.findById(rawRef);
     } else {
-      const suffix = rawRef.toUpperCase().replace(/^GCC2027-/, "").trim();
-      if (suffix.length === 8) {
-        const candidates = await GCCSubmission.find({}).sort({ createdAt: -1 }).limit(100);
-        submission = candidates.find((c) => c._id.toString().slice(-8).toUpperCase() === suffix) || null;
-      }
+      submission = await findBySubmissionRef(GCCSubmission, "GCC2027", rawRef, email);
     }
 
     // One response for "no such ref" and "wrong email" so refs can't be probed.
@@ -546,9 +543,7 @@ export const submitStory = catchAsync(
     if (submissionId) {
       submission = await GCCSubmission.findById(submissionId);
     } else if (refNo) {
-      const suffix = refNo.toUpperCase().replace(/^GCC2027-/, "").trim();
-      const candidates = await GCCSubmission.find({}).sort({ createdAt: -1 }).limit(100);
-      submission = candidates.find((c) => c._id.toString().slice(-8).toUpperCase() === suffix) || null;
+      submission = await findBySubmissionRef(GCCSubmission, "GCC2027", refNo, email);
     }
 
     // The ref/id alone doesn't prove ownership: the parent email must match too, and

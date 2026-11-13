@@ -64,18 +64,26 @@ const participant = (email = PARENT) => ({
 });
 
 // Model is `any`: the two Mongoose models are a union TypeScript can't call as one.
-const COMPS: { name: string; base: string; Model: any; upload: string }[] = [
+const COMPS: {
+  name: string;
+  base: string;
+  Model: any;
+  upload: string;
+  prefix: string;
+}[] = [
   {
     name: "gcc",
     base: "/api/gcc-competition",
     Model: GCCSubmission,
     upload: "submit-story",
+    prefix: "GCC2027",
   },
   {
     name: "reel",
     base: "/api/reel-competition",
     Model: ReelSubmission,
     upload: "submit-reel",
+    prefix: "REEL2027",
   },
 ];
 
@@ -255,7 +263,101 @@ describe.each(COMPS)("$name finalize", ({ base, Model }) => {
 
 describe.each(COMPS)(
   "$name lookup and upload need the parent email",
-  ({ base, Model, upload }) => {
+  ({ base, Model, upload, prefix }) => {
+    // Refs are "<PREFIX>-" + the last 8 hex chars of the _id; they must resolve for
+    // every entry, not just the newest 100.
+    async function insertOldTargetBehind101Newer() {
+      const target = await insertSubmission(Model, {
+        paymentStatus: "paid",
+        createdAt: new Date(Date.now() - 864e5),
+      });
+      await Promise.all(
+        Array.from({ length: 101 }, () =>
+          insertSubmission(Model, { paymentStatus: "paid" }),
+        ),
+      );
+      return { target, ref: `${prefix}-${target.slice(-8).toUpperCase()}` };
+    }
+
+    it("lookup: finds an entry by reference when more than 100 newer entries exist", async () => {
+      const { target, ref } = await insertOldTargetBehind101Newer();
+
+      const res = await request(app)
+        .get(`${base}/lookup/${ref}`)
+        .query({ email: PARENT });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.submissionId).toBe(target);
+      expect(res.body.data.submissionRef).toBe(ref);
+
+      // The prefix is case-insensitive, like the suffix.
+      const lower = await request(app)
+        .get(`${base}/lookup/${ref.toLowerCase()}`)
+        .query({ email: PARENT });
+      expect(lower.status).toBe(200);
+    });
+
+    it("upload: resolves refNo for an entry older than the newest 100", async () => {
+      const { target, ref } = await insertOldTargetBehind101Newer();
+
+      const res = await request(app).post(`${base}/${upload}`).send({
+        refNo: ref,
+        email: PARENT,
+        storyTitle: "Old entry",
+        reelTitle: "Old entry",
+        videoDriveLink: "https://drive.example/old",
+      });
+
+      expect(res.status).toBe(200);
+      expect((await Model.findById(target).lean())?.status).toBe("under_review");
+    });
+
+    it("lookup: two entries that share a ref tail don't lock either family out", async () => {
+      // Same last 8 hex chars, different first 16: a real (rare) collision.
+      const tail = "abcdef12";
+      const a = new Types.ObjectId(`65${"0".repeat(14)}${tail}`);
+      const b = new Types.ObjectId(`66${"0".repeat(14)}${tail}`);
+      for (const [_id, email, at] of [
+        [a, "family.a@example.com", new Date(Date.now() - 864e5)],
+        [b, "family.b@example.com", new Date()], // newer, so it is found first
+      ] as const) {
+        await insertSubmission(Model, {
+          _id,
+          paymentStatus: "paid",
+          createdAt: at,
+          participant: participant(email),
+        });
+      }
+
+      const ref = `${prefix}-${tail.toUpperCase()}`;
+      for (const [email, id] of [
+        ["family.a@example.com", a],
+        ["family.b@example.com", b],
+      ] as const) {
+        const res = await request(app)
+          .get(`${base}/lookup/${ref}`)
+          .query({ email });
+        expect(res.status).toBe(200);
+        expect(res.body.data.submissionId).toBe(String(id));
+      }
+    });
+
+    it("rejects a malformed or non-text reference with 404, never a crash", async () => {
+      await insertSubmission(Model, { paymentStatus: "paid" });
+
+      for (const bad of ["nothex!!", `${prefix}-123`, `${prefix}-zzzzzzzz`]) {
+        const res = await request(app)
+          .get(`${base}/lookup/${encodeURIComponent(bad)}`)
+          .query({ email: PARENT });
+        expect(res.status).toBe(404);
+      }
+
+      const res = await request(app)
+        .post(`${base}/${upload}`)
+        .send({ refNo: { $ne: null }, email: PARENT });
+      expect(res.status).toBe(404);
+    });
+
     it("lookup: requires the email, and a wrong email looks exactly like an unknown ref", async () => {
       const id = await insertSubmission(Model, { paymentStatus: "paid" });
 

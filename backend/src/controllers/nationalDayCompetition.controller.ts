@@ -21,6 +21,7 @@ import { stripe } from "../config/stripe";
 import { AuthRequest } from "../types";
 import { certificateService } from "../modules/certificates/services/certificate.service";
 import { createCompetitionOrder } from "../utils/competitionOrder.utils";
+import { findBySubmissionRef } from "../utils/submissionRef.utils";
 
 // Helper: map grade string to category
 export const getCategoryFromGrade = (grade: string): string => {
@@ -36,16 +37,6 @@ export const getCategoryFromGrade = (grade: string): string => {
     return "Creative Visionaries";
   }
   return "Emerging Artists";
-};
-
-// Ref is "UAE2026-" + the last 8 hex chars of the _id. Matches across every
-// submission, not just the newest 100.
-const findByRef = (refNo: string) => {
-  const suffix = String(refNo).toLowerCase().replace(/^uae2026-/, "").trim();
-  if (!/^[0-9a-f]{8}$/.test(suffix)) return Promise.resolve(null);
-  return NationalDaySubmission.findOne({
-    $expr: { $eq: [{ $substrCP: [{ $toString: "$_id" }, 16, 8] }, suffix] },
-  }).sort({ createdAt: -1 });
 };
 
 // ─── Save Draft Submission ───────────────────────────────────────────────────
@@ -453,7 +444,7 @@ export const lookupSubmissionByRef = catchAsync(
     if (rawRef.length === 24 && /^[0-9a-fA-F]{24}$/.test(rawRef)) {
       submission = await NationalDaySubmission.findById(rawRef);
     } else {
-      submission = await findByRef(rawRef);
+      submission = await findBySubmissionRef(NationalDaySubmission, "UAE2026", rawRef, email);
     }
 
     // Same answer for a wrong email as for a missing entry, so refs can't be probed
@@ -535,7 +526,7 @@ export const submitArtwork = catchAsync(
     if (submissionId) {
       submission = await NationalDaySubmission.findById(submissionId);
     } else if (refNo) {
-      submission = await findByRef(refNo);
+      submission = await findBySubmissionRef(NationalDaySubmission, "UAE2026", refNo, parentEmail);
     }
 
     if (!submission || submission.participant.parentEmail.toLowerCase() !== parentEmail) {
