@@ -16,6 +16,8 @@ import { emailService } from "../services/email.service";
 import { certificateService } from "../modules/certificates/services/certificate.service";
 import { createCompetitionOrder } from "../utils/competitionOrder.utils";
 import { stripe } from "../config/stripe";
+import { generateTempPassword } from "../utils/otp";
+import { escapeHtml } from "../utils/htmlHelpers";
 
 // Helper: map grade string to category
 export const getGCCCategoryFromGrade = (grade: string): string => {
@@ -227,7 +229,7 @@ export const finalizeSubmission = catchAsync(
     }
 
     // Verify session
-    if (sessionId === "TEST_PAYMENT_SKIP" && process.env.NODE_ENV !== "production") {
+    if (sessionId === "TEST_PAYMENT_SKIP" && process.env.ALLOW_TEST_PAYMENT_SKIP === "true" && process.env.NODE_ENV !== "production") {
       logger.info(`[gcc-competition] Test payment bypass used for submission ${submissionId}`);
     } else {
       let session;
@@ -241,12 +243,38 @@ export const finalizeSubmission = catchAsync(
       if (session.payment_status !== "paid") {
         return next(new AppError("Payment has not been completed. Please complete payment before submitting.", 402));
       }
+
+      // A paid session only pays for the submission it was created for (metadata is set
+      // server-side in createCheckoutSession) and at the price we set; otherwise one paid
+      // session ID could finalize any number of other drafts.
+      if (session.metadata?.submissionId !== submission._id.toString()) {
+        logger.warn(`[gcc-competition] Session ${sessionId} was not created for submission ${submissionId}`);
+        return next(new AppError("Payment session mismatch. Please contact support.", 400));
+      }
+      if (session.amount_total !== (submission.paymentAmount || 50) * 100 || session.currency !== "aed") {
+        logger.warn(`[gcc-competition] Session ${sessionId} amount/currency does not match submission ${submissionId}`);
+        return next(new AppError("Payment amount mismatch. Please contact support.", 400));
+      }
     }
 
-    // Activate submission
-    submission.paymentStatus = "paid";
-    submission.checkoutSessionId = sessionId;
-    await submission.save();
+    // Activate submission. Conditional update: concurrent finalize calls (double click,
+    // retry) run the account/order/email work exactly once.
+    const claimed = await GCCSubmission.findOneAndUpdate(
+      { _id: submission._id, paymentStatus: { $ne: "paid" } },
+      { $set: { paymentStatus: "paid", checkoutSessionId: sessionId } },
+      { new: true },
+    );
+    if (!claimed) {
+      return res.status(200).json({
+        success: true,
+        message: "Submission already confirmed",
+        data: {
+          submissionId: submission._id,
+          submissionRef: subRef,
+          studentName: submission.participant.studentFullName,
+        },
+      });
+    }
 
     logger.info(`[gcc-competition] Registration finalized & paid: ${submission._id} — ${submission.participant.studentFullName}`);
 
@@ -280,7 +308,7 @@ export const finalizeSubmission = catchAsync(
 
           if (!parentUser) {
             isNewUser = true;
-            tempPassword = Math.random().toString(36).slice(-8) + "!1A";
+            tempPassword = generateTempPassword();
 
             const nameParts = parentName ? parentName.trim().split(/\s+/) : ["Parent"];
             const parentFirstName = nameParts[0] || "Parent";
@@ -336,7 +364,7 @@ export const finalizeSubmission = catchAsync(
                       <p style="margin:10px 0 0;color:rgba(255,255,255,0.9);font-size:15px;">Your parent account has been created</p>
                     </div>
                     <div style="padding:35px 30px;">
-                      <p style="font-size:16px;color:#374151;line-height:1.7;margin-top:0;">Hi <strong>${parentUser.firstName}</strong>,</p>
+                      <p style="font-size:16px;color:#374151;line-height:1.7;margin-top:0;">Hi <strong>${escapeHtml(parentUser.firstName)}</strong>,</p>
                       <p style="font-size:15px;color:#4b5563;line-height:1.7;">
                         Thank you for registering for <strong style="color:#0f766e;">Young Voices of the GCC 2027</strong>. We've set up a parent account for you on Kidrove so you can view your child's entry, download certificates, and follow competition updates.
                       </p>
@@ -345,7 +373,7 @@ export const finalizeSubmission = catchAsync(
                         <table style="width:100%;border-collapse:collapse;margin-top:10px;">
                           <tr>
                             <td style="padding:8px 0;border-bottom:1px dashed #99f6e4;color:#6b7280;font-size:13px;width:40%;">Login Email</td>
-                            <td style="padding:8px 0;border-bottom:1px dashed #99f6e4;color:#1f2937;font-size:13px;font-weight:700;">${parentEmail}</td>
+                            <td style="padding:8px 0;border-bottom:1px dashed #99f6e4;color:#1f2937;font-size:13px;font-weight:700;">${escapeHtml(parentEmail)}</td>
                           </tr>
                           <tr>
                             <td style="padding:8px 0;color:#6b7280;font-size:13px;">Temporary Password</td>
@@ -439,8 +467,9 @@ export const lookupSubmissionByRef = catchAsync(
     const rawRef = (req.params.refNo || (req.query.refNo as string) || "").trim();
     const email = ((req.query.email as string) || "").trim().toLowerCase();
 
-    if (!rawRef) {
-      return next(new AppError("Reference number is required", 400));
+    // The reference is guessable, so the parent email is what proves the caller owns the entry.
+    if (!rawRef || !email) {
+      return next(new AppError("Reference number and parent email are required", 400));
     }
 
     let submission = null;
@@ -454,12 +483,9 @@ export const lookupSubmissionByRef = catchAsync(
       }
     }
 
-    if (!submission) {
-      return next(new AppError("No registration found with this Reference Number. Please check and try again.", 404));
-    }
-
-    if (email && submission.participant.parentEmail.toLowerCase() !== email) {
-      return next(new AppError("Email does not match the registered parent email for this Reference Number", 403));
+    // One response for "no such ref" and "wrong email" so refs can't be probed.
+    if (!submission || submission.participant.parentEmail.toLowerCase() !== email) {
+      return next(new AppError("No registration found for this Reference Number and email. Please check and try again.", 404));
     }
 
     if (submission.paymentStatus !== "paid") {
@@ -495,16 +521,29 @@ export const lookupSubmissionByRef = catchAsync(
 
 // ─── Phase 2: Submit Short Story Manuscript ─────────────────────────────────
 
+// The submit page promises "PDF/Word"; the global upload filter allows many more types.
+const STORY_UPLOAD_MIMES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
 export const submitStory = catchAsync(
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
     const storyFile = files?.["storyFile"]?.[0] || files?.["story"]?.[0];
 
     const { submissionId, refNo, storyTitle, storyDescription, themePillar, wordCount, storyContent } = req.body;
+    const email = String(req.body.email || "").trim().toLowerCase();
 
-    if (!submissionId && !refNo) {
+    if ((!submissionId && !refNo) || !email) {
       if (storyFile?.path && fs.existsSync(storyFile.path)) fs.unlinkSync(storyFile.path);
-      return next(new AppError("submissionId or refNo is required", 400));
+      return next(new AppError("submissionId or refNo, and the parent email, are required", 400));
+    }
+
+    if (storyFile && !STORY_UPLOAD_MIMES.has(storyFile.mimetype)) {
+      if (storyFile.path && fs.existsSync(storyFile.path)) fs.unlinkSync(storyFile.path);
+      return next(new AppError("Only PDF or Word documents are accepted for the story manuscript", 400));
     }
 
     let submission = null;
@@ -516,7 +555,9 @@ export const submitStory = catchAsync(
       submission = candidates.find((c) => c._id.toString().slice(-8).toUpperCase() === suffix) || null;
     }
 
-    if (!submission) {
+    // The ref/id alone doesn't prove ownership: the parent email must match too, and
+    // "no such record" and "wrong email" answer identically so records can't be probed.
+    if (!submission || submission.participant.parentEmail.toLowerCase() !== email) {
       if (storyFile?.path && fs.existsSync(storyFile.path)) fs.unlinkSync(storyFile.path);
       return next(new AppError("Registration record not found", 404));
     }
@@ -860,6 +901,13 @@ export const generateSubmissionCertificate = catchAsync(
 
 // ─── Download / View Story File ───────────────────────────────────────────────
 
+// Types a story manuscript may legitimately be (always downloaded, never rendered).
+const SAFE_DOWNLOAD_MIMES = new Set([
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+]);
+
 export const downloadStoryFile = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
@@ -879,8 +927,14 @@ export const downloadStoryFile = catchAsync(
     }
 
     const originalName = submission.storyUpload.storyOriginalName || "story-manuscript.pdf";
-    const mimetype = submission.storyUpload.storyMimetype || "application/pdf";
-    const isDownload = req.query.download === "true" || req.query.download === "1";
+    // The mimetype was supplied by the uploader. Only a PDF may render inline;
+    // everything else is forced to a download and served as an opaque binary so
+    // an uploaded HTML/SVG file can never execute in our origin.
+    const storedMime = submission.storyUpload.storyMimetype || "application/pdf";
+    const isPdf = storedMime === "application/pdf";
+    const mimetype = isPdf || SAFE_DOWNLOAD_MIMES.has(storedMime) ? storedMime : "application/octet-stream";
+    const isDownload = !isPdf || req.query.download === "true" || req.query.download === "1";
+    const safeName = originalName.replace(/[\r\n"\\]/g, "_");
 
     const { v2: cloudinary } = await import("cloudinary");
     const axios = (await import("axios")).default;
@@ -924,8 +978,10 @@ export const downloadStoryFile = catchAsync(
         res.setHeader("Content-Type", mimetype);
         res.setHeader(
           "Content-Disposition",
-          `${isDownload ? "attachment" : "inline"}; filename="${encodeURIComponent(originalName)}"`
+          `${isDownload ? "attachment" : "inline"}; filename="${encodeURIComponent(safeName)}"`
         );
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'");
 
         return response.data.pipe(res);
       } catch (streamErr: any) {

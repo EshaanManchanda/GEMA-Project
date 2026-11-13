@@ -16,6 +16,8 @@ import { emailService } from "../services/email.service";
 import { certificateService } from "../modules/certificates/services/certificate.service";
 import { createCompetitionOrder } from "../utils/competitionOrder.utils";
 import { stripe } from "../config/stripe";
+import { generateTempPassword } from "../utils/otp";
+import { escapeHtml } from "../utils/htmlHelpers";
 
 // Helper: map grade string to Reel category
 export const getReelCategoryFromGrade = (grade: string): string => {
@@ -238,7 +240,7 @@ export const finalizeSubmission = catchAsync(
     }
 
     // Verify session
-    if (sessionId === "TEST_PAYMENT_SKIP" && process.env.NODE_ENV !== "production") {
+    if (sessionId === "TEST_PAYMENT_SKIP" && process.env.ALLOW_TEST_PAYMENT_SKIP === "true" && process.env.NODE_ENV !== "production") {
       logger.info(`[reel-challenge] Test payment bypass used for submission ${submissionId}`);
     } else {
       let session;
@@ -252,12 +254,38 @@ export const finalizeSubmission = catchAsync(
       if (session.payment_status !== "paid") {
         return next(new AppError("Payment has not been completed. Please complete payment before submitting.", 402));
       }
+
+      // A paid session only pays for the submission it was created for (metadata is set
+      // server-side in createCheckoutSession) and at the price we set; otherwise one paid
+      // session ID could finalize any number of other drafts.
+      if (session.metadata?.submissionId !== submission._id.toString()) {
+        logger.warn(`[reel-challenge] Session ${sessionId} was not created for submission ${submissionId}`);
+        return next(new AppError("Payment session mismatch. Please contact support.", 400));
+      }
+      if (session.amount_total !== (submission.paymentAmount || 50) * 100 || session.currency !== "aed") {
+        logger.warn(`[reel-challenge] Session ${sessionId} amount/currency does not match submission ${submissionId}`);
+        return next(new AppError("Payment amount mismatch. Please contact support.", 400));
+      }
     }
 
-    // Activate submission
-    submission.paymentStatus = "paid";
-    submission.checkoutSessionId = sessionId;
-    await submission.save();
+    // Activate submission. Conditional update: concurrent finalize calls (double click,
+    // retry) run the account/order/email work exactly once.
+    const claimed = await ReelSubmission.findOneAndUpdate(
+      { _id: submission._id, paymentStatus: { $ne: "paid" } },
+      { $set: { paymentStatus: "paid", checkoutSessionId: sessionId } },
+      { new: true },
+    );
+    if (!claimed) {
+      return res.status(200).json({
+        success: true,
+        message: "Submission already confirmed",
+        data: {
+          submissionId: submission._id,
+          submissionRef: subRef,
+          studentName: submission.participant.studentFullName,
+        },
+      });
+    }
 
     logger.info(`[reel-challenge] Registration finalized & paid: ${submission._id} — ${submission.participant.studentFullName}`);
 
@@ -291,7 +319,7 @@ export const finalizeSubmission = catchAsync(
 
           if (!parentUser) {
             isNewUser = true;
-            tempPassword = Math.random().toString(36).slice(-8) + "!1A";
+            tempPassword = generateTempPassword();
 
             const nameParts = parentName ? parentName.trim().split(/\s+/) : ["Parent"];
             const parentFirstName = nameParts[0] || "Parent";
@@ -347,7 +375,7 @@ export const finalizeSubmission = catchAsync(
                       <p style="margin:10px 0 0;color:rgba(255,255,255,0.9);font-size:15px;">Your parent account has been created</p>
                     </div>
                     <div style="padding:35px 30px;">
-                      <p style="font-size:16px;color:#374151;line-height:1.7;margin-top:0;">Marhaban <strong>${parentUser.firstName}</strong>,</p>
+                      <p style="font-size:16px;color:#374151;line-height:1.7;margin-top:0;">Marhaban <strong>${escapeHtml(parentUser.firstName)}</strong>,</p>
                       <p style="font-size:15px;color:#4b5563;line-height:1.7;">
                         Thank you for registering for <strong style="color:#6d28d9;">KIDROVE GCC Through My Lens - Reel Challenge 2027</strong>. We've set up a parent account for you on Kidrove so you can view your child's entry, check updates, and download participation certificates.
                       </p>
@@ -356,7 +384,7 @@ export const finalizeSubmission = catchAsync(
                         <table style="width:100%;border-collapse:collapse;margin-top:10px;">
                           <tr>
                             <td style="padding:8px 0;border-bottom:1px dashed #e9d5ff;color:#6b7280;font-size:13px;width:40%;">Login Email</td>
-                            <td style="padding:8px 0;border-bottom:1px dashed #e9d5ff;color:#1f2937;font-size:13px;font-weight:700;">${parentEmail}</td>
+                            <td style="padding:8px 0;border-bottom:1px dashed #e9d5ff;color:#1f2937;font-size:13px;font-weight:700;">${escapeHtml(parentEmail)}</td>
                           </tr>
                           <tr>
                             <td style="padding:8px 0;color:#6b7280;font-size:13px;">Temporary Password</td>
@@ -450,8 +478,9 @@ export const lookupSubmissionByRef = catchAsync(
     const rawRef = (req.params.refNo || (req.query.refNo as string) || "").trim();
     const email = ((req.query.email as string) || "").trim().toLowerCase();
 
-    if (!rawRef) {
-      return next(new AppError("Reference number is required", 400));
+    // The reference is guessable, so the parent email is what proves the caller owns the entry.
+    if (!rawRef || !email) {
+      return next(new AppError("Reference number and parent email are required", 400));
     }
 
     let submission = null;
@@ -465,12 +494,9 @@ export const lookupSubmissionByRef = catchAsync(
       }
     }
 
-    if (!submission) {
-      return next(new AppError("No registration found with this Reference Number. Please check and try again.", 404));
-    }
-
-    if (email && submission.participant.parentEmail.toLowerCase() !== email) {
-      return next(new AppError("Email does not match the registered parent email for this Reference Number", 403));
+    // One response for "no such ref" and "wrong email" so refs can't be probed.
+    if (!submission || submission.participant.parentEmail.toLowerCase() !== email) {
+      return next(new AppError("No registration found for this Reference Number and email. Please check and try again.", 404));
     }
 
     if (submission.paymentStatus !== "paid") {
@@ -512,9 +538,16 @@ export const submitReel = catchAsync(
 
     const { submissionId, refNo, reelTitle, reelDescription, momentTheme, durationSeconds, videoDriveLink, deviceUsed } = req.body;
 
-    if (!submissionId && !refNo) {
+    const email = String(req.body.email || "").trim().toLowerCase();
+
+    if ((!submissionId && !refNo) || !email) {
       if (videoFile?.path && fs.existsSync(videoFile.path)) fs.unlinkSync(videoFile.path);
-      return next(new AppError("submissionId or refNo is required", 400));
+      return next(new AppError("submissionId or refNo, and the parent email, are required", 400));
+    }
+
+    if (videoFile && !videoFile.mimetype.startsWith("video/")) {
+      if (videoFile.path && fs.existsSync(videoFile.path)) fs.unlinkSync(videoFile.path);
+      return next(new AppError("Only video files are accepted for the reel", 400));
     }
 
     let submission = null;
@@ -526,7 +559,9 @@ export const submitReel = catchAsync(
       submission = candidates.find((c) => c._id.toString().slice(-8).toUpperCase() === suffix) || null;
     }
 
-    if (!submission) {
+    // The ref/id alone doesn't prove ownership: the parent email must match too, and
+    // "no such record" and "wrong email" answer identically so records can't be probed.
+    if (!submission || submission.participant.parentEmail.toLowerCase() !== email) {
       if (videoFile?.path && fs.existsSync(videoFile.path)) fs.unlinkSync(videoFile.path);
       return next(new AppError("Registration record not found", 404));
     }
@@ -534,6 +569,19 @@ export const submitReel = catchAsync(
     if (submission.paymentStatus !== "paid") {
       if (videoFile?.path && fs.existsSync(videoFile.path)) fs.unlinkSync(videoFile.path);
       return next(new AppError("Registration fee must be paid before submitting video reel", 402));
+    }
+
+    // Once the entry is in review (or decided), it can no longer be overwritten.
+    const lockedStatuses: string[] = [
+      ReelSubmissionStatus.UNDER_REVIEW,
+      ReelSubmissionStatus.APPROVED,
+      ReelSubmissionStatus.WINNER,
+    ];
+    if ((submission.reel?.videoUrl || submission.reel?.videoDriveLink) && lockedStatuses.includes(submission.status)) {
+      if (videoFile?.path && fs.existsSync(videoFile.path)) fs.unlinkSync(videoFile.path);
+      return next(
+        new AppError("A video reel has already been submitted for this registration and is currently under review.", 409)
+      );
     }
 
     let videoUrl = submission.reel?.videoUrl || "";

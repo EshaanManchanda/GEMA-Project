@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middleware/auth";
+import { publicFormLimiter } from "../middleware/rateLimiter";
 import { UserRole } from "../models/index";
 import { handleUploadError, uploadFields } from "../middleware/upload";
 import {
@@ -19,12 +20,13 @@ import {
 const router = Router();
 
 // Public routes
-router.post("/register", registerParticipant);
+router.post("/register", publicFormLimiter("gcc-register"), registerParticipant);
 router.post("/create-checkout-session", createCheckoutSession);
 router.post("/finalize", finalizeSubmission);
-router.get("/lookup/:refNo", lookupSubmissionByRef);
+router.get("/lookup/:refNo", publicFormLimiter("gcc-lookup"), lookupSubmissionByRef);
 router.post(
   "/submit-story",
+  publicFormLimiter("gcc-submit-story"), // before the upload is accepted
   uploadFields([{ name: "storyFile", maxCount: 1 }]),
   handleUploadError,
   submitStory
@@ -36,6 +38,7 @@ router.get("/submissions", authenticate, authorize([UserRole.ADMIN]), getSubmiss
 router.patch("/submissions/:id/status", authenticate, authorize([UserRole.ADMIN]), updateSubmissionStatus);
 router.delete("/submissions/:id", authenticate, authorize([UserRole.ADMIN]), deleteSubmission);
 router.post("/submissions/:id/certificate", authenticate, authorize([UserRole.ADMIN]), generateSubmissionCertificate);
-router.get("/submissions/:id/file", downloadStoryFile);
+// Manuscripts are minors' work: admin only (the admin UI opens this with its session cookie).
+router.get("/submissions/:id/file", authenticate, authorize([UserRole.ADMIN]), downloadStoryFile);
 
 export default router;

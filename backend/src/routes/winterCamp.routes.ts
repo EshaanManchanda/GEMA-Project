@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middleware/auth";
+import { publicFormLimiter } from "../middleware/rateLimiter";
 import { UserRole } from "../models/index";
 import {
   registerWinterCamp,
@@ -11,7 +12,7 @@ import {
 const router = Router();
 
 // ── Public Routes ──────────────────────────────────────────────
-router.post("/register", registerWinterCamp);
+router.post("/register", publicFormLimiter("winter-camp"), registerWinterCamp);
 
 // ── Admin Protected Routes ────────────────────────────────────
 router.get(

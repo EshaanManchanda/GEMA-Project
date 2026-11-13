@@ -11,10 +11,11 @@ import reelCompetitionAPI from '@/services/api/reelCompetitionAPI';
 export default function GCCReelSubmitPage() {
   const [searchParams] = useSearchParams();
   const initialRef = (searchParams.get('ref') || '').trim();
+  const initialEmail = (searchParams.get('email') || '').trim();
 
   // Search state
   const [refInput, setRefInput] = useState(initialRef);
-  const [parentEmailInput, setParentEmailInput] = useState('');
+  const [parentEmailInput, setParentEmailInput] = useState(initialEmail);
   const [isSearching, setIsSearching] = useState(false);
   const [registration, setRegistration] = useState<any>(null);
 
@@ -31,6 +32,10 @@ export default function GCCReelSubmitPage() {
   const fetchRegistration = async (refToUse: string, emailToUse?: string) => {
     if (!refToUse) {
       toast.error('Please enter your Reference Number (e.g. REEL2027-XXXXXXXX)');
+      return;
+    }
+    if (!emailToUse?.trim()) {
+      toast.error('Please enter the parent email used at registration.');
       return;
     }
     setIsSearching(true);
@@ -67,10 +72,11 @@ export default function GCCReelSubmitPage() {
   };
 
   useEffect(() => {
-    if (initialRef) {
-      fetchRegistration(initialRef);
+    // The parent email proves ownership of the entry, so it is required for the lookup.
+    if (initialRef && initialEmail) {
+      fetchRegistration(initialRef, initialEmail);
     }
-  }, [initialRef]);
+  }, [initialRef, initialEmail]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,6 +101,7 @@ export default function GCCReelSubmitPage() {
       const formData = new FormData();
       formData.append('refNo', registration.submissionRef);
       formData.append('submissionId', registration.submissionId);
+      formData.append('email', registration.participant.parentEmail);
       formData.append('reelTitle', reelTitle.trim());
       formData.append('reelDescription', reelDescription.trim());
       formData.append('momentTheme', momentTheme.trim());

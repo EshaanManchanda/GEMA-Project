@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middleware/auth";
+import { publicFormLimiter } from "../middleware/rateLimiter";
 import { UserRole } from "../models/index";
 import { handleUploadError, uploadFields } from "../middleware/upload";
 import {
@@ -18,12 +19,13 @@ import {
 const router = Router();
 
 // Public routes
-router.post("/register", registerParticipant);
+router.post("/register", publicFormLimiter("reel-register"), registerParticipant);
 router.post("/create-checkout-session", createCheckoutSession);
 router.post("/finalize", finalizeSubmission);
-router.get("/lookup/:refNo", lookupSubmissionByRef);
+router.get("/lookup/:refNo", publicFormLimiter("reel-lookup"), lookupSubmissionByRef);
 router.post(
   "/submit-reel",
+  publicFormLimiter("reel-submit-reel"), // before the upload is accepted
   uploadFields([{ name: "video", maxCount: 1 }]),
   handleUploadError,
   submitReel

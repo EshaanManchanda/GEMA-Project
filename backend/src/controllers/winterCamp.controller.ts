@@ -11,6 +11,10 @@ import { invalidateEventCaches, invalidateOrderCaches } from "../utils/cache.uti
 import logger from "../config/logger";
 import { emailService } from "../services/email.service";
 import { config } from "../config/env";
+import { escapeHtml } from "../utils/htmlHelpers";
+import { generateTempPassword } from "../utils/otp";
+
+const MAX_PROGRAMS = 20;
 
 /**
  * Public: Register interest for winter camp
@@ -36,10 +40,17 @@ export const registerWinterCamp = async (
       message,
     } = req.body;
 
-    const resolvedEmail = (email || studentEmail || parentEmail || "").trim().toLowerCase();
-    const resolvedPhone = (phone || parentPhone || "").trim();
+    const asText = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    const resolvedEmail = asText(email || studentEmail || parentEmail).toLowerCase();
+    const resolvedPhone = asText(phone || parentPhone);
+    // Only plain strings, capped: these end up in a DB query, an order and emails.
+    const programs: string[] = (Array.isArray(selectedPrograms) ? selectedPrograms : [])
+      .filter((p: unknown): p is string => typeof p === "string")
+      .map((p: string) => p.trim())
+      .filter(Boolean)
+      .slice(0, MAX_PROGRAMS);
 
-    if (!studentName || !resolvedEmail || !grade) {
+    if (!asText(studentName) || !resolvedEmail || !asText(grade)) {
       res.status(400).json({
         success: false,
         message: "Student name, email, and grade are required.",
@@ -54,7 +65,7 @@ export const registerWinterCamp = async (
       parentPhone: resolvedPhone || undefined,
       grade: grade.trim(),
       city: city ? city.trim() : undefined,
-      selectedPrograms: Array.isArray(selectedPrograms) ? selectedPrograms : [],
+      selectedPrograms: programs,
       interests: Array.isArray(interests) ? interests : [],
       message: message ? message.trim() : undefined,
       status: WinterCampStatus.PENDING,
@@ -76,7 +87,7 @@ export const registerWinterCamp = async (
 
         if (!user) {
           isNewUser = true;
-          tempPassword = Math.random().toString(36).slice(-8) + "!1A";
+          tempPassword = generateTempPassword();
           user = await User.create({
             firstName,
             lastName,
@@ -108,15 +119,14 @@ export const registerWinterCamp = async (
 
         // 2. Create Order in /admin/orders with AED 0 (free registration) & link to Events
         try {
-          const coursesList = (Array.isArray(selectedPrograms) && selectedPrograms.length > 0)
-            ? selectedPrograms.join(", ")
-            : "Winter Camp 2026";
+          const coursesList = programs.length > 0 ? programs.join(", ") : "Winter Camp 2026";
 
           // Resolve matching events from database
-          const requestedTitles = Array.isArray(selectedPrograms) ? selectedPrograms : [];
+          const requestedTitles = programs;
           const validEventIds = (Array.isArray(eventIds) ? eventIds : [])
-            .filter((id: any) => id && mongoose.Types.ObjectId.isValid(String(id)))
-            .map((id: any) => new mongoose.Types.ObjectId(String(id)));
+            .filter((id: unknown) => typeof id === "string" && mongoose.Types.ObjectId.isValid(id))
+            .slice(0, MAX_PROGRAMS)
+            .map((id: string) => new mongoose.Types.ObjectId(id));
 
           const orConditions: any[] = [];
           if (validEventIds.length > 0) {
@@ -128,10 +138,18 @@ export const registerWinterCamp = async (
 
           let matchedEvents: any[] = [];
           if (orConditions.length > 0) {
+            // The ids/titles come from the public form, so they prove nothing. This path
+            // issues a confirmed AED 0 order and takes a seat, so it may only ever touch
+            // live events that are actually free; a paid event matched here would be a
+            // free ticket. Anything else falls through to the generic registration order.
             matchedEvents = await EventModel.find({
-              $or: orConditions,
+              $and: [
+                { $or: orConditions },
+                { $or: [{ isFreeEvent: true }, { price: 0 }] },
+              ],
               isDeleted: false,
-            });
+              status: "published",
+            }).limit(MAX_PROGRAMS);
           }
 
           // Build order items
@@ -277,7 +295,7 @@ export const registerWinterCamp = async (
                     <p style="margin:10px 0 0;color:rgba(255,255,255,0.9);font-size:15px;">Your account is ready for Winter Camp 2026!</p>
                   </div>
                   <div style="padding:40px 35px;">
-                    <p style="font-size:16px;color:#374151;line-height:1.7;margin-top:0;">Hi <strong>${user.firstName}</strong>,</p>
+                    <p style="font-size:16px;color:#374151;line-height:1.7;margin-top:0;">Hi <strong>${escapeHtml(user.firstName)}</strong>,</p>
                     <p style="font-size:15px;color:#4b5563;line-height:1.7;">
                       Thank you for submitting your registration for <strong>KidRove Winter Camp 2026</strong>. An account has been created for you so you can access your dashboard and track your workshop enrollments.
                     </p>
@@ -286,7 +304,7 @@ export const registerWinterCamp = async (
                       <table style="width:100%;border-collapse:collapse;margin-top:14px;">
                         <tr>
                           <td style="padding:10px 0;border-bottom:1px dashed #bae6fd;color:#64748b;font-size:13px;font-weight:600;width:45%;">Login Email</td>
-                          <td style="padding:10px 0;border-bottom:1px dashed #bae6fd;color:#0f172a;font-size:13px;font-weight:700;">${userEmail}</td>
+                          <td style="padding:10px 0;border-bottom:1px dashed #bae6fd;color:#0f172a;font-size:13px;font-weight:700;">${escapeHtml(userEmail)}</td>
                         </tr>
                         <tr>
                           <td style="padding:10px 0;color:#64748b;font-size:13px;font-weight:600;">Temporary Password</td>
@@ -327,8 +345,8 @@ export const registerWinterCamp = async (
 
         // 4. Send Registration Confirmation Email
         try {
-          const selectedCoursesStr = (Array.isArray(selectedPrograms) && selectedPrograms.length > 0)
-            ? selectedPrograms.map(p => `<li style="margin-bottom:6px;color:#0f172a;font-weight:600;">${p}</li>`).join("")
+          const selectedCoursesStr = programs.length > 0
+            ? programs.map((p) => `<li style="margin-bottom:6px;color:#0f172a;font-weight:600;">${escapeHtml(p)}</li>`).join("")
             : `<li style="color:#64748b;">General Interest</li>`;
 
           const confirmationHtml = `
@@ -343,7 +361,7 @@ export const registerWinterCamp = async (
                   <p style="margin:10px 0 0;color:rgba(255,255,255,0.9);font-size:15px;">We have received your form successfully.</p>
                 </div>
                 <div style="padding:40px 35px;">
-                  <h2 style="font-size:22px;font-weight:800;color:#0f172a;margin-top:0;">Hi ${studentFullName}!</h2>
+                  <h2 style="font-size:22px;font-weight:800;color:#0f172a;margin-top:0;">Hi ${escapeHtml(studentFullName)}!</h2>
                   <p style="font-size:15px;color:#475569;line-height:1.7;">
                     Thank you for submitting your Winter Camp 2026 registration! Our team is reviewing your preferences and will be in touch with you shortly.
                   </p>
@@ -353,16 +371,16 @@ export const registerWinterCamp = async (
                     <table style="width:100%;border-collapse:collapse;">
                       <tr>
                         <td style="padding:10px 0;border-bottom:1px dashed #cbd5e1;color:#64748b;font-weight:600;font-size:14px;width:40%;">Student Name</td>
-                        <td style="padding:10px 0;border-bottom:1px dashed #cbd5e1;color:#0f172a;font-weight:800;font-size:14px;text-align:right;">${studentFullName}</td>
+                        <td style="padding:10px 0;border-bottom:1px dashed #cbd5e1;color:#0f172a;font-weight:800;font-size:14px;text-align:right;">${escapeHtml(studentFullName)}</td>
                       </tr>
                       <tr>
                         <td style="padding:10px 0;border-bottom:1px dashed #cbd5e1;color:#64748b;font-weight:600;font-size:14px;">Grade</td>
-                        <td style="padding:10px 0;border-bottom:1px dashed #cbd5e1;color:#0f172a;font-weight:800;font-size:14px;text-align:right;">${grade}</td>
+                        <td style="padding:10px 0;border-bottom:1px dashed #cbd5e1;color:#0f172a;font-weight:800;font-size:14px;text-align:right;">${escapeHtml(asText(grade))}</td>
                       </tr>
                       ${city ? `
                       <tr>
                         <td style="padding:10px 0;border-bottom:1px dashed #cbd5e1;color:#64748b;font-weight:600;font-size:14px;">City</td>
-                        <td style="padding:10px 0;border-bottom:1px dashed #cbd5e1;color:#0f172a;font-weight:800;font-size:14px;text-align:right;">${city}</td>
+                        <td style="padding:10px 0;border-bottom:1px dashed #cbd5e1;color:#0f172a;font-weight:800;font-size:14px;text-align:right;">${escapeHtml(asText(city))}</td>
                       </tr>` : ""}
                       <tr>
                         <td style="padding:10px 0;border-bottom:1px dashed #cbd5e1;color:#64748b;font-weight:600;font-size:14px;">Registration Fee</td>
@@ -401,7 +419,7 @@ export const registerWinterCamp = async (
             to: userEmail,
             subject: "❄️ Winter Camp 2026 Registration Received — KidRove",
             html: confirmationHtml,
-            text: `Hi ${studentFullName},\n\nYour Winter Camp 2026 registration has been received successfully!\nGrade: ${grade}\n${city ? `City: ${city}\n` : ""}Course(s) of Interest: ${(selectedPrograms || []).join(", ") || "General Interest"}\nFee: AED 0\n\nIf you have any queries, feel free to contact the Kidrove team on WhatsApp at +971 52 988 1170.\n\nKidRove Team`,
+            text: `Hi ${studentFullName},\n\nYour Winter Camp 2026 registration has been received successfully!\nGrade: ${grade}\n${city ? `City: ${city}\n` : ""}Course(s) of Interest: ${programs.join(", ") || "General Interest"}\nFee: AED 0\n\nIf you have any queries, feel free to contact the Kidrove team on WhatsApp at +971 52 988 1170.\n\nKidRove Team`,
             notificationType: "essential",
           });
         } catch (confErr) {

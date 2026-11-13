@@ -2389,7 +2389,7 @@ Kidrove - Inspiring the creators of tomorrow.
     const badgeText = options.competitionBadge || "🌙 GCC Reel Challenge 2027";
     const compName = options.competitionName || "Ramadan & Eid Through My Lens — Mobile Reel Competition";
     const frontendUrl = config.frontendUrl || "http://localhost:5173";
-    const submitUrl = options.submissionUrl || `${frontendUrl}/competitions/gcc-reel-challenge/submit?ref=${options.refNo}`;
+    const submitUrl = options.submissionUrl || `${frontendUrl}/competitions/gcc-reel-challenge/submit?ref=${encodeURIComponent(options.refNo)}&email=${encodeURIComponent(String(options.to))}`;
 
     const getDurationByCategory = (cat: string) => {
       const normalized = (cat || "").toLowerCase();
@@ -2513,7 +2513,7 @@ Submit your mobile reel: ${submitUrl}
     const badgeText = options.competitionBadge || "✨ Young Voices of the GCC 2027";
     const compName = options.competitionName || "Young Voices of the GCC Short Story Competition 2027";
     const frontendUrl = config.frontendUrl || "http://localhost:5173";
-    const submitUrl = options.submissionUrl || `${frontendUrl}/competitions/young-voices-of-the-gcc/submit?ref=${options.refNo}`;
+    const submitUrl = options.submissionUrl || `${frontendUrl}/competitions/young-voices-of-the-gcc/submit?ref=${encodeURIComponent(options.refNo)}&email=${encodeURIComponent(String(options.to))}`;
 
     const getWordLimitByCategory = (cat: string) => {
       const normalized = (cat || "").toLowerCase();
