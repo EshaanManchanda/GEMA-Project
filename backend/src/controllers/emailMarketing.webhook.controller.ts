@@ -16,8 +16,12 @@ import { getEmailMarketingConfig } from "../services/communication/emailMarketin
  * (server.ts redacts it from access logs; csrf.ts exempts the prefix).
  */
 function secretMatches(provided: string | undefined, expected: string): boolean {
-  if (!expected || !provided || provided.length !== expected.length) return false;
-  return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+  if (!expected || !provided) return false;
+  // Compare BYTE lengths: timingSafeEqual throws on unequal byte lengths, and a
+  // multi-byte character makes the string lengths match while the bytes don't.
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 interface OptOutEvent {
@@ -101,15 +105,24 @@ export const handleEmailMarketingWebhook = async (
 };
 
 /** Mailchimp GETs the URL when the webhook is registered and expects a 200. */
-export const pingEmailMarketingWebhook = async (req: Request, res: Response) => {
-  const { provider, secret } = req.params;
-  const cfg = await getEmailMarketingConfig();
-  const expected =
-    provider === "mailchimp"
-      ? cfg.mailchimpWebhookSecret
-      : provider === "sender"
-        ? cfg.senderWebhookSecret
-        : "";
-  if (!secretMatches(secret, expected)) return res.status(401).end();
-  return res.status(200).json({ ok: true });
+export const pingEmailMarketingWebhook = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { provider, secret } = req.params;
+    const cfg = await getEmailMarketingConfig();
+    const expected =
+      provider === "mailchimp"
+        ? cfg.mailchimpWebhookSecret
+        : provider === "sender"
+          ? cfg.senderWebhookSecret
+          : "";
+    if (!secretMatches(secret, expected)) return res.status(401).end();
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    // Express 4 doesn't catch async throws: without this the request would hang.
+    next(error);
+  }
 };

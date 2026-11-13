@@ -192,6 +192,27 @@ describe("email-marketing webhook", () => {
       ((await NewsletterSubscriber.findOne({ email: EMAIL }).lean()) as any).isActive,
     ).toBe(true);
   });
+
+  it("a same-length secret with multi-byte characters is a clean 401, not a crash", async () => {
+    await mkSubscriber();
+    // "é" is 2 bytes: same JS length as SECRET, different byte length.
+    const res = await request(app)
+      .post(hook("mailchimp", "é".repeat(SECRET.length)))
+      .type("form")
+      .send(form("unsubscribe"));
+    expect(res.status).toBe(401);
+    expect(
+      ((await NewsletterSubscriber.findOne({ email: EMAIL }).lean()) as any).isActive,
+    ).toBe(true);
+  });
+
+  it("the registration ping answers 200 for the right secret, 401 for a wrong or multi-byte one", async () => {
+    expect((await request(app).get(hook("mailchimp", SECRET))).status).toBe(200);
+    expect((await request(app).get(hook("mailchimp", "nope"))).status).toBe(401);
+    expect(
+      (await request(app).get(hook("mailchimp", "é".repeat(SECRET.length)))).status,
+    ).toBe(401);
+  });
 });
 
 // ─── Opt-in gating of contact sync ───────────────────────────────────────────
