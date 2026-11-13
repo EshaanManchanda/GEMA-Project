@@ -18,6 +18,8 @@ import currencyRoutes from "../../../routes/currency.routes";
 import { maintenanceModeGuard } from "../../../middleware/maintenance.middleware";
 import { errorHandler, notFound } from "../../../middleware/index";
 import { verifyCsrfToken } from "../../../middleware/csrf";
+import { requireOriginForStateChanges } from "../../../middleware/originGate";
+import { corsOptions } from "../../../middleware/corsOptions";
 import { applyBodyParsers } from "../../../middleware/bodyParsers";
 
 // Ensure required env vars exist before middleware imports try to read them
@@ -31,19 +33,31 @@ process.env.ADMIN_SECRET_KEY = "test-admin-secret";
 process.env.BCRYPT_SALT_ROUNDS = "4"; // Low rounds = fast hashing in tests
 process.env.SESSION_SECRET = "test-session-secret";
 
-export const createTestApp = (): Application => {
+/**
+ * `productionPerimeter: true` mounts the real production Origin gate and CORS
+ * policy (as server.ts does) instead of the permissive test CORS, so a suite
+ * can assert what a browser or a webhook sender actually gets in production.
+ */
+export const createTestApp = (
+  opts: { productionPerimeter?: boolean } = {},
+): Application => {
   const app = express();
 
   app.set("trust proxy", 1);
 
   // Core security middleware
   app.use(helmet());
-  app.use(
-    cors({
-      origin: "http://localhost:3000",
-      credentials: true,
-    })
-  );
+  if (opts.productionPerimeter) {
+    app.use(requireOriginForStateChanges({ enforce: true }));
+    app.use(cors(corsOptions));
+  } else {
+    app.use(
+      cors({
+        origin: "http://localhost:3000",
+        credentials: true,
+      })
+    );
+  }
   app.use(mongoSanitize());
   app.use(hpp());
 

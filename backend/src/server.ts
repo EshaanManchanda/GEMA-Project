@@ -32,6 +32,8 @@ import {
 import { setQueryTimeout } from "./middleware/query-timeout";
 import { maintenanceModeGuard } from "./middleware/maintenance.middleware";
 import { verifyCsrfToken } from "./middleware/csrf";
+import { requireOriginForStateChanges } from "./middleware/originGate";
+import { corsOptions } from "./middleware/corsOptions";
 import routes from "./routes/index";
 import healthRoutes from "./routes/health.routes";
 import { applyBodyParsers } from "./middleware/bodyParsers";
@@ -142,87 +144,10 @@ app.use((_req, res, next) => {
 });
 
 // In production, block state-changing requests that arrive with no Origin header.
-// Safe methods (GET/HEAD/OPTIONS) are allowed for health checks, curl, monitoring.
-// State-changing no-origin requests have no legitimate browser use-case.
-const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
-app.use((req, res, next) => {
-  if (config.nodeEnv === "production" && !req.headers.origin && !SAFE_METHODS.has(req.method)) {
-    logger.warn("[CORS] Blocked no-origin state-changing request in production", {
-      method: req.method,
-      path: req.path,
-      ip: req.ip,
-    });
-    res.status(403).json({ success: false, message: "Forbidden" });
-    return;
-  }
-  next();
-});
+// Webhooks (Stripe, Cunnekt, Sender/Mailchimp) are exempt: see middleware/originGate.ts.
+app.use(requireOriginForStateChanges({ enforce: config.nodeEnv === "production" }));
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allowed origins built entirely from env — no domains hardcoded in source
-      const allowedOrigins = [
-        config.frontendUrl,
-        ...(process.env.ALLOWED_ORIGINS?.split(",").map((u) => u.trim()) || []),
-        ...(process.env.ADDITIONAL_ALLOWED_ORIGINS?.split(",").map((u) => u.trim()) || []),
-      ].filter(Boolean);
-
-      // Development: allow common localhost ports
-      if (config.nodeEnv === "development") {
-        allowedOrigins.push(
-          "http://localhost:3000",
-          "http://localhost:3001",
-          "http://localhost:5173",
-          "http://127.0.0.1:3000",
-          "http://127.0.0.1:3001",
-          "http://127.0.0.1:5173",
-        );
-      }
-
-      if (process.env.DEBUG_CORS === "true") {
-        logger.debug("CORS Check - Origin:", origin, "| Allowed:", allowedOrigins);
-      }
-
-      // No-origin: unsafe methods already blocked above; safe methods pass through
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      // Reject Origin: "null" — sent by sandboxed iframes, file://, some redirects
-      if (origin === "null") {
-        logger.warn("[CORS] Rejected null origin");
-        return callback(new Error("Not allowed by CORS"));
-      }
-
-      // Preview deployments: only allowed outside production, scoped to this project
-      if (
-        config.nodeEnv !== "production" &&
-        /^https:\/\/kidrove-frontend-[a-z0-9-]+\.vercel\.app$/.test(origin)
-      ) {
-        return callback(null, true);
-      }
-
-      // Strict allowlist — trailing slash normalised
-      const isAllowed = allowedOrigins.some(
-        (allowed) => origin === allowed || origin === allowed.replace(/\/$/, ""),
-      );
-
-      if (isAllowed) {
-        callback(null, true);
-      } else {
-        logger.warn("[CORS] Origin rejected:", origin);
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Cookie", "X-CSRF-Token"],
-    exposedHeaders: ["Set-Cookie", "Content-Disposition", "X-Report-Omitted-Sections"],
-    preflightContinue: false,
-    optionsSuccessStatus: 200,
-  }),
-);
+app.use(cors(corsOptions));
 // Rate limiting optimized for KVM1 (single core protection)
 // Shorter windows and lower limits to prevent single CPU from being overwhelmed
 
