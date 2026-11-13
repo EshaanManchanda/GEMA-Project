@@ -18,6 +18,7 @@ export interface RegisterRequest {
   gender?: 'male' | 'female' | 'other';
   acceptTerms: boolean;
   marketingConsent?: boolean;
+  marketingOptIn?: boolean;
 }
 
 export interface AuthResponse {

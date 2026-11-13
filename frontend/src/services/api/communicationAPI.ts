@@ -79,6 +79,38 @@ export interface WhatsAppPreviewResult {
   rendered: string;
 }
 
+export type EmailMarketingSecretField =
+  | 'senderApiKey'
+  | 'senderWebhookSecret'
+  | 'mailchimpApiKey'
+  | 'mailchimpWebhookSecret';
+
+export interface EmailMarketingSettingsView {
+  provider: 'dev' | 'sender' | 'mailchimp';
+  providerSource: 'database' | 'environment' | 'default';
+  plain: {
+    senderListId: string;
+    mailchimpServerPrefix: string;
+    mailchimpAudienceId: string;
+  };
+  secrets: Record<
+    EmailMarketingSecretField,
+    { isSet: boolean; source: 'database' | 'environment' | 'none' }
+  >;
+}
+
+/** Secrets: omit/'' keeps current, a string replaces, null clears (back to env). */
+export interface EmailMarketingSettingsPatch {
+  provider?: string;
+  senderListId?: string;
+  mailchimpServerPrefix?: string;
+  mailchimpAudienceId?: string;
+  senderApiKey?: string | null;
+  senderWebhookSecret?: string | null;
+  mailchimpApiKey?: string | null;
+  mailchimpWebhookSecret?: string | null;
+}
+
 const communicationAPI = {
   getSettings: async (): Promise<CommunicationSettings> => {
     const response = await ApiService.get<CommunicationSettings>(
@@ -158,6 +190,43 @@ const communicationAPI = {
     const response = await ApiService.get<{ provider: string; connected: boolean }>(
       '/admin/communication/whatsapp/test-connection'
     );
+    return response.data;
+  },
+
+  getEmailMarketingSettings: async (): Promise<EmailMarketingSettingsView> => {
+    const response = await ApiService.get<EmailMarketingSettingsView>(
+      '/admin/communication/email-marketing/settings'
+    );
+    return response.data;
+  },
+
+  updateEmailMarketingSettings: async (
+    payload: EmailMarketingSettingsPatch
+  ): Promise<EmailMarketingSettingsView> => {
+    const response = await ApiService.put<EmailMarketingSettingsView>(
+      '/admin/communication/email-marketing/settings',
+      payload
+    );
+    return response.data;
+  },
+
+  backfillEmailMarketing: async (): Promise<{ started: boolean; message: string }> => {
+    const response = await ApiService.post<{ started: boolean; message: string }>(
+      '/admin/communication/email-marketing/backfill'
+    );
+    return response.data;
+  },
+
+  testEmailMarketingConnection: async (): Promise<{
+    provider: string;
+    connected: boolean;
+    simulated: boolean;
+  }> => {
+    const response = await ApiService.get<{
+      provider: string;
+      connected: boolean;
+      simulated: boolean;
+    }>('/admin/communication/email-marketing/test-connection');
     return response.data;
   },
 };

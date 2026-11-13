@@ -5,6 +5,7 @@ import adminAPI from '../../services/api/adminAPI';
 import { fetchSocialSettings, fetchUISettings } from '../../store/slices/settingsSlice';
 import { AppDispatch } from '../../store';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
+import EmailMarketingSettingsPanel from '@/components/admin/EmailMarketingSettingsPanel';
 import logger from '@/utils/logger';
 
 interface SystemSettings {
@@ -396,6 +397,12 @@ const AdminSettingsPage: React.FC = () => {
               onClick={() => setActiveTab('social')}
             >
               Social Media
+            </button>
+            <button
+              className={`px-4 py-3 font-medium ${activeTab === 'marketing' ? 'text-primary border-b-2 border-primary' : 'text-gray-600 hover:text-primary'}`}
+              onClick={() => setActiveTab('marketing')}
+            >
+              Email Marketing
             </button>
           </div>
 
@@ -1056,6 +1063,9 @@ const AdminSettingsPage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Email Marketing (Sender / Mailchimp) — has its own Save, separate from the page-level Save */}
+            {activeTab === 'marketing' && <EmailMarketingSettingsPanel />}
 
             {/* Social Media Settings */}
             {activeTab === 'social' && (

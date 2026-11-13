@@ -9,6 +9,10 @@ import {
   previewWhatsAppTemplate,
   testWhatsAppSend,
   testWhatsAppConnection,
+  getEmailMarketingSettings,
+  updateEmailMarketingSettings,
+  testEmailMarketingConnection,
+  backfillEmailMarketing,
 } from "../controllers/admin.communication.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { UserRole } from "../models/User";
@@ -45,5 +49,18 @@ router.post("/communication/whatsapp/test", testWhatsAppSend);
 
 // GET /api/admin/communication/whatsapp/test-connection
 router.get("/communication/whatsapp/test-connection", testWhatsAppConnection);
+
+// Email-marketing provider settings (secrets write-only), connection check
+router.get("/communication/email-marketing/settings", getEmailMarketingSettings);
+router.put(
+  "/communication/email-marketing/settings",
+  updateEmailMarketingSettings,
+);
+router.get(
+  "/communication/email-marketing/test-connection",
+  testEmailMarketingConnection,
+);
+
+router.post("/communication/email-marketing/backfill", backfillEmailMarketing);
 
 export default router;

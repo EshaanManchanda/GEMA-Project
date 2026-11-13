@@ -15,6 +15,7 @@ interface RegisterFormData {
   phoneNumber: string;
   role: 'customer' | 'vendor' | 'teacher';
   agreeToTerms: boolean;
+  marketingOptIn: boolean;
 }
 
 
@@ -67,7 +68,8 @@ const RegisterPage: React.FC = () => {
     countryCode: '+971',
     phoneNumber: '',
     role: initialRole,
-    agreeToTerms: false
+    agreeToTerms: false,
+    marketingOptIn: false
   });
   const [errors, setErrors] = useState<Partial<RegisterFormData>>({});
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -222,7 +224,8 @@ const RegisterPage: React.FC = () => {
         confirmPassword: formData.confirmPassword,
         phone: `${formData.countryCode}${formData.phoneNumber}`,
         role: formData.role,
-        acceptTerms: formData.agreeToTerms
+        acceptTerms: formData.agreeToTerms,
+        marketingOptIn: formData.marketingOptIn
       })).unwrap();
 
       // Persist email so VerifyEmailPage survives any loading-spinner remount
@@ -531,6 +534,21 @@ const RegisterPage: React.FC = () => {
               {errors.agreeToTerms && (
                 <p className="form-error mt-1">You must agree to the terms and conditions</p>
               )}
+
+              {/* Optional and unchecked by default: this is the only marketing consent we act on. */}
+              <div className="flex items-center mt-3">
+                <input
+                  id="marketing-opt-in"
+                  name="marketingOptIn"
+                  type="checkbox"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded transition-colors"
+                  checked={formData.marketingOptIn}
+                  onChange={handleInputChange}
+                />
+                <label htmlFor="marketing-opt-in" className="ml-2 block text-sm text-neutral-700">
+                  Email me news, events and offers (optional — unsubscribe anytime)
+                </label>
+              </div>
 
               <div className="mt-2">
                 <button

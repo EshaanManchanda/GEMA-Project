@@ -9,7 +9,11 @@ const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 // Raw-body webhook endpoints authenticate via provider signature, not cookies —
 // they carry no CSRF cookie/header contract and must stay exempt.
-const EXEMPT_PREFIXES = ["/api/payments/webhook", "/api/webhooks/cunnekt"];
+const EXEMPT_PREFIXES = [
+  "/api/payments/webhook",
+  "/api/webhooks/cunnekt",
+  "/api/webhooks/email-marketing",
+];
 
 // Auth-bootstrap endpoints — none of these run `authenticate` (see
 // routes/auth.routes.ts) and none of them rely on trusting an ambient

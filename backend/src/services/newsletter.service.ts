@@ -3,7 +3,10 @@ import NewsletterSubscriber, {
 } from "../models/NewsletterSubscriber";
 import { AppError } from "../middleware/error";
 import logger from "../config/logger";
-import { getEmailMarketingProvider } from "./communication/providers/emailMarketing.provider";
+import {
+  enqueueContactSync,
+  syncSubscriberToMarketing,
+} from "./communication/marketingSync.service";
 
 interface CreateSubscriptionData {
   email: string;
@@ -41,42 +44,19 @@ interface SubscriptionResult extends INewsletterSubscriber {
 
 export class NewsletterService {
   /**
-   * Push the subscriber to the configured email-marketing provider (Sender/
-   * Mailchimp/dev). Never throws — a provider outage must never block a
-   * user-facing subscribe/unsubscribe request; failures are logged only.
+   * Queue a sync of this (active) subscriber to the email-marketing provider
+   * (Sender/Mailchimp/dev). Never throws — a provider outage must never block
+   * a user-facing subscribe request; failures show up in the communication log.
    */
   private async syncContactToProvider(
     subscriber: INewsletterSubscriber,
   ): Promise<void> {
-    try {
-      const provider = getEmailMarketingProvider();
-      const result = await provider.upsertContact({
-        email: subscriber.email,
-        firstName: subscriber.name,
-        tags: subscriber.tags,
-      });
-      if (!result.success) {
-        logger.warn(
-          `Email marketing sync failed for ${subscriber.email}: ${result.errorMessage}`,
-        );
-      }
-    } catch (error) {
-      logger.error("Email marketing provider sync error:", error);
-    }
+    await syncSubscriberToMarketing(subscriber);
   }
 
+  /** Opt-outs are always propagated, regardless of marketing gates. */
   private async unsubscribeFromProvider(email: string): Promise<void> {
-    try {
-      const provider = getEmailMarketingProvider();
-      const result = await provider.unsubscribeContact(email);
-      if (!result.success) {
-        logger.warn(
-          `Email marketing unsubscribe sync failed for ${email}: ${result.errorMessage}`,
-        );
-      }
-    } catch (error) {
-      logger.error("Email marketing provider unsubscribe error:", error);
-    }
+    await enqueueContactSync({ action: "unsubscribe", email });
   }
 
   /**

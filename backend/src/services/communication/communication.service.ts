@@ -11,6 +11,7 @@ import { sanitizeToE164 } from "../../utils/phoneValidation";
 import { resolveTemplate } from "./template.service";
 import logger from "../../config/logger";
 import { runCommunicationJob } from "./deliver.service";
+import { getEmailMarketingConfig } from "./emailMarketingConfig.service";
 import {
   areEmailNotificationsEnabled,
   areWhatsappNotificationsEnabled,
@@ -23,7 +24,7 @@ import {
  * retry/backoff semantics — a blocking provider call inside a request
  * handler is not an acceptable production behavior.
  */
-function isInlineDeliveryAllowed(): boolean {
+export function isInlineDeliveryAllowed(): boolean {
   return (
     process.env.DISABLE_REDIS === "true" &&
     (config.nodeEnv === "development" || config.nodeEnv === "test")
@@ -173,7 +174,7 @@ export async function dispatch(
     channel: input.channel,
     provider:
       input.channel === CommunicationChannel.EMAIL_MARKETING
-        ? config.emailMarketing.provider
+        ? (await getEmailMarketingConfig()).provider
         : config.whatsapp.provider,
     category: input.category,
     userId: refs.userId as any,

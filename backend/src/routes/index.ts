@@ -26,6 +26,7 @@ import adminCommissionRoutes from "./admin.commission.routes";
 import adminCommunicationRoutes from "./admin.communication.routes";
 import adminNotificationTemplateRoutes from "./admin.notificationTemplate.routes";
 import cunnektWebhookRoutes from "./cunnekt.webhook.routes";
+import emailMarketingWebhookRoutes from "./emailMarketing.webhook.routes";
 import vendorRoutes from "./vendor.routes";
 import vendorPayoutRoutes from "./vendor.payout.routes";
 import vendorPaymentRoutes from "./vendor.payment.routes";
@@ -114,6 +115,9 @@ router.use("/payments", paymentRoutes);
 // Cunnekt WhatsApp webhook — unauthenticated, secret-verified in controller.
 // Raw body for this path is mounted in server.ts before express.json().
 router.use("/webhooks/cunnekt", cunnektWebhookRoutes);
+
+// Sender / Mailchimp opt-out + bounce webhooks — unauthenticated, secret-in-path.
+router.use("/webhooks/email-marketing", emailMarketingWebhookRoutes);
 
 // Review routes
 router.use("/reviews", reviewRoutes);

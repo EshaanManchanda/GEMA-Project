@@ -21,6 +21,7 @@ import {
   dispatch,
   CommunicationJobType,
 } from "./communication/communication.service";
+import { syncUserToMarketing } from "./communication/marketingSync.service";
 import {
   CommunicationChannel,
   CommunicationCategory,
@@ -803,6 +804,10 @@ export class PaymentService {
             .lean();
           if (!user) return;
           const u = user as any;
+
+          // Refresh booking tags in the marketing provider (no-op unless the
+          // user explicitly opted in; never throws).
+          void syncUserToMarketing(order.userId.toString());
 
           // Populate event details for email
           await order.populate(

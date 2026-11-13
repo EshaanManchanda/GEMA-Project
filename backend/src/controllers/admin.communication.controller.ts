@@ -14,6 +14,13 @@ import {
 } from "../services/communication/communication.service";
 import { previewTemplate } from "../services/communication/template.service";
 import { getWhatsAppProvider } from "../services/communication/providers/whatsapp.provider";
+import { getEmailMarketingProvider } from "../services/communication/providers/emailMarketing.provider";
+import { startMarketingBackfill } from "../services/communication/marketingSync.service";
+import {
+  getEmailMarketingConfig,
+  getEmailMarketingSettingsView,
+  saveEmailMarketingSettings,
+} from "../services/communication/emailMarketingConfig.service";
 
 /**
  * @desc    Current communication provider config (no secrets — booleans/names only)
@@ -26,6 +33,7 @@ export const getCommunicationSettings = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
+    const emailCfg = await getEmailMarketingConfig();
     res.status(200).json({
       success: true,
       data: {
@@ -34,11 +42,11 @@ export const getCommunicationSettings = async (
           configured: Boolean(config.whatsapp.cunnektApiKey),
         },
         emailMarketing: {
-          provider: config.emailMarketing.provider,
-          configured: Boolean(
-            config.emailMarketing.senderApiKey ||
-            config.emailMarketing.mailchimpApiKey,
-          ),
+          provider: emailCfg.provider,
+          configured:
+            (emailCfg.provider === "sender" && Boolean(emailCfg.senderApiKey)) ||
+            (emailCfg.provider === "mailchimp" &&
+              Boolean(emailCfg.mailchimpApiKey && emailCfg.mailchimpAudienceId)),
         },
         communication: {
           testMode: config.communication.testMode,
@@ -289,6 +297,112 @@ export const testWhatsAppSend = async (
     });
 
     res.status(200).json({ success: true, data: log });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Email-marketing provider settings. Secrets are never returned —
+ *          only isSet/source flags.
+ * @route   GET /api/admin/communication/email-marketing/settings
+ * @access  Private (admin)
+ */
+export const getEmailMarketingSettings = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res
+      .status(200)
+      .json({ success: true, data: await getEmailMarketingSettingsView() });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update email-marketing provider settings. A blank secret keeps the
+ *          current one; `null` clears it (reverts to the env var).
+ * @route   PUT /api/admin/communication/email-marketing/settings
+ * @access  Private (admin)
+ */
+export const updateEmailMarketingSettings = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const b = req.body ?? {};
+    const data = await saveEmailMarketingSettings({
+      provider: b.provider,
+      senderListId: b.senderListId,
+      mailchimpServerPrefix: b.mailchimpServerPrefix,
+      mailchimpAudienceId: b.mailchimpAudienceId,
+      senderApiKey: b.senderApiKey,
+      senderWebhookSecret: b.senderWebhookSecret,
+      mailchimpApiKey: b.mailchimpApiKey,
+      mailchimpWebhookSecret: b.mailchimpWebhookSecret,
+    });
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Re-sync all consented contacts (active newsletter subscribers and
+ *          users who explicitly opted in) to the provider, in the background.
+ * @route   POST /api/admin/communication/email-marketing/backfill
+ * @access  Private (admin)
+ */
+export const backfillEmailMarketing = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const cfg = await getEmailMarketingConfig();
+    if (cfg.provider === "dev") {
+      throw new AppError(
+        "Pick Sender or Mailchimp in Settings → Email Marketing first.",
+        400,
+      );
+    }
+    const started = startMarketingBackfill();
+    res.status(202).json({
+      success: true,
+      data: { started, message: started ? "Sync started" : "A sync is already running" },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Check the saved email-marketing credentials against the provider
+ *          (a ping, nothing is sent or synced).
+ * @route   GET /api/admin/communication/email-marketing/test-connection
+ * @access  Private (admin)
+ */
+export const testEmailMarketingConnection = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const provider = await getEmailMarketingProvider();
+    const connected = await provider.testConnection();
+    res.status(200).json({
+      success: true,
+      data: {
+        provider: provider.name,
+        connected,
+        // dev provider always "connects" — flag it so the UI doesn't show a false green
+        simulated: provider.name === "Development",
+      },
+    });
   } catch (error) {
     next(error);
   }

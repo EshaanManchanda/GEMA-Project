@@ -156,6 +156,13 @@ export interface IUser extends Document {
   role: UserRole;
   status: UserStatus;
   isEmailVerified: boolean;
+  /**
+   * When the user explicitly opted in to marketing email (sign-up checkbox or
+   * profile setting). Distinct from preferences.notifications.marketing, which
+   * defaults to true for everyone and is NOT consent. Only users with this set
+   * (and a verified email) are synced to Sender/Mailchimp.
+   */
+  marketingOptInAt?: Date;
   isPhoneVerified: boolean;
   gender?: Gender;
   dateOfBirth?: Date;
@@ -278,6 +285,7 @@ const UserSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
+    marketingOptInAt: { type: Date },
     isPhoneVerified: {
       // Temporary: phone verification system is disabled (see
       // config.phoneVerification.required); default to verified so no user

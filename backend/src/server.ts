@@ -310,10 +310,12 @@ app.set("etag", "strong");
 // token means every log format (dev/combined) picks up the redaction.
 morgan.token("url", (req: Request) => {
   const url = req.originalUrl || req.url;
-  return url.replace(
-    /^(\/api\/webhooks\/cunnekt)\/[^/?]+/,
-    "$1/[redacted]",
-  );
+  return url
+    .replace(/^(\/api\/webhooks\/cunnekt)\/[^/?]+/, "$1/[redacted]")
+    .replace(
+      /^(\/api\/webhooks\/email-marketing\/[^/?]+)\/[^/?]+/,
+      "$1/[redacted]",
+    );
 });
 app.use(morgan(config.nodeEnv === "development" ? "dev" : "combined"));
 

@@ -29,6 +29,8 @@ export interface RegisterRequest {
   password: string;
   phone?: string;
   role?: "customer" | "vendor" | "employee" | "teacher";
+  /** Explicit, unticked-by-default marketing email opt-in. */
+  marketingOptIn?: boolean;
 }
 
 // Auth response type
@@ -64,6 +66,8 @@ export interface ChangePasswordRequest {
 
 // Update profile request type
 export interface UpdateProfileRequest {
+  /** Explicit marketing email opt-in/out (not the same as notifications.marketing). */
+  marketingOptIn?: boolean;
   firstName?: string;
   lastName?: string;
   phone?: string;

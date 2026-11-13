@@ -53,6 +53,7 @@ export interface RegisterData {
   gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
   acceptTerms?: boolean;
   marketingConsent?: boolean;
+  marketingOptIn?: boolean;
 }
 
 // Registration API payload (matches backend expectation)

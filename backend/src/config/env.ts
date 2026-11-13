@@ -194,6 +194,8 @@ interface Config {
     mailchimpApiKey: string;
     mailchimpServerPrefix: string;
     mailchimpAudienceId: string;
+    senderWebhookSecret: string;
+    mailchimpWebhookSecret: string;
   };
   communication: {
     queueEnabled: boolean;
@@ -440,6 +442,8 @@ export const config: Config = {
     mailchimpApiKey: process.env.MAILCHIMP_API_KEY || "",
     mailchimpServerPrefix: process.env.MAILCHIMP_SERVER_PREFIX || "",
     mailchimpAudienceId: process.env.MAILCHIMP_AUDIENCE_ID || "",
+    senderWebhookSecret: process.env.SENDER_WEBHOOK_SECRET || "",
+    mailchimpWebhookSecret: process.env.MAILCHIMP_WEBHOOK_SECRET || "",
   },
   communication: {
     queueEnabled: process.env.COMMUNICATION_QUEUE_ENABLED !== "false",

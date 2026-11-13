@@ -9,6 +9,10 @@ import {
   getWhatsAppProvider,
   WhatsAppSendResult,
 } from "./providers/whatsapp.provider";
+import {
+  getEmailMarketingProvider,
+  EmailMarketingSyncResult,
+} from "./providers/emailMarketing.provider";
 import { CommunicationJobType } from "./communication.service";
 
 /**
@@ -205,8 +209,15 @@ async function handleWhatsAppJob(
   };
 }
 
+/**
+ * Contact sync to the email-marketing provider. The operation lives in the
+ * log's `vars` ({ action: "upsert" | "unsubscribe", ... }) — see
+ * marketingSync.service.ts. EMAIL_CAMPAIGN is not implemented: campaigns are
+ * designed and sent inside Sender/Mailchimp, not by Kidrove.
+ */
 async function handleEmailMarketingJob(
   job: CommunicationJobData,
+  opts: Required<RunCommunicationJobOptions>,
 ): Promise<DeliveryResult> {
   const log = await CommunicationLog.findById(job.logId);
   if (!log) {
@@ -226,17 +237,88 @@ async function handleEmailMarketingJob(
     };
   }
 
+  const vars = (log.vars ?? {}) as Record<string, any>;
+  const email = log.recipientEmail || job.to;
+  const provider = await getEmailMarketingProvider();
+
+  let result: EmailMarketingSyncResult;
+  try {
+    if (vars.action === "upsert") {
+      result = await provider.upsertContact({
+        email,
+        firstName: vars.firstName,
+        lastName: vars.lastName,
+        phone: vars.phone,
+        tags: vars.tags,
+        mergeFields: vars.mergeFields,
+      });
+    } else if (vars.action === "unsubscribe") {
+      result = await provider.unsubscribeContact(email);
+    } else {
+      result = {
+        success: false,
+        errorCode: "UNKNOWN_ACTION",
+        errorMessage: `Unknown email-marketing action "${vars.action}"`,
+        isRetryable: false,
+      };
+    }
+  } catch (error: any) {
+    result = {
+      success: false,
+      errorCode: "PROVIDER_ERROR",
+      errorMessage: error?.message || "Email marketing provider call failed",
+      isRetryable: true,
+    };
+  }
+
+  if (result.success) {
+    log.status = CommunicationStatus.SENT;
+    log.providerMessageId = result.providerContactId;
+    log.safeProviderSummary = {
+      providerMessageId: result.providerContactId,
+      status: "synced",
+    };
+    log.sentAt = new Date();
+    log.errorCode = undefined;
+    log.errorMessage = undefined;
+    if (config.communication.logRawProviderResponse && result.raw) {
+      log.providerResponse = result.raw;
+    }
+    await log.save();
+    return {
+      success: true,
+      status: CommunicationStatus.SENT,
+      providerMessageId: result.providerContactId,
+      retryable: false,
+    };
+  }
+
+  log.safeProviderSummary = {
+    status: "failed",
+    errorCode: result.errorCode,
+    errorMessage: result.errorMessage,
+  };
+  if (config.communication.logRawProviderResponse && result.raw) {
+    log.providerResponse = result.raw;
+  }
+
+  if (result.isRetryable && opts.allowThrowOnRetryable) {
+    log.retryCount += 1;
+    await log.save();
+    // BullMQ's exponential backoff retries the job.
+    throw new Error(result.errorMessage || "Email marketing sync failed (retryable)");
+  }
+
   log.status = CommunicationStatus.FAILED;
-  log.errorCode = "NOT_IMPLEMENTED";
-  log.errorMessage =
-    "Email marketing dispatch is wired in Phase 5 (Sender/Mailchimp provider)";
+  log.errorCode = result.errorCode || "PROVIDER_REJECTED";
+  log.errorMessage = result.errorMessage;
   log.failedAt = new Date();
   await log.save();
   return {
     success: false,
     status: CommunicationStatus.FAILED,
-    errorCode: "NOT_IMPLEMENTED",
-    retryable: false,
+    errorCode: log.errorCode,
+    retryable: Boolean(result.isRetryable),
   };
 }
 
@@ -262,7 +344,7 @@ export async function runCommunicationJob(
 
     case CommunicationJobType.EMAIL_MARKETING_SYNC:
     case CommunicationJobType.EMAIL_CAMPAIGN:
-      return handleEmailMarketingJob(job);
+      return handleEmailMarketingJob(job, resolvedOpts);
 
     case CommunicationJobType.RETRY_LOG: {
       // Re-dispatch through the same channel the original log used.
@@ -270,7 +352,7 @@ export async function runCommunicationJob(
       if (log?.channel === CommunicationChannel.WHATSAPP) {
         return handleWhatsAppJob(job, resolvedOpts);
       }
-      return handleEmailMarketingJob(job);
+      return handleEmailMarketingJob(job, resolvedOpts);
     }
 
     default:

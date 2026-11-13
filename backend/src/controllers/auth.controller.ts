@@ -24,6 +24,10 @@ import {
 } from "../services/communication/otpDelivery.service";
 import { cacheService } from "../services/cache.service";
 import mediaService from "../services/media.service";
+import {
+  syncUserToMarketing,
+  unsubscribeUserFromMarketing,
+} from "../services/communication/marketingSync.service";
 import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
 import { getOrCreateTeacherProfile } from "../utils/teacherHelpers";
 import { isRegistrationAllowed } from "../services/settings.service";
@@ -345,6 +349,7 @@ export const register = async (
       password,
       phone,
       role: requestedRole,
+      marketingOptIn,
     }: RegisterRequest = req.body;
     logger.debug("[REGISTER] Request body received:", {
       firstName,
@@ -409,6 +414,9 @@ export const register = async (
       phone,
       role: newUserRole,
       status: UserStatus.PENDING,
+      // Strictly boolean true — a string like "false" must never count as consent.
+      // Synced to the email provider only after the address is verified (verifyEmail).
+      marketingOptInAt: marketingOptIn === true ? new Date() : undefined,
       acquisition: toAcquisition(req.body.attribution),
       emailVerification: {
         otpHash: await hashOTP(verificationOTP),
@@ -1018,6 +1026,7 @@ export const updateProfile = async (
       dateOfBirth,
       gender,
       preferences,
+      marketingOptIn,
     }: UpdateProfileRequest = req.body;
     const userId = req.user?._id || req.user?.id;
     if (!userId) {
@@ -1028,6 +1037,19 @@ export const updateProfile = async (
     const user = await User.findById(userId);
     if (!user) {
       throw new AppError("User not found", 404);
+    }
+
+    // Marketing consent: only an explicit boolean counts. Switching the generic
+    // marketing notification off also withdraws consent (opt-out always wins).
+    const hadMarketingOptIn = Boolean(user.marketingOptInAt);
+    if (marketingOptIn === true && !user.marketingOptInAt) {
+      user.marketingOptInAt = new Date();
+    }
+    if (
+      marketingOptIn === false ||
+      preferences?.notifications?.marketing === false
+    ) {
+      user.marketingOptInAt = undefined;
     }
 
     // Update basic fields
@@ -1131,6 +1153,12 @@ export const updateProfile = async (
     }
 
     await user.save();
+
+    if (user.marketingOptInAt && !hadMarketingOptIn) {
+      void syncUserToMarketing(user._id.toString());
+    } else if (!user.marketingOptInAt && hadMarketingOptIn) {
+      void unsubscribeUserFromMarketing(user);
+    }
 
     // Synchronize core profile changes (name, phone) to corresponding Teacher, Vendor, or Employee documents
     try {
@@ -1504,6 +1532,9 @@ export const verifyEmail = async (
     }
 
     await user.save();
+
+    // Verified address + explicit sign-up opt-in → add to the marketing provider.
+    if (user.marketingOptInAt) void syncUserToMarketing(user._id.toString());
 
     res.status(200).json({
       success: true,
