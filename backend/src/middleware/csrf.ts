@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
+import { safeEqual } from "../utils/safeCompare";
 import { config } from "../config/env";
 
 export const CSRF_COOKIE_NAME = "XSRF-TOKEN";
@@ -130,14 +131,9 @@ export const verifyCsrfToken = (
   const cookieToken: unknown = req.cookies?.[CSRF_COOKIE_NAME];
   const headerToken = req.headers[CSRF_HEADER_NAME];
 
-  if (
-    typeof cookieToken !== "string" ||
-    typeof headerToken !== "string" ||
-    cookieToken.length === 0 ||
-    headerToken.length === 0 ||
-    cookieToken.length !== headerToken.length ||
-    !crypto.timingSafeEqual(Buffer.from(cookieToken), Buffer.from(headerToken))
-  ) {
+  // safeEqual also rejects empty and non-string values, and never throws on a
+  // crafted multi-byte token (timingSafeEqual does on unequal byte lengths).
+  if (!safeEqual(cookieToken, headerToken)) {
     res.status(403).json({
       success: false,
       message: "Invalid or missing CSRF token.",

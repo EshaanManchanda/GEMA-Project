@@ -68,6 +68,16 @@ it("refuses callers without the link token, and with a wrong one", async () => {
   expect(await User.countDocuments({ email: "kid@school.test" })).toBe(0);
 });
 
+it("a token of the right length made of multi-byte characters is refused with 403, not a crash", async () => {
+  const { eventId, token } = await sharedLink();
+  // Same character count as the real token, different byte length: timingSafeEqual
+  // used to throw on this (a 500).
+  const bad = "é".repeat(token.length);
+  expect((await open(eventId, "kid@school.test", bad)).status).toBe(403);
+  expect((await submit(eventId, "kid@school.test", bad)).status).toBe(403);
+  expect(await User.countDocuments({ email: "kid@school.test" })).toBe(0);
+});
+
 it("an offline attendee with the link can review, without leaking ids", async () => {
   const { eventId, token } = await sharedLink();
 

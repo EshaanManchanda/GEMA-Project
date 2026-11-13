@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { timingSafeEqual } from "crypto";
 import logger from "../config/logger";
+import { safeEqual } from "../utils/safeCompare";
 import User from "../models/User";
 import NewsletterSubscriber from "../models/NewsletterSubscriber";
 import { getEmailMarketingConfig } from "../services/communication/emailMarketingConfig.service";
@@ -16,12 +16,7 @@ import { getEmailMarketingConfig } from "../services/communication/emailMarketin
  * (server.ts redacts it from access logs; csrf.ts exempts the prefix).
  */
 function secretMatches(provided: string | undefined, expected: string): boolean {
-  if (!expected || !provided) return false;
-  // Compare BYTE lengths: timingSafeEqual throws on unequal byte lengths, and a
-  // multi-byte character makes the string lengths match while the bytes don't.
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return safeEqual(provided, expected);
 }
 
 interface OptOutEvent {

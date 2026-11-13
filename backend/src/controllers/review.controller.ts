@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
 import mongoose from "mongoose";
 import crypto from "crypto";
+import { safeEqual } from "../utils/safeCompare";
 import {
   Review,
   Order,
@@ -1006,10 +1007,7 @@ async function reviewLinkEvent(eventId: string, token: unknown, fields = "title"
   if (!event) return { error: new AppError("Event not found", 404) };
   const expected = (event as any).reviewToken as string | undefined;
   const given = typeof token === "string" ? token : "";
-  const ok =
-    !!expected &&
-    given.length === expected.length &&
-    crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));
+  const ok = safeEqual(given, expected);
   return ok ? { event } : { error: new AppError("This review link is invalid or has expired", 403) };
 }
 

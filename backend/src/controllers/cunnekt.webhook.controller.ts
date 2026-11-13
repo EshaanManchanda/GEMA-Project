@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import { timingSafeEqual } from "crypto";
 import logger from "../config/logger";
 import { config } from "../config/env";
+import { safeEqual } from "../utils/safeCompare";
 import { processCunnektWebhookEvent } from "../services/communication/providers/whatsapp.provider";
 
 /**
@@ -21,11 +21,7 @@ import { processCunnektWebhookEvent } from "../services/communication/providers/
  * `CUNNEKT_WEBHOOK_SECRET` if that hasn't been done.
  */
 function isValidWebhookSecret(provided: string | undefined): boolean {
-  const expected = config.whatsapp.cunnektWebhookSecret;
-  if (!expected || !provided || provided.length !== expected.length) {
-    return false;
-  }
-  return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+  return safeEqual(provided, config.whatsapp.cunnektWebhookSecret);
 }
 
 export const handleCunnektWebhook = async (req: Request, res: Response) => {
