@@ -76,6 +76,27 @@ describe("MailchimpProvider", () => {
     });
   });
 
+  it.each(["evil.com/#", "us21.evil.com", "us21@evil.com", "US21", "u", "us21/../x", "a b"])(
+    "rejects a server prefix that could redirect the API key to another host: %s",
+    (prefix) => {
+      expect(() => new MailchimpProvider({ ...base, mailchimpServerPrefix: prefix })).toThrow(/prefix/i);
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects a hostile prefix smuggled in through the API key suffix", () => {
+    expect(
+      () => new MailchimpProvider({ ...base, mailchimpApiKey: "abc-evil.com/#", mailchimpServerPrefix: "" }),
+    ).toThrow(/prefix/i);
+  });
+
+  it.each(["aud/../../x", "aud?x=1", "aud id", "aud#"])(
+    "rejects an audience id that could alter the request path: %s",
+    (audienceId) => {
+      expect(() => new MailchimpProvider({ ...base, mailchimpAudienceId: audienceId })).toThrow(/audience/i);
+    },
+  );
+
   it("requires key, audience and a resolvable prefix", () => {
     expect(() => new MailchimpProvider({ ...base, mailchimpApiKey: "" })).toThrow();
     expect(() => new MailchimpProvider({ ...base, mailchimpApiKey: "nodash" })).toThrow();

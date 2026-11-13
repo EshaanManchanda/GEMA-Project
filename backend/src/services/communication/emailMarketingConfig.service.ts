@@ -3,6 +3,11 @@ import { config } from "../../config/env";
 import { decryptField, encryptField } from "../../utils/encryption";
 import { AppError } from "../../middleware/error";
 
+// Same rules the Mailchimp adapter enforces (kept literal here so this module
+// never imports the provider, which imports this one).
+const MAILCHIMP_PREFIX_RE = /^[a-z]{2}\d{1,3}$/;
+const MAILCHIMP_AUDIENCE_RE = /^[a-z0-9]+$/i;
+
 export type EmailMarketingProviderName = "dev" | "sender" | "mailchimp";
 
 /** Fully-resolved (decrypted) config the provider adapters consume. */
@@ -150,6 +155,14 @@ export async function saveEmailMarketingSettings(
   }
   for (const f of PLAIN_FIELDS) {
     if (patch[f] !== undefined) db[f] = String(patch[f]).trim();
+  }
+  // These end up in a request hostname / URL path — reject anything else now,
+  // not only when the provider is first used.
+  if (db.mailchimpServerPrefix && !MAILCHIMP_PREFIX_RE.test(db.mailchimpServerPrefix)) {
+    throw new AppError("Mailchimp server prefix must look like us21", 400);
+  }
+  if (db.mailchimpAudienceId && !MAILCHIMP_AUDIENCE_RE.test(db.mailchimpAudienceId)) {
+    throw new AppError("Mailchimp audience id may only contain letters and digits", 400);
   }
   for (const f of SECRET_FIELDS) {
     const v = patch[f];

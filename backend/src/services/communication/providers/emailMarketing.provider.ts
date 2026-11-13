@@ -6,6 +6,10 @@ import {
   type EmailMarketingConfig,
 } from "../emailMarketingConfig.service";
 
+/** e.g. "us21" — the datacenter part of a Mailchimp API key. */
+export const MAILCHIMP_PREFIX_RE = /^[a-z]{2}\d{1,3}$/;
+export const MAILCHIMP_AUDIENCE_RE = /^[a-z0-9]+$/i;
+
 const retryable = (status: number) => status === 429 || status >= 500;
 
 function httpFailure(
@@ -247,7 +251,7 @@ export class SenderProvider implements EmailMarketingProvider {
       for (const id of await this.groupIds(tags)) {
         const { response, data } = await this.call(
           method,
-          `/subscribers/groups/${id}`,
+          `/subscribers/groups/${encodeURIComponent(id)}`,
           { subscribers: [email] },
         );
         if (!response.ok)
@@ -279,7 +283,19 @@ export class MailchimpProvider implements EmailMarketingProvider {
         "Mailchimp not configured (MAILCHIMP_API_KEY, MAILCHIMP_AUDIENCE_ID, MAILCHIMP_SERVER_PREFIX)",
       );
     }
+    // The prefix becomes part of the hostname the API key is sent to, and the
+    // audience id part of the path: both must be strictly validated so a bad
+    // setting can never redirect the Authorization header to another host.
+    if (!MAILCHIMP_PREFIX_RE.test(prefix)) {
+      throw new Error("Invalid Mailchimp server prefix (expected e.g. us21)");
+    }
+    if (!MAILCHIMP_AUDIENCE_RE.test(this.audienceId)) {
+      throw new Error("Invalid Mailchimp audience id");
+    }
     this.baseUrl = `https://${prefix}.api.mailchimp.com/3.0`;
+    if (new URL(this.baseUrl).hostname !== `${prefix}.api.mailchimp.com`) {
+      throw new Error("Invalid Mailchimp server prefix");
+    }
   }
 
   /** Mailchimp identifies members by md5(lowercase email). */
