@@ -10,6 +10,7 @@ export interface WinterCampRegisterPayload {
   grade: string;
   city?: string;
   selectedPrograms: string[];
+  eventIds?: string[];
   interests?: string[];
   message?: string;
 }

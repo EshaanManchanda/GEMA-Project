@@ -170,6 +170,18 @@ const WinterCampPage: React.FC = () => {
 
     try {
       setSubmitting(true);
+
+      // Resolve event IDs and slugs for selected programs
+      const selectedEventIds = form.selectedPrograms
+        .map(title => {
+          const matched = events.find(e => e.title === title);
+          if (matched?._id && !matched._id.startsWith('fallback-')) {
+            return matched._id;
+          }
+          return null;
+        })
+        .filter(Boolean) as string[];
+
       const res = await winterCampAPI.register({
         studentName: form.studentName,
         email: form.email,
@@ -180,6 +192,7 @@ const WinterCampPage: React.FC = () => {
         grade: form.grade,
         city: form.city,
         selectedPrograms: form.selectedPrograms,
+        eventIds: selectedEventIds,
         message: form.message
       });
       if (res?.data?.success || res?.success) {
@@ -492,7 +505,7 @@ const WinterCampPage: React.FC = () => {
               WINTER CAMP 2026 WORKSHOPS
             </h2>
             <p className="text-slate-500 text-lg max-w-2xl mx-auto">
-              Explore 11 world-class interactive masterclasses designed for kids and teens. Click any workshop to view event details or register above!
+              Explore the world-class interactive masterclasses designed for kids and teens. Click any workshop to view event details or register above!
             </p>
           </div>
 

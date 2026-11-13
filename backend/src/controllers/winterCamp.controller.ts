@@ -6,6 +6,8 @@ import WinterCampRegistration, {
 import User, { UserRole, UserStatus } from "../models/User";
 import Student from "../models/Student";
 import Order from "../models/Order";
+import EventModel from "../models/Event";
+import { invalidateEventCaches, invalidateOrderCaches } from "../utils/cache.utils";
 import logger from "../config/logger";
 import { emailService } from "../services/email.service";
 import { config } from "../config/env";
@@ -29,6 +31,7 @@ export const registerWinterCamp = async (
       grade,
       city,
       selectedPrograms,
+      eventIds,
       interests,
       message,
     } = req.body;
@@ -103,31 +106,118 @@ export const registerWinterCamp = async (
           });
         }
 
-        // 2. Create Order in /admin/orders with AED 0 (free registration)
+        // 2. Create Order in /admin/orders with AED 0 (free registration) & link to Events
         try {
           const coursesList = (Array.isArray(selectedPrograms) && selectedPrograms.length > 0)
             ? selectedPrograms.join(", ")
             : "Winter Camp 2026";
 
-          await Order.create({
-            userId: user._id,
-            items: [
-              {
-                eventId: new mongoose.Types.ObjectId(registration._id.toString()),
-                eventTitle: `Winter Camp 2026 — ${coursesList}`,
-                scheduleDate: new Date(),
+          // Resolve matching events from database
+          const requestedTitles = Array.isArray(selectedPrograms) ? selectedPrograms : [];
+          const validEventIds = (Array.isArray(eventIds) ? eventIds : [])
+            .filter((id: any) => id && mongoose.Types.ObjectId.isValid(String(id)))
+            .map((id: any) => new mongoose.Types.ObjectId(String(id)));
+
+          const orConditions: any[] = [];
+          if (validEventIds.length > 0) {
+            orConditions.push({ _id: { $in: validEventIds } });
+          }
+          if (requestedTitles.length > 0) {
+            orConditions.push({ title: { $in: requestedTitles } });
+          }
+
+          let matchedEvents: any[] = [];
+          if (orConditions.length > 0) {
+            matchedEvents = await EventModel.find({
+              $or: orConditions,
+              isDeleted: false,
+            });
+          }
+
+          // Build order items
+          const orderItems: any[] = [];
+          const updatedEventIds: string[] = [];
+
+          if (matchedEvents.length > 0) {
+            for (const ev of matchedEvents) {
+              const schedule = Array.isArray(ev.dateSchedule) && ev.dateSchedule.length > 0
+                ? ev.dateSchedule[0]
+                : null;
+              const scheduleDate = schedule?.startDate || schedule?.date || new Date();
+
+              orderItems.push({
+                eventId: ev._id,
+                scheduleId: schedule?._id || undefined,
+                eventTitle: ev.title,
+                scheduleDate: new Date(scheduleDate),
                 quantity: 1,
                 unitPrice: 0,
                 totalPrice: 0,
-                currency: "AED",
+                currency: ev.currency || "AED",
                 participants: [
                   {
                     name: studentFullName,
                     age: 0,
                   },
                 ],
-              },
-            ],
+              });
+
+              // Reduce available seat and increment sold seat on the event schedule
+              try {
+                if (schedule?._id) {
+                  const currentAvailable = Number(schedule.availableSeats ?? 0);
+                  const currentSold = Number(schedule.soldSeats ?? 0);
+                  const isUnlimited = Boolean(schedule.unlimitedSeats || schedule.isUnlimited);
+
+                  const nextAvailable = isUnlimited
+                    ? 999999
+                    : Math.max(0, currentAvailable - 1);
+                  const nextSold = currentSold + 1;
+
+                  await EventModel.findOneAndUpdate(
+                    {
+                      _id: ev._id,
+                      "dateSchedule._id": schedule._id,
+                    },
+                    {
+                      $set: {
+                        "dateSchedule.$.soldSeats": nextSold,
+                        "dateSchedule.$.availableSeats": nextAvailable,
+                      },
+                    }
+                  );
+                } else if (typeof ev.availableSpots === "number") {
+                  await EventModel.findByIdAndUpdate(ev._id, {
+                    $inc: { availableSpots: -1 },
+                  });
+                }
+                updatedEventIds.push(ev._id.toString());
+              } catch (seatErr) {
+                logger.warn(`[winter-camp] Failed to update seats for event ${ev._id}:`, seatErr);
+              }
+            }
+          } else {
+            // Fallback: If no event matched in the DB, keep generic order item
+            orderItems.push({
+              eventId: new mongoose.Types.ObjectId(registration._id.toString()),
+              eventTitle: `Winter Camp 2026 — ${coursesList}`,
+              scheduleDate: new Date(),
+              quantity: 1,
+              unitPrice: 0,
+              totalPrice: 0,
+              currency: "AED",
+              participants: [
+                {
+                  name: studentFullName,
+                  age: 0,
+                },
+              ],
+            });
+          }
+
+          await Order.create({
+            userId: user._id,
+            items: orderItems,
             subtotal: 0,
             vat: 0,
             discount: 0,
@@ -162,6 +252,12 @@ export const registerWinterCamp = async (
               amount: 0,
             },
           });
+
+          // Invalidate caches so the event details page instantly reflects updated seats and orders
+          for (const evId of updatedEventIds) {
+            await invalidateEventCaches(evId);
+          }
+          await invalidateOrderCaches(user._id.toString());
         } catch (orderErr) {
           logger.error("[winter-camp] Error creating free order record:", orderErr);
         }
