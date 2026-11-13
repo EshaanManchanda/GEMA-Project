@@ -1,5 +1,5 @@
 {
-  "testsPassing": "1190 / 1214",
+  "testsPassing": "1237 / 1261",
   "issues": [
     {
       "area": "Security",
@@ -462,6 +462,62 @@
       "commit": "5dccc95",
       "title": "Frontend unit tests run again",
       "text": "Jest now loads the Vite code (import.meta rewrite, path aliases, uuid stub) and the TipTap tests pass. Five old suites that mocked fetch against removed Redux slices were deleted. 22 frontend tests pass."
+    },
+    {
+      "area": "Payments",
+      "sev": "high",
+      "commit": "d1a9ced",
+      "title": "Young Voices and Reel entries could be marked paid with someone else's payment",
+      "text": "Finalizing a GCC or Reel entry only checked that the Stripe session was paid, so one paid session could finalize any number of other drafts. The session must now be the one created for that entry, at the entry fee. The paid flag is also claimed with a single conditional update, so a double click or retry no longer repeats the account, order and email work. The TEST_PAYMENT_SKIP bypass now needs ALLOW_TEST_PAYMENT_SKIP=true, like the older competitions."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "d1a9ced",
+      "title": "Entry details and uploads open to anyone holding a reference number",
+      "text": "Looking up a Young Voices or Reel entry only checked the parent email when one was supplied, so leaving it out returned the child's name, school and the parent's name and email. Story and reel uploads checked nothing, so anyone could overwrite another family's entry. Both now require the parent email; a wrong email and an unknown reference return the same 404; a Reel under review can no longer be overwritten. Confirmation emails carry the email in the link so the normal flow is unchanged."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "d1a9ced",
+      "title": "Story manuscripts could be downloaded without logging in",
+      "text": "The manuscript download link had no login or role check. It is now admin-only. Anything that is not a PDF is always served as a download with nosniff and a sandbox policy, and story uploads accept only PDF or Word, reel uploads only video."
+    },
+    {
+      "area": "Payments",
+      "sev": "high",
+      "commit": "d1a9ced",
+      "title": "Winter Camp registration could give a free order for a paid event",
+      "text": "The public form sent event ids or titles and every match got a confirmed AED 0 order and a seat taken, paid events included. It can now only match live events that are actually free; anything else falls back to the plain registration order. Non-text values are rejected and the lists are capped."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "d1a9ced",
+      "title": "Weak temporary passwords and unescaped email text in the new competitions",
+      "text": "Parent accounts created by Young Voices, Reel and Winter Camp used Math.random for the temporary password; they now use the same secure generator as the other competitions. Names, emails, grade, city and programs are HTML-escaped in the welcome and confirmation emails, and the new public forms have the same hourly rate limit as the other public forms."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "8e85b98",
+      "title": "Mailchimp server prefix could send the API key to another host",
+      "text": "The prefix from the admin settings goes into the Mailchimp hostname, so a value like evil.com/# would have sent the API key there. The prefix (for example us21) and the audience id are now strictly validated when saved and again before every use."
+    },
+    {
+      "area": "Privacy",
+      "sev": "medium",
+      "commit": "8c7776e",
+      "title": "Marketing sync only for people who explicitly opted in",
+      "text": "The account setting for marketing email is on for everyone by default, so it is not consent. Registered users are now synced to Sender or Mailchimp only after an unticked sign-up checkbox (or later opt-in) and a verified email. Newsletter subscribers keep syncing. Unsubscribes, including ones made inside the provider, are always honoured."
+    },
+    {
+      "area": "Payments",
+      "sev": "low",
+      "commit": "67bd2b0",
+      "title": "Merge kept the hardened competition payments and records one order per payment",
+      "text": "Merging the aditya branch kept the session-ownership check and the shared, run-once finalize for AI Art and National Day. The new order record for competition payments (admin revenue) now lives in that shared step, so the browser finalize and the Stripe webhook cannot record it twice."
     }
   ],
   "tests": [
@@ -625,6 +681,47 @@
         "Click Download my data, then Delete account and confirm."
       ],
       "expect": "A JSON export downloads; after deletion the account is anonymised and you can no longer log in."
+    },
+    {
+      "title": "Young Voices and Reel entries need the parent email",
+      "where": "Local (Docker, Stripe test keys)",
+      "steps": [
+        "Register a Young Voices entry and pay with the Stripe test card.",
+        "Open the submit link from the confirmation email (it ends in ?ref=...&email=...): the entry loads.",
+        "Remove &email=... from the address: the page asks for the parent email instead of loading.",
+        "Enter a different email, then the right one."
+      ],
+      "expect": "A wrong email says no registration was found (the same message as an unknown reference); the right email loads the entry. Repeat for the Reel Challenge."
+    },
+    {
+      "title": "Winter Camp cannot be used to get a paid event for free",
+      "where": "Local (Docker)",
+      "steps": [
+        "Have one free and one paid workshop live, and note the paid one's remaining seats.",
+        "Submit the Winter Camp form choosing both.",
+        "Open Admin > Orders and the paid workshop."
+      ],
+      "expect": "The AED 0 order lists only the free workshop and only its seat count drops; the paid workshop is untouched."
+    },
+    {
+      "title": "Email marketing provider settings",
+      "where": "Local (Docker)",
+      "steps": [
+        "Open Admin > Settings > Email Marketing, choose Mailchimp, enter an API key, audience id and prefix us21, then Save.",
+        "Reload the page and look at the key field.",
+        "Enter the prefix evil.com and Save.",
+        "Switch back to Development and send a test email from Admin > Email Marketing > Compose."
+      ],
+      "expect": "The key is never shown again (only 'saved here'); the bad prefix is rejected; the test email appears in Mailpit at http://localhost:8025."
+    },
+    {
+      "title": "Registered users sync to the marketing provider only after opting in",
+      "where": "Local (Docker)",
+      "steps": [
+        "Register one account leaving the marketing checkbox unticked and another with it ticked, and verify both emails.",
+        "Open the Email Marketing overview and look at the contact sync counts."
+      ],
+      "expect": "Only the ticked account produces a contact sync; the unticked one produces none."
     }
   ]
 }
