@@ -56,6 +56,9 @@ const contactAPI = {
     page?: number;
     limit?: number;
     status?: 'new' | 'read' | 'responded';
+    search?: string;
+    from?: string;
+    to?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
   }) => {

@@ -184,6 +184,8 @@ const competitionAPI = {
     search?: string;
     emirate?: string;
     grade?: string;
+    from?: string;
+    to?: string;
   }) => {
     const response = await ApiService.get('/competition/submissions', { params: options });
     return response as {

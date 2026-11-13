@@ -79,6 +79,8 @@ const newsletterAPI = {
       search?: string;
       isActive?: string;
       source?: string;
+      from?: string;
+      to?: string;
       sortBy?: string;
       sortOrder?: 'asc' | 'desc';
     }) => {

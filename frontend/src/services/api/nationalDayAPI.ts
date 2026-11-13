@@ -256,6 +256,8 @@ const nationalDayAPI = {
     emirate?: string;
     medal?: string;
     search?: string;
+    from?: string;
+    to?: string;
   }) => {
     const response = await ApiService.get<any>('/national-day-competition/submissions', {
       params: options,

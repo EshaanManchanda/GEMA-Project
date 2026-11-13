@@ -6,6 +6,7 @@ import { NewsletterService } from "../services/newsletter.service";
 import { emailService } from "../services/email.service";
 import logger from "../config/logger";
 import { escapeRegex } from "../utils/regexHelpers";
+import { CSV_EXPORT_LIMIT, dateRangeFilter, sendCsv } from "../utils/csv.utils";
 import { escapeHtml } from "../utils/htmlHelpers";
 
 const newsletterService = new NewsletterService();
@@ -248,6 +249,9 @@ export const getAllSubscribers = async (
       search,
       isActive,
       source,
+      from,
+      to,
+      format,
       sortBy = "subscriptionDate",
       sortOrder = "desc",
     } = req.query;
@@ -271,9 +275,21 @@ export const getAllSubscribers = async (
     if (source) {
       query.source = source;
     }
+    const range = dateRangeFilter(from, to);
+    if (range) query.subscriptionDate = range;
 
     const sort: any = {};
     sort[sortBy as string] = sortOrder === "asc" ? 1 : -1;
+
+    if (format === "csv") {
+      // unsubscribeToken is a secret (anyone holding it can unsubscribe the user)
+      const rows = await NewsletterSubscriber.find(query)
+        .sort(sort)
+        .limit(CSV_EXPORT_LIMIT)
+        .select("-__v -unsubscribeToken")
+        .lean();
+      return sendCsv(res, "newsletter-subscribers", rows as any[]);
+    }
 
     const [subscribers, totalCount] = await Promise.all([
       NewsletterSubscriber.find(query)

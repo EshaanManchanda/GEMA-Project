@@ -4,6 +4,8 @@ import Partnership from "../models/Partnership";
 import { emailService } from "../services/email.service";
 import { AppError } from "../middleware/error";
 import logger from "../config/logger";
+import { escapeRegex } from "../utils/regexHelpers";
+import { CSV_EXPORT_LIMIT, dateRangeFilter, sendCsv } from "../utils/csv.utils";
 import { stripe } from "../config/stripe";
 import { config } from "../config/env";
 import User, { UserRole, UserStatus } from "../models/User";
@@ -206,6 +208,10 @@ export const getAllPartnerships = async (
       status,
       partnershipType,
       campaignType,
+      search,
+      from,
+      to,
+      format,
       sortBy = "createdAt",
       sortOrder = "desc",
       export: isExport,
@@ -221,6 +227,21 @@ export const getAllPartnerships = async (
     }
     if (campaignType) {
       query.campaignType = campaignType;
+    }
+    if (search) {
+      const rx = { $regex: escapeRegex(String(search)), $options: "i" };
+      query.$or = [{ name: rx }, { email: rx }, { organization: rx }];
+    }
+    const range = dateRangeFilter(from, to);
+    if (range) query.createdAt = range;
+
+    if (format === "csv") {
+      const rows = await Partnership.find(query)
+        .sort({ [sortBy as string]: sortOrder === "asc" ? 1 : -1 })
+        .limit(CSV_EXPORT_LIMIT)
+        .select("-__v")
+        .lean();
+      return sendCsv(res, "partnership-submissions", rows as any[]);
     }
 
     // Parse pagination

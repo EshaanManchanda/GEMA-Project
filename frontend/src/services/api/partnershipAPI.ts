@@ -66,10 +66,11 @@ export interface GetPartnershipsParams {
     page?: number;
     limit?: number;
     status?: string;
-    type?: string;
+    partnershipType?: string;
     search?: string;
-    startDate?: string;
-    endDate?: string;
+    from?: string;
+    to?: string;
+    format?: 'csv';
 }
 
 export interface GetPartnershipsResponse {

@@ -135,6 +135,11 @@ export const getAllPartnershipsValidation = [
     .isIn(["general", "summer_2026"])
     .withMessage("Campaign type must be general or summer_2026"),
 
+  query("search").optional().isString().trim().isLength({ max: 100 }),
+  query("from").optional().isISO8601().withMessage("from must be an ISO date"),
+  query("to").optional().isISO8601().withMessage("to must be an ISO date"),
+  query("format").optional().isIn(["csv"]).withMessage("format must be csv"),
+
   query("sortBy")
     .optional()
     .isIn(["createdAt", "name", "email", "partnershipType", "status", "selectedPackage", "campaignType"])

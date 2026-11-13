@@ -17,9 +17,11 @@ import {
     UserX,
     RefreshCw,
     Award,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Download
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ApiService } from '@/services/api';
 import adminAPI from '@/services/api/adminAPI';
 import contactAPI, { Contact, ContactStats } from '@/services/api/contactAPI';
 import newsletterAPI from '@/services/api/newsletterAPI';
@@ -134,6 +136,56 @@ function PaginationBar({ pagination, onPage }: { pagination: Pagination; onPage:
                 </button>
             </div>
         </div>
+    );
+}
+
+// ─── Date Range + Export ──────────────────────────────────────────────────────
+
+function ExportControls({
+    from, to, onFrom, onTo, url, filename, params
+}: {
+    from: string;
+    to: string;
+    onFrom: (v: string) => void;
+    onTo: (v: string) => void;
+    url: string;
+    filename: string;
+    params: Record<string, string | undefined>;
+}) {
+    const [exporting, setExporting] = useState(false);
+    const inputCls = 'px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white';
+
+    const handleExport = async () => {
+        setExporting(true);
+        try {
+            await ApiService.download(url, `${filename}-${new Date().toISOString().split('T')[0]}.csv`, {
+                params: { ...params, from: from || undefined, to: to || undefined, format: 'csv' },
+            });
+        } catch (err: any) {
+            toast.error(err?.message || 'Export failed');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    return (
+        <>
+            <label className="flex items-center gap-2 text-xs text-gray-500">
+                From
+                <input type="date" value={from} max={to || undefined} onChange={e => onFrom(e.target.value)} className={inputCls} />
+            </label>
+            <label className="flex items-center gap-2 text-xs text-gray-500">
+                To
+                <input type="date" value={to} min={from || undefined} onChange={e => onTo(e.target.value)} className={inputCls} />
+            </label>
+            <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+            >
+                <Download className="w-4 h-4" /> {exporting ? 'Exporting…' : 'Export CSV'}
+            </button>
+        </>
     );
 }
 
@@ -276,9 +328,17 @@ function ContactTab() {
     const [stats, setStats] = useState<ContactStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [searchInput, setSearchInput] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [from, setFrom] = useState('');
+    const [to, setTo] = useState('');
     const [page, setPage] = useState(1);
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+
+    useEffect(() => {
+        const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 400);
+        return () => clearTimeout(t);
+    }, [searchInput]);
 
     const fetchContacts = useCallback(async () => {
         setIsLoading(true);
@@ -286,7 +346,10 @@ function ContactTab() {
             const res = await contactAPI.getAllContacts({
                 page,
                 limit: 20,
-                status: statusFilter as any || undefined
+                status: statusFilter as any || undefined,
+                search: search || undefined,
+                from: from || undefined,
+                to: to || undefined
             });
             setContacts(res.contacts || []);
             setPagination(res.pagination || null);
@@ -296,18 +359,11 @@ function ContactTab() {
         } finally {
             setIsLoading(false);
         }
-    }, [page, statusFilter]);
+    }, [page, statusFilter, search, from, to]);
 
     useEffect(() => { fetchContacts(); }, [fetchContacts]);
 
-    // Client-side search filter (server doesn't support search on contacts)
-    const filtered = search
-        ? contacts.filter(c =>
-            c.name.toLowerCase().includes(search.toLowerCase()) ||
-            c.email.toLowerCase().includes(search.toLowerCase()) ||
-            c.subject.toLowerCase().includes(search.toLowerCase())
-        )
-        : contacts;
+    const filtered = contacts;
 
     const handleMarkRead = async (id: string) => {
         try {
@@ -358,13 +414,13 @@ function ContactTab() {
 
             {/* Filters */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <input
                             type="text"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
+                            value={searchInput}
+                            onChange={e => setSearchInput(e.target.value)}
                             placeholder="Search by name, email, subject…"
                             className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
@@ -379,6 +435,13 @@ function ContactTab() {
                         <option value="read">Read</option>
                         <option value="responded">Responded</option>
                     </select>
+                    <ExportControls
+                        from={from} to={to}
+                        onFrom={v => { setFrom(v); setPage(1); }}
+                        onTo={v => { setTo(v); setPage(1); }}
+                        url="/contact" filename="contact-submissions"
+                        params={{ status: statusFilter || undefined, search: search || undefined }}
+                    />
                     <button onClick={fetchContacts} className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm text-gray-600">
                         <RefreshCw className="w-4 h-4" /> Refresh
                     </button>
@@ -506,6 +569,8 @@ function NewsletterTab() {
     const [search, setSearch] = useState('');
     const [activeFilter, setActiveFilter] = useState('');
     const [sourceFilter, setSourceFilter] = useState('');
+    const [from, setFrom] = useState('');
+    const [to, setTo] = useState('');
     const [page, setPage] = useState(1);
 
     const fetchSubscribers = useCallback(async () => {
@@ -516,7 +581,9 @@ function NewsletterTab() {
                 limit: 20,
                 search: search || undefined,
                 isActive: activeFilter || undefined,
-                source: sourceFilter || undefined
+                source: sourceFilter || undefined,
+                from: from || undefined,
+                to: to || undefined
             });
             setSubscribers(res.subscribers || []);
             setPagination(res.pagination || null);
@@ -526,7 +593,7 @@ function NewsletterTab() {
         } finally {
             setIsLoading(false);
         }
-    }, [page, search, activeFilter, sourceFilter]);
+    }, [page, search, activeFilter, sourceFilter, from, to]);
 
     useEffect(() => { fetchSubscribers(); }, [fetchSubscribers]);
 
@@ -552,7 +619,7 @@ function NewsletterTab() {
 
             {/* Filters */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <input
@@ -585,6 +652,13 @@ function NewsletterTab() {
                         <option value="profile">Profile</option>
                         <option value="api">API</option>
                     </select>
+                    <ExportControls
+                        from={from} to={to}
+                        onFrom={v => { setFrom(v); setPage(1); }}
+                        onTo={v => { setTo(v); setPage(1); }}
+                        url="/newsletter/admin/subscribers" filename="newsletter-subscribers"
+                        params={{ search: search || undefined, isActive: activeFilter || undefined, source: sourceFilter || undefined }}
+                    />
                     <button onClick={fetchSubscribers} className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm text-gray-600">
                         <RefreshCw className="w-4 h-4" /> Refresh
                     </button>
@@ -796,6 +870,8 @@ function PartnershipTab() {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('');
+    const [from, setFrom] = useState('');
+    const [to, setTo] = useState('');
     const [page, setPage] = useState(1);
     const [selectedPartnership, setSelectedPartnership] = useState<Partnership | null>(null);
 
@@ -806,8 +882,10 @@ function PartnershipTab() {
                 page,
                 limit: 20,
                 status: statusFilter || undefined,
-                type: typeFilter || undefined,
-                search: search || undefined
+                partnershipType: typeFilter || undefined,
+                search: search || undefined,
+                from: from || undefined,
+                to: to || undefined
             });
             setPartnerships(res.partnerships || []);
             setPagination(res.pagination || null);
@@ -817,7 +895,7 @@ function PartnershipTab() {
         } finally {
             setIsLoading(false);
         }
-    }, [page, statusFilter, typeFilter, search]);
+    }, [page, statusFilter, typeFilter, search, from, to]);
 
     useEffect(() => { fetchPartnerships(); }, [fetchPartnerships]);
 
@@ -864,7 +942,7 @@ function PartnershipTab() {
 
             {/* Filters */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <input
@@ -898,6 +976,13 @@ function PartnershipTab() {
                         <option value="affiliate">Affiliate</option>
                         <option value="other">Other</option>
                     </select>
+                    <ExportControls
+                        from={from} to={to}
+                        onFrom={v => { setFrom(v); setPage(1); }}
+                        onTo={v => { setTo(v); setPage(1); }}
+                        url="/partnerships" filename="partnership-submissions"
+                        params={{ status: statusFilter || undefined, partnershipType: typeFilter || undefined, search: search || undefined }}
+                    />
                     <button onClick={fetchPartnerships} className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm text-gray-600">
                         <RefreshCw className="w-4 h-4" /> Refresh
                     </button>
@@ -1360,6 +1445,8 @@ function CompetitionTab() {
     const [statusFilter, setStatusFilter] = useState('');
     const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
     const [medalFilter, setMedalFilter] = useState('');
+    const [from, setFrom] = useState('');
+    const [to, setTo] = useState('');
     const [page, setPage] = useState(1);
     const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null);
 
@@ -1374,6 +1461,8 @@ function CompetitionTab() {
                     paymentStatus: paymentStatusFilter || undefined,
                     medal: medalFilter || undefined,
                     search: search || undefined,
+                    from: from || undefined,
+                    to: to || undefined,
                 });
                 setSubmissions(res.data.submissions || []);
                 setPagination({
@@ -1391,6 +1480,8 @@ function CompetitionTab() {
                     status: statusFilter || undefined,
                     paymentStatus: paymentStatusFilter || undefined,
                     search: search || undefined,
+                    from: from || undefined,
+                    to: to || undefined,
                 });
                 setSubmissions(res.data.submissions || []);
                 setPagination({
@@ -1407,7 +1498,7 @@ function CompetitionTab() {
         } finally {
             setIsLoading(false);
         }
-    }, [selectedCompetition, page, statusFilter, paymentStatusFilter, medalFilter, search]);
+    }, [selectedCompetition, page, statusFilter, paymentStatusFilter, medalFilter, search, from, to]);
 
     useEffect(() => { fetchSubmissions(); }, [fetchSubmissions]);
 
@@ -1484,7 +1575,7 @@ function CompetitionTab() {
 
             {/* Filters */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <input
@@ -1525,6 +1616,20 @@ function CompetitionTab() {
                         <option value="Silver">Silver</option>
                         <option value="Bronze">Bronze</option>
                     </select>
+                    <ExportControls
+                        from={from} to={to}
+                        onFrom={v => { setFrom(v); setPage(1); }}
+                        onTo={v => { setTo(v); setPage(1); }}
+                        url={selectedCompetition === 'ai-art' ? '/competition/submissions' : '/national-day-competition/submissions'}
+                        filename={selectedCompetition === 'ai-art' ? 'ai-art-competition' : 'national-day-competition'}
+                        params={{
+                            status: statusFilter || undefined,
+                            paymentStatus: paymentStatusFilter || undefined,
+                            // national-day backend also honours medal; both accept it
+                            medal: medalFilter || undefined,
+                            search: search || undefined,
+                        }}
+                    />
                     <button onClick={fetchSubmissions} className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm text-gray-600">
                         <RefreshCw className="w-4 h-4" /> Refresh
                     </button>

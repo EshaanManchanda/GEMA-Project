@@ -62,6 +62,11 @@ export const getAllContactsValidation = [
     .isIn(["new", "read", "responded"])
     .withMessage("Status must be one of: new, read, responded"),
 
+  query("search").optional().isString().trim().isLength({ max: 100 }),
+  query("from").optional().isISO8601().withMessage("from must be an ISO date"),
+  query("to").optional().isISO8601().withMessage("to must be an ISO date"),
+  query("format").optional().isIn(["csv"]).withMessage("format must be csv"),
+
   query("sortBy")
     .optional()
     .isIn(["createdAt", "name", "email", "subject", "status"])

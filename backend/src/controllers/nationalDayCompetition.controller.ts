@@ -15,6 +15,7 @@ import { emailService } from "../services/email.service";
 import fs from "fs";
 import crypto from "crypto";
 import { escapeRegex } from "../utils/regexHelpers";
+import { CSV_EXPORT_LIMIT, dateRangeFilter, sendCsv } from "../utils/csv.utils";
 import { escapeHtml } from "../utils/htmlHelpers";
 import { stripe } from "../config/stripe";
 import { AuthRequest } from "../types";
@@ -709,6 +710,21 @@ export const getSubmissions = catchAsync(
         { "participant.schoolName": searchRegex },
         { "artwork.title": searchRegex },
       ];
+    }
+    const range = dateRangeFilter(req.query.from, req.query.to);
+    if (range) filter.createdAt = range;
+
+    if (req.query.format === "csv") {
+      const docs = await NationalDaySubmission.find(filter)
+        .sort({ createdAt: -1 })
+        .limit(CSV_EXPORT_LIMIT)
+        .select("-__v -metadata.ipAddress -metadata.userAgent")
+        .lean();
+      const rows = docs.map((d: any) => ({
+        ref: `UAE2026-${String(d._id).slice(-8).toUpperCase()}`,
+        ...d,
+      }));
+      return sendCsv(res, "national-day-competition-submissions", rows);
     }
 
     const [submissions, total] = await Promise.all([

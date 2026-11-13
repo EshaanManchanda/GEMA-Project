@@ -20,6 +20,7 @@ import { stripe } from "../config/stripe";
 import { AuthRequest } from "../types";
 import { certificateService } from "../modules/certificates/services/certificate.service";
 import { escapeRegex } from "../utils/regexHelpers";
+import { CSV_EXPORT_LIMIT, dateRangeFilter, sendCsv } from "../utils/csv.utils";
 import { activatePaidSubmission } from "../services/competition.service";
 import { generateTempPassword } from "../utils/otp";
 
@@ -743,6 +744,21 @@ export const getSubmissions = catchAsync(
       }
 
       filter.$or = orConditions;
+    }
+    const range = dateRangeFilter(req.query.from, req.query.to);
+    if (range) filter.createdAt = range;
+
+    if (req.query.format === "csv") {
+      const docs = await CompetitionSubmission.find(filter)
+        .sort({ createdAt: -1 })
+        .limit(CSV_EXPORT_LIMIT)
+        .select("-__v -metadata.ipAddress -metadata.userAgent")
+        .lean();
+      const rows = docs.map((d: any) => ({
+        ref: `KAC2026-${String(d._id).slice(-8).toUpperCase()}`,
+        ...d,
+      }));
+      return sendCsv(res, "ai-art-competition-submissions", rows);
     }
 
     const [submissions, total] = await Promise.all([

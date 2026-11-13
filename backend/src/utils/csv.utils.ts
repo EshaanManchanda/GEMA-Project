@@ -5,6 +5,9 @@
  * Handles quotes, commas, newlines, and one level of nested objects.
  */
 
+import type { Response } from "express";
+import { AppError } from "../middleware/error";
+
 /** UTF-8 BOM — signals encoding so Excel opens without mojibake */
 const BOM = "﻿";
 
@@ -50,7 +53,9 @@ function flattenObject(
   const flat: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(obj)) {
     const fullKey = prefix ? `${prefix}_${key}` : key;
-    if (
+    if (val !== null && typeof val === "object" && "_bsontype" in val) {
+      flat[fullKey] = String(val); // ObjectId / Decimal128 etc. -> one cell, not nested buffer keys
+    } else if (
       val !== null &&
       typeof val === "object" &&
       !Array.isArray(val) &&
@@ -58,7 +63,10 @@ function flattenObject(
     ) {
       Object.assign(flat, flattenObject(val as Record<string, unknown>, fullKey));
     } else if (Array.isArray(val)) {
-      flat[fullKey] = JSON.stringify(val); // arrays → JSON string in cell
+      // plain-value arrays read as "a; b" in Excel; arrays of objects stay JSON in one cell
+      flat[fullKey] = val.every((v) => v === null || typeof v !== "object")
+        ? val.join("; ")
+        : JSON.stringify(val);
     } else {
       flat[fullKey] = val;
     }
@@ -157,6 +165,39 @@ export function buildExportFilename(
     return `${type}-analytics-${startDate}-to-${endDate}`;
   }
   return `${type}-analytics-${today}`;
+}
+
+/** Max rows per CSV export. ponytail: in-memory cap, switch to export-stream.ts streamCSVExport if tables near this. */
+export const CSV_EXPORT_LIMIT = 50_000;
+
+/**
+ * Build a Mongo date-range filter from `from`/`to` query values.
+ * A date-only `to` (YYYY-MM-DD) is inclusive of the whole day.
+ * Returns undefined when neither is given; throws AppError(400) on bad dates.
+ */
+export function dateRangeFilter(from?: unknown, to?: unknown): { $gte?: Date; $lte?: Date } | undefined {
+  const out: { $gte?: Date; $lte?: Date } = {};
+  if (from) {
+    const d = new Date(String(from));
+    if (isNaN(d.getTime())) throw new AppError("Invalid 'from' date", 400);
+    out.$gte = d;
+  }
+  if (to) {
+    const s = String(to);
+    const d = new Date(s);
+    if (isNaN(d.getTime())) throw new AppError("Invalid 'to' date", 400);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) d.setUTCHours(23, 59, 59, 999);
+    out.$lte = d;
+  }
+  return out.$gte || out.$lte ? out : undefined;
+}
+
+/** Send rows as a CSV attachment named `<name>-<today>.csv`. */
+export function sendCsv(res: Response, name: string, rows: Record<string, unknown>[]): void {
+  const filename = safeReportFilename(name, new Date().toISOString().split("T")[0]) + ".csv";
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(toCsv(rows));
 }
 
 /**
