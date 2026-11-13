@@ -20,6 +20,7 @@ export interface DashboardSummary {
   revenueGrowth: number;
   eventGrowth: number;
   userGrowth: number;
+  bookingGrowth?: number;
   topPerformingEvents: Array<{
     eventId: string;
     title: string;

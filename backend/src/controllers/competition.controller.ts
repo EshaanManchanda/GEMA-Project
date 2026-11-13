@@ -255,8 +255,8 @@ export const createCheckoutSession = catchAsync(
         submissionId: submission._id.toString(),
         studentName: submission.participant.studentFullName,
       },
-      success_url: `${frontendUrl}/ai-art-competition/payment-success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submission._id.toString()}`,
-      cancel_url: `${frontendUrl}/ai-art-competition?payment=cancelled&submission_id=${submission._id.toString()}`,
+      success_url: `${frontendUrl}/competitions/ai-art-competition/payment-success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submission._id.toString()}`,
+      cancel_url: `${frontendUrl}/competitions/ai-art-competition?payment=cancelled&submission_id=${submission._id.toString()}`,
     });
 
     // Store the session ID on the draft so we can look it up on verify

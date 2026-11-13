@@ -18,7 +18,8 @@ import {
     RefreshCw,
     Award,
     Image as ImageIcon,
-    Download
+    Download,
+    Snowflake
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ApiService } from '@/services/api';
@@ -28,7 +29,11 @@ import newsletterAPI from '@/services/api/newsletterAPI';
 import partnershipAPI, { Partnership, PartnershipStats } from '@/services/api/partnershipAPI';
 import competitionAPI from '@/services/api/competitionAPI';
 import nationalDayAPI from '@/services/api/nationalDayAPI';
+import gccCompetitionAPI from '@/services/api/gccCompetitionAPI';
+import reelCompetitionAPI from '@/services/api/reelCompetitionAPI';
+import WinterCampTab from './WinterCampTab';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
+import { API_BASE_URL } from '@/config/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1075,7 +1080,7 @@ function CompetitionDetailModal({
     onDelete
 }: {
     submission: any;
-    competitionType: 'ai-art' | 'national-day';
+    competitionType: 'ai-art' | 'national-day' | 'young-voices-gcc' | 'gcc-reel-challenge';
     onClose: () => void;
     onUpdateStatus: (id: string, status: string, notes: string, medal?: string, certificateTemplateId?: string) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
@@ -1086,6 +1091,16 @@ function CompetitionDetailModal({
     const [loading, setLoading] = useState(false);
     const [templates, setTemplates] = useState<any[]>([]);
     const [selectedTemplate, setSelectedTemplate] = useState(submission.certificateTemplateId || '');
+
+    const subRefDisplay = submission.submissionRef || (
+        competitionType === 'young-voices-gcc'
+            ? `GCC2027-${submission._id.slice(-8).toUpperCase()}`
+            : competitionType === 'gcc-reel-challenge'
+            ? `REEL2027-${submission._id.slice(-8).toUpperCase()}`
+            : competitionType === 'national-day'
+            ? `UAE2026-${submission._id.slice(-8).toUpperCase()}`
+            : `KAC2026-${submission._id.slice(-8).toUpperCase()}`
+    );
 
     useEffect(() => {
         adminAPI.getCertTemplates()
@@ -1104,19 +1119,23 @@ function CompetitionDetailModal({
         setLoading(true);
         try {
             await onUpdateStatus(
-                submission._id, 
-                status, 
-                notes, 
-                status === 'winner' ? medal : undefined, 
+                submission._id,
+                status,
+                notes,
+                status === 'winner' ? medal : undefined,
                 (status === 'approved' || status === 'winner') ? selectedTemplate : undefined
             );
             if ((status === 'approved' || status === 'winner') && selectedTemplate) {
                 if (competitionType === 'ai-art') {
                     await competitionAPI.generateCertificate(submission._id, selectedTemplate, status === 'winner' ? medal : undefined);
-                } else {
+                } else if (competitionType === 'national-day') {
                     await nationalDayAPI.generateCertificate(submission._id, selectedTemplate, status === 'winner' ? medal : undefined);
+                } else if (competitionType === 'young-voices-gcc') {
+                    await gccCompetitionAPI.generateCertificate(submission._id, selectedTemplate, status === 'winner' ? medal : undefined);
+                } else {
+                    await reelCompetitionAPI.generateCertificate(submission._id, selectedTemplate, status === 'winner' ? medal : undefined);
                 }
-                toast.success('Certificate generation triggered');
+                toast.success('Certificate generated and emailed successfully');
             }
         } catch (err) {
             console.error('Failed to save status or generate certificate', err);
@@ -1133,11 +1152,15 @@ function CompetitionDetailModal({
                     <div>
                         <div className="flex items-center gap-2">
                             <h2 className="text-xl font-bold text-gray-900">
-                                {submission.artwork?.title || 'Submission Details'}
+                                {competitionType === 'gcc-reel-challenge'
+                                    ? (submission.reel?.title || 'GCC Reel Challenge')
+                                    : competitionType === 'young-voices-gcc'
+                                    ? (submission.story?.title || 'Young Voices of the GCC')
+                                    : (submission.artwork?.title || 'Submission Details')}
                             </h2>
-                            {submission.submissionRef && (
+                            {(submission.submissionRef || subRefDisplay) && (
                                 <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                                    {submission.submissionRef}
+                                    {submission.submissionRef || subRefDisplay}
                                 </span>
                             )}
                         </div>
@@ -1154,12 +1177,117 @@ function CompetitionDetailModal({
                 </div>
 
                 <div className="p-6 space-y-6">
-                    {/* Artwork Preview */}
+                    {/* Competition Content Preview */}
                     <div className="bg-gray-50 rounded-xl p-4 flex flex-col items-center border border-gray-200">
-                        {submission.artworkUpload?.artworkUrl ? (
-                            submission.artworkUpload?.artworkMimetype === 'application/pdf' || 
-                            submission.artworkUpload?.artworkUrl?.toLowerCase().endsWith('.pdf') ||
-                            submission.artworkUpload?.artworkOriginalName?.toLowerCase().endsWith('.pdf') ? (
+                        {competitionType === 'gcc-reel-challenge' ? (
+                            submission.reel?.videoDriveLink || submission.reel?.videoUrl ? (
+                                <div className="w-full flex flex-col items-center justify-center p-6 bg-white rounded-lg border border-purple-200 shadow-sm text-center">
+                                    <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-3 text-3xl font-black">
+                                        🎥
+                                    </div>
+                                    <h4 className="font-bold text-slate-900 text-base mb-1">
+                                        {submission.reel?.title || 'Mobile Video Reel'}
+                                    </h4>
+                                    <p className="text-xs text-slate-500 mb-2">
+                                        Theme: <span className="font-semibold text-slate-700">{submission.reel?.momentTheme || submission.reel?.themeIdea || 'The Moments That Make Eid Special'}</span>
+                                    </p>
+                                    {submission.reel?.description && (
+                                        <p className="text-xs italic text-slate-600 max-w-lg mb-4">"{submission.reel.description}"</p>
+                                    )}
+                                    <div className="flex gap-3">
+                                        <a
+                                            href={submission.reel?.videoDriveLink || submission.reel?.videoUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+                                        >
+                                            <span>▶️ Open & Watch Video Reel</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="py-10 px-6 text-center">
+                                    <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-3 text-2xl">
+                                        ⏳
+                                    </div>
+                                    <h4 className="font-bold text-slate-900 text-sm mb-1">Video Reel Link Not Yet Submitted (Phase 2 Pending)</h4>
+                                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                                        Registration and entry fee (AED 50) have been confirmed. The student has not yet submitted their Google Drive / cloud video link for Phase 2.
+                                    </p>
+                                </div>
+                            )
+                        ) : competitionType === 'young-voices-gcc' ? (
+                            submission.story?.storyContent || submission.storyUpload?.storyUrl || (submission as any).storyFileUrl ? (
+                                <div className="w-full flex flex-col items-center justify-center p-6 bg-white rounded-lg border border-teal-200 shadow-sm text-center">
+                                    <div className="w-16 h-16 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center mb-3 text-3xl font-black">
+                                        ✍️
+                                    </div>
+                                    <h4 className="font-bold text-slate-900 text-base mb-1">
+                                        {submission.story?.title || 'Short Story Manuscript'}
+                                    </h4>
+                                    <p className="text-xs text-slate-500 mb-3">
+                                        Theme: <span className="font-semibold text-slate-700">{submission.story?.themePillar || 'Our Heritage, Our Story'}</span>
+                                        {submission.story?.wordCount ? ` · ${submission.story.wordCount} words` : ''}
+                                    </p>
+
+                                    {/* Uploaded PDF / Document Banner & Buttons */}
+                                    {(submission.storyUpload?.storyUrl || (submission as any).storyFileUrl) && (
+                                        <div className="w-full bg-teal-50/80 rounded-xl p-4 border border-teal-200 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                            <div className="text-left flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-lg bg-teal-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                                                    PDF
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-teal-950 text-xs truncate max-w-[260px]">
+                                                        {submission.storyUpload?.storyOriginalName || 'Story Manuscript Document'}
+                                                    </p>
+                                                    <p className="text-[11px] text-teal-700">
+                                                        {submission.storyUpload?.storySize ? `${(submission.storyUpload.storySize / 1024).toFixed(1)} KB` : 'Uploaded manuscript file'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <a
+                                                    href={`${API_BASE_URL}/gcc-competition/submissions/${submission._id}/file`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-lg shadow-sm transition-colors"
+                                                >
+                                                    <span>📄 View PDF</span>
+                                                </a>
+                                                <a
+                                                    href={`${API_BASE_URL}/gcc-competition/submissions/${submission._id}/file?download=true`}
+                                                    download={submission.storyUpload?.storyOriginalName || 'story-manuscript.pdf'}
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-teal-50 text-teal-800 border border-teal-300 text-xs font-bold rounded-lg shadow-sm transition-colors"
+                                                >
+                                                    <span>⬇️ Download</span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {submission.story?.storyContent && (
+                                        <div className="w-full text-left bg-teal-50/60 p-4 rounded-xl border border-teal-100 max-h-56 overflow-y-auto mb-1">
+                                            <span className="text-[11px] font-bold text-teal-900 block mb-1">Pasted Manuscript Text:</span>
+                                            <p className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap">{submission.story.storyContent}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="py-10 px-6 text-center">
+                                    <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-3 text-2xl">
+                                        ⏳
+                                    </div>
+                                    <h4 className="font-bold text-slate-900 text-sm mb-1">Story Manuscript Not Yet Submitted (Phase 2 Pending)</h4>
+                                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                                        Registration and entry fee (AED 50) have been confirmed. The student has not yet submitted their story manuscript for Phase 2.
+                                    </p>
+                                </div>
+                            )
+                        ) : submission.artworkUpload?.artworkUrl ? (
+                            submission.artworkUpload?.artworkMimetype === 'application/pdf' ||
+                                submission.artworkUpload?.artworkUrl?.toLowerCase().endsWith('.pdf') ||
+                                submission.artworkUpload?.artworkOriginalName?.toLowerCase().endsWith('.pdf') ? (
                                 <div className="w-full flex flex-col items-center justify-center p-6 bg-white rounded-lg border border-red-200 mb-4 shadow-sm">
                                     <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-3 text-2xl font-black">
                                         PDF
@@ -1168,7 +1296,7 @@ function CompetitionDetailModal({
                                     <p className="text-xs text-slate-500 mb-4">{submission.artworkUpload?.artworkSize ? `${(submission.artworkUpload.artworkSize / 1024).toFixed(1)} KB` : 'PDF Template / Artwork'}</p>
                                     <div className="flex gap-3">
                                         <a
-                                            href={`/api/national-day-competition/submissions/${submission._id}/artwork`}
+                                            href={`${API_BASE_URL}/national-day-competition/submissions/${submission._id}/artwork`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
@@ -1176,7 +1304,7 @@ function CompetitionDetailModal({
                                             <span>📄 View PDF in New Tab</span>
                                         </a>
                                         <a
-                                            href={`/api/national-day-competition/submissions/${submission._id}/artwork?download=true`}
+                                            href={`${API_BASE_URL}/national-day-competition/submissions/${submission._id}/artwork?download=true`}
                                             download={submission.artworkUpload?.artworkOriginalName || 'artwork.pdf'}
                                             target="_blank"
                                             rel="noopener noreferrer"
@@ -1187,10 +1315,10 @@ function CompetitionDetailModal({
                                     </div>
                                 </div>
                             ) : (
-                                <img 
-                                    src={submission.artworkUpload?.artworkUrl} 
-                                    alt={submission.artwork?.title} 
-                                    className="max-h-96 rounded-lg object-contain shadow-sm mb-4" 
+                                <img
+                                    src={submission.artworkUpload?.artworkUrl}
+                                    alt={submission.artwork?.title}
+                                    className="max-h-96 rounded-lg object-contain shadow-sm mb-4"
                                     onError={(e) => {
                                         (e.target as HTMLElement).style.display = 'none';
                                     }}
@@ -1270,6 +1398,65 @@ function CompetitionDetailModal({
                                 <div className="text-sm">
                                     <span className="font-medium text-gray-600">Registration Type:</span> {submission.registrationType === 'school_bulk' ? 'School Bulk' : 'Individual'}
                                 </div>
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Payment Amount:</span> AED {submission.paymentAmount || 50}.00 ({submission.paymentStatus})
+                                </div>
+                            </div>
+                        ) : competitionType === 'young-voices-gcc' ? (
+                            <div className="space-y-3">
+                                <h3 className="font-semibold text-gray-900 border-b pb-2">Short Story Details</h3>
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Story Title:</span> {submission.story?.title || 'Pending upload'}
+                                </div>
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Theme Pillar:</span> {submission.story?.themePillar || 'Our Heritage, Our Story'}
+                                </div>
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Word Count:</span> {submission.story?.wordCount || '—'}
+                                </div>
+                                {(submission.storyUpload?.storyUrl || (submission as any).storyFileUrl) && (
+                                    <div className="text-sm flex items-center gap-2">
+                                        <span className="font-medium text-gray-600">Uploaded Manuscript:</span>
+                                        <a
+                                            href={`${API_BASE_URL}/gcc-competition/submissions/${submission._id}/file`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-teal-700 underline font-bold hover:text-teal-900"
+                                        >
+                                            View PDF / Document
+                                        </a>
+                                    </div>
+                                )}
+                                {submission.story?.storyContent && (
+                                    <div className="text-sm bg-teal-50/60 p-3 rounded-lg border border-teal-100 max-h-40 overflow-y-auto">
+                                        <span className="font-bold text-teal-900 block mb-1">Story Content:</span>
+                                        <p className="text-xs text-slate-700 whitespace-pre-wrap">{submission.story.storyContent}</p>
+                                    </div>
+                                )}
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Payment Amount:</span> AED {submission.paymentAmount || 50}.00 ({submission.paymentStatus})
+                                </div>
+                            </div>
+                        ) : competitionType === 'gcc-reel-challenge' ? (
+                            <div className="space-y-3">
+                                <h3 className="font-semibold text-gray-900 border-b pb-2">Reel Details</h3>
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Reel Title:</span> {submission.reel?.title || 'Pending upload'}
+                                </div>
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Theme Idea:</span> {submission.reel?.themeIdea || 'The Moments That Make Eid Special'}
+                                </div>
+                                <div className="text-sm">
+                                    <span className="font-medium text-gray-600">Video Duration:</span> {submission.reel?.durationSeconds ? `${submission.reel.durationSeconds}s` : '—'}
+                                </div>
+                                {submission.reel?.videoDriveLink && (
+                                    <div className="text-sm">
+                                        <span className="font-medium text-gray-600">Drive / Cloud Link:</span>{' '}
+                                        <a href={submission.reel.videoDriveLink} target="_blank" rel="noreferrer" className="text-purple-600 underline">
+                                            Open Video Link
+                                        </a>
+                                    </div>
+                                )}
                                 <div className="text-sm">
                                     <span className="font-medium text-gray-600">Payment Amount:</span> AED {submission.paymentAmount || 50}.00 ({submission.paymentStatus})
                                 </div>
@@ -1436,7 +1623,7 @@ function CompetitionDetailModal({
 // ─── Competition Tab ──────────────────────────────────────────────────────────
 
 function CompetitionTab() {
-    const [selectedCompetition, setSelectedCompetition] = useState<'ai-art' | 'national-day'>('ai-art');
+    const [selectedCompetition, setSelectedCompetition] = useState<'ai-art' | 'national-day' | 'young-voices-gcc' | 'gcc-reel-challenge'>('ai-art');
     const [submissions, setSubmissions] = useState<any[]>([]);
     const [pagination, setPagination] = useState<Pagination | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -1473,7 +1660,7 @@ function CompetitionTab() {
                     hasNext: res.data.pagination.page < res.data.pagination.pages,
                     hasPrev: res.data.pagination.page > 1
                 });
-            } else {
+            } else if (selectedCompetition === 'national-day') {
                 const res = await nationalDayAPI.getSubmissions({
                     page,
                     limit: 20,
@@ -1482,6 +1669,40 @@ function CompetitionTab() {
                     search: search || undefined,
                     from: from || undefined,
                     to: to || undefined,
+                });
+                setSubmissions(res.data.submissions || []);
+                setPagination({
+                    currentPage: res.data.page,
+                    totalPages: res.data.pages,
+                    totalCount: res.data.total,
+                    limit: 20,
+                    hasNext: res.data.page < res.data.pages,
+                    hasPrev: res.data.page > 1
+                });
+            } else if (selectedCompetition === 'young-voices-gcc') {
+                const res = await gccCompetitionAPI.getSubmissions({
+                    page,
+                    limit: 20,
+                    status: statusFilter || undefined,
+                    paymentStatus: paymentStatusFilter || undefined,
+                    search: search || undefined,
+                });
+                setSubmissions(res.data.submissions || []);
+                setPagination({
+                    currentPage: res.data.page,
+                    totalPages: res.data.pages,
+                    totalCount: res.data.total,
+                    limit: 20,
+                    hasNext: res.data.page < res.data.pages,
+                    hasPrev: res.data.page > 1
+                });
+            } else {
+                const res = await reelCompetitionAPI.getSubmissions({
+                    page,
+                    limit: 20,
+                    status: statusFilter || undefined,
+                    paymentStatus: paymentStatusFilter || undefined,
+                    search: search || undefined,
                 });
                 setSubmissions(res.data.submissions || []);
                 setPagination({
@@ -1512,8 +1733,10 @@ function CompetitionTab() {
         try {
             if (selectedCompetition === 'ai-art') {
                 await competitionAPI.updateSubmissionStatus(id, status, notes, medal, certificateTemplateId);
-            } else {
+            } else if (selectedCompetition === 'national-day') {
                 await nationalDayAPI.updateSubmissionStatus(id, status, notes, medal, certificateTemplateId);
+            } else {
+                await gccCompetitionAPI.updateSubmissionStatus(id, status, notes, medal, certificateTemplateId);
             }
             toast.success('Status updated successfully');
             fetchSubmissions();
@@ -1526,8 +1749,10 @@ function CompetitionTab() {
         try {
             if (selectedCompetition === 'ai-art') {
                 await competitionAPI.deleteSubmission(id);
-            } else {
+            } else if (selectedCompetition === 'national-day') {
                 await nationalDayAPI.deleteSubmission(id);
+            } else {
+                await gccCompetitionAPI.deleteSubmission(id);
             }
             toast.success('Submission deleted successfully');
             fetchSubmissions();
@@ -1546,23 +1771,39 @@ function CompetitionTab() {
                         <div className="flex bg-gray-100 p-1 rounded-lg">
                             <button
                                 onClick={() => { setSelectedCompetition('ai-art'); setPage(1); }}
-                                className={`px-4 py-2 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${
-                                    selectedCompetition === 'ai-art'
+                                className={`px-4 py-2 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${selectedCompetition === 'ai-art'
                                         ? 'bg-white text-purple-700 shadow-sm'
                                         : 'text-gray-600 hover:text-gray-900'
-                                }`}
+                                    }`}
                             >
-                                <span>🤖</span> AI Art Competition 2026
+                                <span>🤖</span> AI Art
                             </button>
                             <button
                                 onClick={() => { setSelectedCompetition('national-day'); setPage(1); }}
-                                className={`px-4 py-2 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${
-                                    selectedCompetition === 'national-day'
+                                className={`px-4 py-2 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${selectedCompetition === 'national-day'
                                         ? 'bg-white text-emerald-800 shadow-sm'
                                         : 'text-gray-600 hover:text-gray-900'
-                                }`}
+                                    }`}
                             >
-                                <span>🇦🇪</span> Eid Al Etihad Children's Art Competition 2026
+                                <span>🇦🇪</span> Eid Al Etihad
+                            </button>
+                            <button
+                                onClick={() => { setSelectedCompetition('young-voices-gcc'); setPage(1); }}
+                                className={`px-4 py-2 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${selectedCompetition === 'young-voices-gcc'
+                                        ? 'bg-white text-teal-800 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                            >
+                                <span>✍️</span> Young Voices
+                            </button>
+                            <button
+                                onClick={() => { setSelectedCompetition('gcc-reel-challenge'); setPage(1); }}
+                                className={`px-4 py-2 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${selectedCompetition === 'gcc-reel-challenge'
+                                        ? 'bg-white text-purple-800 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                            >
+                                <span>🎬</span> Ramadan & Eid
                             </button>
                         </div>
                     </div>
@@ -1668,22 +1909,32 @@ function CompetitionTab() {
                                     <tr key={sub._id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-4 py-3">
                                             <span className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                                                {selectedCompetition === 'national-day'
-                                                    ? `UAE2026-${sub._id.slice(-8).toUpperCase()}`
-                                                    : `KAC2026-${sub._id.slice(-8).toUpperCase()}`}
+                                                {sub.submissionRef || (
+                                                    selectedCompetition === 'young-voices-gcc'
+                                                        ? `GCC2027-${sub._id.slice(-8).toUpperCase()}`
+                                                        : selectedCompetition === 'gcc-reel-challenge'
+                                                        ? `REEL2027-${sub._id.slice(-8).toUpperCase()}`
+                                                        : selectedCompetition === 'national-day'
+                                                        ? `UAE2026-${sub._id.slice(-8).toUpperCase()}`
+                                                        : `KAC2026-${sub._id.slice(-8).toUpperCase()}`
+                                                )}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
                                             {sub.artwork?.title ? (
                                                 <p className="font-medium text-gray-900 truncate max-w-[200px]">{sub.artwork.title}</p>
+                                            ) : sub.story?.title ? (
+                                                <p className="font-medium text-gray-900 truncate max-w-[200px]">{sub.story.title}</p>
+                                            ) : sub.reel?.title ? (
+                                                <p className="font-medium text-gray-900 truncate max-w-[200px]">{sub.reel.title}</p>
                                             ) : (
                                                 <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                                                    ⏳ Artwork Pending (Phase 2)
+                                                    ⏳ {selectedCompetition === 'young-voices-gcc' ? 'Story Pending (Phase 2)' : selectedCompetition === 'gcc-reel-challenge' ? 'Reel Pending (Phase 2)' : 'Artwork Pending (Phase 2)'}
                                                 </span>
                                             )}
                                             {selectedCompetition === 'national-day' && sub.artwork?.medium && (
-                                                 <p className="text-xs text-gray-400 truncate max-w-[200px]">{sub.artwork?.medium}</p>
-                                             )}
+                                                <p className="text-xs text-gray-400 truncate max-w-[200px]">{sub.artwork?.medium}</p>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3">
                                             <p className="font-medium text-gray-900">{sub.participant?.studentFullName}</p>
@@ -1691,16 +1942,16 @@ function CompetitionTab() {
                                         </td>
                                         <td className="px-4 py-3 hidden md:table-cell">
                                             <p className="text-gray-900 text-sm truncate max-w-[200px]">{sub.participant?.schoolName}</p>
-                                            <p className="text-gray-500 text-xs">{sub.participant?.schoolEmirate}</p>
+                                            <p className="text-gray-500 text-xs">{sub.participant?.country ? `${sub.participant.country} · ${sub.participant.city || ''}` : sub.participant?.schoolEmirate}</p>
                                         </td>
                                         <td className="px-4 py-3">
                                             <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize
                                                 ${sub.status === 'winner' ? 'bg-yellow-100 text-yellow-800' :
-                                                  sub.status === 'approved' ? 'bg-purple-100 text-purple-800' :
-                                                  sub.status === 'under_review' ? 'bg-blue-100 text-blue-800' :
-                                                  sub.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                                  sub.status === 'disqualified' ? 'bg-gray-200 text-gray-800' :
-                                                  'bg-gray-100 text-gray-800'}`}>
+                                                    sub.status === 'approved' ? 'bg-purple-100 text-purple-800' :
+                                                        sub.status === 'under_review' ? 'bg-blue-100 text-blue-800' :
+                                                            sub.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                                sub.status === 'disqualified' ? 'bg-gray-200 text-gray-800' :
+                                                                    'bg-gray-100 text-gray-800'}`}>
                                                 {sub.status.replace('_', ' ')}
                                             </span>
                                         </td>
@@ -1713,9 +1964,9 @@ function CompetitionTab() {
                                         <td className="px-4 py-3">
                                             {sub.medal ? (
                                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full border shadow-2xs capitalize
-                                                    ${sub.medal.toLowerCase() === 'gold' ? 'bg-amber-100 text-amber-900 border-amber-300' : 
-                                                      sub.medal.toLowerCase() === 'silver' ? 'bg-slate-100 text-slate-800 border-slate-300' :
-                                                      sub.medal.toLowerCase() === 'bronze' ? 'bg-orange-100 text-orange-900 border-orange-300' : 'bg-yellow-50 text-yellow-800 border-yellow-200'}`}
+                                                    ${sub.medal.toLowerCase() === 'gold' ? 'bg-amber-100 text-amber-900 border-amber-300' :
+                                                        sub.medal.toLowerCase() === 'silver' ? 'bg-slate-100 text-slate-800 border-slate-300' :
+                                                            sub.medal.toLowerCase() === 'bronze' ? 'bg-orange-100 text-orange-900 border-orange-300' : 'bg-yellow-50 text-yellow-800 border-yellow-200'}`}
                                                 >
                                                     {sub.medal.toLowerCase() === 'gold' ? '🥇' : sub.medal.toLowerCase() === 'silver' ? '🥈' : sub.medal.toLowerCase() === 'bronze' ? '🥉' : '🎖️'} {sub.medal}
                                                 </span>
@@ -1775,7 +2026,7 @@ function CompetitionTab() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type TabId = 'contact' | 'newsletter' | 'partnership' | 'competition';
+type TabId = 'contact' | 'newsletter' | 'partnership' | 'competition' | 'winter-camp';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
     {
@@ -1797,6 +2048,11 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
         id: 'competition',
         label: 'Competition',
         icon: <Award className="w-4 h-4" />
+    },
+    {
+        id: 'winter-camp',
+        label: 'Winter Camp',
+        icon: <Snowflake className="w-4 h-4 text-sky-500" />
     }
 ];
 
@@ -1836,6 +2092,7 @@ const AdminSubmissionsPage: React.FC = () => {
                 {activeTab === 'newsletter' && <NewsletterTab />}
                 {activeTab === 'partnership' && <PartnershipTab />}
                 {activeTab === 'competition' && <CompetitionTab />}
+                {activeTab === 'winter-camp' && <WinterCampTab />}
             </div>
         </>
     );

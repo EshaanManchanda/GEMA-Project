@@ -7,6 +7,7 @@ import { emailService } from "./email.service";
 import { config } from "../config/env";
 import logger from "../config/logger";
 import { escapeHtml } from "../utils/htmlHelpers";
+import { createCompetitionOrder } from "../utils/competitionOrder.utils";
 
 /**
  * Mark a competition entry paid and run the post-payment work (parent
@@ -134,6 +135,23 @@ export async function activatePaidSubmission(
         logger.error("[competition] Error creating parent/student account:", err);
       }
     }
+
+    // ── Create Order record (links the payment to the admin dashboard & revenue) ──
+    // Never throws and is idempotent on the session id, so the browser finalize
+    // and the Stripe webhook can't double-record. Runs after the parent account
+    // exists because the order is attached to that user.
+    await createCompetitionOrder({
+      competitionKey: "ai-art",
+      competitionTitle: "KidRove AI Art Competition 2026 — Entry Fee",
+      submissionId: submission._id,
+      transactionId: sessionId,
+      amountAED: 50,
+      parentEmail: submission.participant.parentEmail,
+      parentName: submission.participant.parentName,
+      parentPhone: submission.participant.parentPhone,
+      studentName: submission.participant.studentFullName,
+      ipAddress: submission.metadata?.ipAddress,
+    });
 
     // ── Send confirmation email ───────────────────────────────────────────────
     try {

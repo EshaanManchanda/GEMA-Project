@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaSearch, FaEdit, FaTrash, FaPlus, FaSort, FaEye, FaUsers, FaChevronLeft, FaChevronRight, FaShieldAlt, FaCreditCard, FaHistory, FaDatabase, FaCheck, FaTimes, FaKey } from 'react-icons/fa';
+import { FaSearch, FaEdit, FaTrash, FaPlus, FaSort, FaEye, FaEyeSlash, FaUsers, FaChevronLeft, FaChevronRight, FaShieldAlt, FaCreditCard, FaHistory, FaDatabase, FaCheck, FaTimes, FaKey } from 'react-icons/fa';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -62,6 +62,7 @@ const AdminUsersPage: React.FC = () => {
   const [viewModalTab, setViewModalTab] = useState<string>('basic');
   const [selectedRole, setSelectedRole] = useState<'customer' | 'vendor' | 'employee' | 'admin' | 'teacher'>('customer');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [showCreatePassword, setShowCreatePassword] = useState<boolean>(false);
 
   // Password reset modal states
   const [showPasswordResetModal, setShowPasswordResetModal] = useState<boolean>(false);
@@ -180,6 +181,7 @@ const AdminUsersPage: React.FC = () => {
   const handleCreateUser = () => {
     setSelectedRole('customer');
     setFormErrors({});
+    setShowCreatePassword(false);
     setIsCreateModalOpen(true);
   };
 
@@ -1217,6 +1219,7 @@ const AdminUsersPage: React.FC = () => {
                   onClick={() => {
                     setIsCreateModalOpen(false);
                     setSelectedUser(null);
+                    setShowCreatePassword(false);
                   }}
                   className="text-gray-400 hover:text-gray-600 text-2xl"
                 >
@@ -1393,12 +1396,12 @@ const AdminUsersPage: React.FC = () => {
                           </div>
 
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
                             <input
                               type="text"
                               name="lastName"
                               defaultValue={selectedUser?.lastName || ''}
-                              required
+                              placeholder="Optional"
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                             />
                           </div>
@@ -1482,14 +1485,28 @@ const AdminUsersPage: React.FC = () => {
                           {isCreateModalOpen && (
                             <div className="col-span-2">
                               <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                              <input
-                                type="password"
-                                name="password"
-                                placeholder="Set a password for this account"
-                                required
-                                minLength={8}
-                                className={`w-full px-3 py-2 border ${formErrors.password ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900`}
-                              />
+                              <div className="relative">
+                                <input
+                                  type={showCreatePassword ? "text" : "password"}
+                                  name="password"
+                                  placeholder="Set a password for this account"
+                                  required
+                                  minLength={8}
+                                  className={`w-full px-3 py-2 pr-10 border ${formErrors.password ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900`}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowCreatePassword(!showCreatePassword)}
+                                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none"
+                                  aria-label={showCreatePassword ? "Hide password" : "Show password"}
+                                >
+                                  {showCreatePassword ? (
+                                    <FaEyeSlash className="w-4 h-4" />
+                                  ) : (
+                                    <FaEye className="w-4 h-4" />
+                                  )}
+                                </button>
+                              </div>
                               {formErrors.password ? (
                                 <p className="text-sm text-red-500 mt-1">{formErrors.password}</p>
                               ) : (
@@ -1840,6 +1857,7 @@ const AdminUsersPage: React.FC = () => {
                     onClick={() => {
                       setIsCreateModalOpen(false);
                       setSelectedUser(null);
+                      setShowCreatePassword(false);
                     }}
                     className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                     disabled={actionLoading.form_submit}

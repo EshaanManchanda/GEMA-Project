@@ -976,7 +976,7 @@ export default function AiArtCompetitionPage() {
             We invite schools, universities, and businesses to empower the next generation of AI creators through meaningful sponsorships.
           </p>
           <Link
-            to="/ai-art-competition/sponsorship"
+            to="/competitions/ai-art-competition/sponsorship"
             className="inline-flex items-center gap-3 px-10 py-4 bg-white hover:bg-slate-200 text-slate-900 font-bold text-lg rounded-full transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95"
           >
             Explore Sponsorship Options <FiChevronRight className="stroke-[3] text-xl" />
@@ -1443,7 +1443,7 @@ export default function AiArtCompetitionPage() {
                                 const submissionId = draftResult.data.submissionId;
 
                                 // Step 2: Bypass Stripe and redirect to success
-                                window.location.href = `/ai-art-competition/payment-success?session_id=TEST_PAYMENT_SKIP&submission_id=${submissionId}`;
+                                window.location.href = `/competitions/ai-art-competition/payment-success?session_id=TEST_PAYMENT_SKIP&submission_id=${submissionId}`;
                               } catch (err: any) {
                                 const msg = err?.response?.data?.message || err?.message || 'Something went wrong. Please try again.';
                                 toast.error(msg);

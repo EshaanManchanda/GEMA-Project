@@ -178,7 +178,7 @@ export default function NationalDayArtworkSubmitPage() {
         {/* Navigation Breadcrumb */}
         <div className="mb-6 flex items-center justify-between text-xs font-semibold text-slate-500">
           <Link
-            to="/national-day-art-competition"
+            to="/competitions/national-day-art-competition"
             className="hover:text-amber-800 flex items-center gap-1.5 transition-colors"
           >
             ← Back to Competition Home
@@ -244,7 +244,7 @@ export default function NationalDayArtworkSubmitPage() {
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
               <Link
-                to="/national-day-art-competition"
+                to="/competitions/national-day-art-competition"
                 className="flex-1 py-3 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm transition-all"
               >
                 Return to Competition Home
@@ -299,7 +299,7 @@ export default function NationalDayArtworkSubmitPage() {
               <div className="mt-4 flex items-center justify-between flex-wrap gap-3">
                 <p className="text-[11px] text-slate-500">
                   Don't have a Reference Number yet?{' '}
-                  <Link to="/national-day-art-competition#register" className="text-amber-700 font-bold hover:underline">
+                  <Link to="/competitions/national-day-art-competition#register" className="text-amber-700 font-bold hover:underline">
                     Register and pay entry fee first →
                   </Link>
                 </p>
@@ -437,7 +437,7 @@ export default function NationalDayArtworkSubmitPage() {
 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
                   <Link
-                    to="/national-day-art-competition"
+                    to="/competitions/national-day-art-competition"
                     className="py-3 px-6 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm transition-all"
                   >
                     Return to Competition Home

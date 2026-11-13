@@ -92,7 +92,7 @@ export default function NationalDayPaymentSuccessPage() {
           <p className="text-slate-600 text-sm mb-6 leading-relaxed">{errorMessage}</p>
           <div className="space-y-3">
             <Link
-              to="/national-day-art-competition"
+              to="/competitions/national-day-art-competition"
               className="block w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all shadow-md shadow-emerald-600/20"
             >
               Return to Competition Page
@@ -179,7 +179,7 @@ export default function NationalDayPaymentSuccessPage() {
             <div className="mt-4 pt-4 border-t border-emerald-200/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
               <span className="text-slate-600">Finished colouring?</span>
               <Link
-                to={`/national-day-art-competition/submit?ref=${encodeURIComponent(submissionRef)}`}
+                to={`/competitions/national-day-art-competition/submit?ref=${encodeURIComponent(submissionRef)}`}
                 className="text-emerald-800 font-extrabold hover:underline flex items-center gap-1"
               >
                 Upload Colored Template Here <FiArrowRight />
@@ -198,7 +198,7 @@ export default function NationalDayPaymentSuccessPage() {
               For <strong>{category} ({grade})</strong>: create your original traditional drawing or painting based on <em>"My UAE, My Pride"</em>. When ready, upload a clear photo or scan (&lt;1 MB) before the <strong>15 December 2026</strong> deadline.
             </p>
             <Link
-              to={`/national-day-art-competition/submit?ref=${encodeURIComponent(submissionRef)}`}
+              to={`/competitions/national-day-art-competition/submit?ref=${encodeURIComponent(submissionRef)}`}
               className="w-full py-3.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-600/25 hover:scale-[1.01]"
             >
               <span>🎨 Go to Artwork Submission Page</span> <FiArrowRight />
@@ -223,13 +223,13 @@ export default function NationalDayPaymentSuccessPage() {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
-            to={`/national-day-art-competition/submit?ref=${encodeURIComponent(submissionRef)}`}
+            to={`/competitions/national-day-art-competition/submit?ref=${encodeURIComponent(submissionRef)}`}
             className="flex-1 py-3 px-5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 flex items-center justify-center gap-2"
           >
             Submit Artwork <FiArrowRight />
           </Link>
           <Link
-            to="/national-day-art-competition"
+            to="/competitions/national-day-art-competition"
             className="py-3 px-5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm transition-all flex items-center justify-center"
           >
             Competition Home

@@ -119,6 +119,7 @@ export interface DashboardSummary {
   revenueGrowth: number;
   eventGrowth: number;
   userGrowth: number;
+  bookingGrowth: number;
   topPerformingEvents: Array<{
     eventId: string;
     title: string;
@@ -665,7 +666,14 @@ class AnalyticsService {
         ? ((currentMonthStats.users - previousMonthStats.users) /
             previousMonthStats.users) *
           100
-        : 0;
+        : currentMonthStats.users > 0 ? 100 : 0;
+
+    const bookingGrowth =
+      previousMonthStats.tickets > 0
+        ? ((currentMonthStats.tickets - previousMonthStats.tickets) /
+            previousMonthStats.tickets) *
+          100
+        : currentMonthStats.tickets > 0 ? 100 : 0;
 
     return {
       totalRevenue: allTimeStats.revenue,
@@ -675,6 +683,7 @@ class AnalyticsService {
       revenueGrowth,
       eventGrowth,
       userGrowth,
+      bookingGrowth,
       topPerformingEvents: topEvents,
     };
   }

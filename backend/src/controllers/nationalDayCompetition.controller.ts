@@ -20,6 +20,7 @@ import { escapeHtml } from "../utils/htmlHelpers";
 import { stripe } from "../config/stripe";
 import { AuthRequest } from "../types";
 import { certificateService } from "../modules/certificates/services/certificate.service";
+import { createCompetitionOrder } from "../utils/competitionOrder.utils";
 
 // Helper: map grade string to category
 export const getCategoryFromGrade = (grade: string): string => {
@@ -183,8 +184,8 @@ export const createCheckoutSession = catchAsync(
         submissionId: submission._id.toString(),
         studentName: submission.participant.studentFullName,
       },
-      success_url: `${frontendUrl}/national-day-art-competition/payment-success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submission._id.toString()}`,
-      cancel_url: `${frontendUrl}/national-day-art-competition?payment=cancelled&submission_id=${submission._id.toString()}`,
+      success_url: `${frontendUrl}/competitions/national-day-art-competition/payment-success?session_id={CHECKOUT_SESSION_ID}&submission_id=${submission._id.toString()}`,
+      cancel_url: `${frontendUrl}/competitions/national-day-art-competition?payment=cancelled&submission_id=${submission._id.toString()}`,
     });
 
     submission.checkoutSessionId = session.id;
@@ -384,6 +385,21 @@ export const finalizeSubmission = catchAsync(
         logger.error("[national-day] Post-finalization parent/student user creation error:", err);
       }
     }
+
+    // Order record (links payment to admin dashboard & revenue). Never throws;
+    // idempotent on the Stripe session id, so a repeated finalize can't double-record.
+    await createCompetitionOrder({
+      competitionKey: "national-day",
+      competitionTitle: "Kidrove Eid Al Etihad Children's Art Competition 2026 — Entry Fee",
+      submissionId: submission._id,
+      transactionId: sessionId,
+      amountAED: submission.paymentAmount || 50,
+      parentEmail: submission.participant.parentEmail,
+      parentName: submission.participant.parentName,
+      parentPhone: submission.participant.parentPhone,
+      studentName: submission.participant.studentFullName,
+      ipAddress: submission.metadata?.ipAddress,
+    });
 
     // Send automated Phase 1 Registration email with template / submit instructions
     try {

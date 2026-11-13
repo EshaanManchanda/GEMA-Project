@@ -331,5 +331,19 @@ router.use("/competition", competitionRoutes);
 import nationalDayRoutes from "./nationalDayCompetition.routes";
 router.use("/national-day-competition", nationalDayRoutes);
 
+// Young Voices of the GCC 2027 routes
+import gccCompetitionRoutes from "./gccCompetition.routes";
+router.use("/gcc-competition", gccCompetitionRoutes);
+
+// GCC Through My Lens - Reel Challenge 2027 routes
+import reelCompetitionRoutes from "./reelCompetition.routes";
+router.use("/reel-competition", reelCompetitionRoutes);
+
+
+
+// Winter Camp routes
+import winterCampRoutes from "./winterCamp.routes";
+router.use("/winter-camp", winterCampRoutes);
+
 export default router;
 

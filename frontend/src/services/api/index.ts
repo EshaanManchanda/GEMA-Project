@@ -86,3 +86,6 @@ export type {
   Contact,
   ContactStats
 } from './contactAPI';
+export { default as winterCampAPI } from './winterCampAPI';
+export type { WinterCampRegisterPayload, WinterCampRegistrationItem } from './winterCampAPI';
+

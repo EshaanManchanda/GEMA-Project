@@ -244,6 +244,46 @@ export interface CompetitionSubmissionEmailOptions {
   competitionBadge?: string;
 }
 
+export interface ReelRegistrationEmailOptions {
+  to: string;
+  studentName: string;
+  parentName: string;
+  refNo: string;
+  grade: string;
+  category: string;
+  country: string;
+  reelTitle?: string;
+  submissionUrl?: string;
+  competitionName?: string;
+  competitionBadge?: string;
+  attachments?: Array<{
+    filename: string;
+    content?: Buffer | string;
+    path?: string;
+    contentType?: string;
+  }>;
+}
+
+export interface GCCRegistrationEmailOptions {
+  to: string;
+  studentName: string;
+  parentName: string;
+  refNo: string;
+  grade: string;
+  category: string;
+  country: string;
+  storyTitle?: string;
+  submissionUrl?: string;
+  competitionName?: string;
+  competitionBadge?: string;
+  attachments?: Array<{
+    filename: string;
+    content?: Buffer | string;
+    path?: string;
+    contentType?: string;
+  }>;
+}
+
 export interface NationalDayRegistrationEmailOptions {
   to: string;
   studentName: string;
@@ -2343,13 +2383,261 @@ Kidrove - Inspiring the creators of tomorrow.
     });
   }
 
+  async sendReelRegistrationEmail(
+    options: ReelRegistrationEmailOptions,
+  ): Promise<void> {
+    const badgeText = options.competitionBadge || "🌙 GCC Reel Challenge 2027";
+    const compName = options.competitionName || "Ramadan & Eid Through My Lens — Mobile Reel Competition";
+    const frontendUrl = config.frontendUrl || "http://localhost:5173";
+    const submitUrl = options.submissionUrl || `${frontendUrl}/competitions/gcc-reel-challenge/submit?ref=${options.refNo}`;
+
+    const getDurationByCategory = (cat: string) => {
+      const normalized = (cat || "").toLowerCase();
+      if (normalized.includes("little reel creators") || normalized.includes("kg") || normalized.includes("kindergarten")) {
+        return "Up to 30 seconds (Vertical mobile video 9:16)";
+      }
+      if (normalized.includes("young reel makers")) {
+        return "30 – 45 seconds (Vertical mobile video 9:16)";
+      }
+      return "30 – 60 seconds (Vertical mobile video 9:16)";
+    };
+
+    const durationGuide = getDurationByCategory(options.category);
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #334155; margin: 0; padding: 40px 20px; background-color: #f5f3ff; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+          .header { background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 50%, #7c3aed 100%); color: white; padding: 40px 30px; text-align: center; border-bottom: 3px solid #c084fc; }
+          .header-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 8px 18px; border-radius: 30px; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.4); color: #f5f3ff; }
+          .header h1 { margin: 0; font-size: 27px; font-weight: 800; }
+          .content { padding: 35px 30px; background: #ffffff; }
+          .greeting { font-size: 22px; font-weight: 800; color: #0f172a; margin-top: 0; }
+          .lead { font-size: 15px; color: #475569; margin-bottom: 25px; line-height: 1.7; }
+          .ref-card { background: #faf5ff; border: 2px dashed #7c3aed; border-radius: 16px; padding: 22px; text-align: center; margin: 25px 0; }
+          .ref-title { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #6d28d9; font-weight: 800; margin-bottom: 6px; display: block; }
+          .ref-number { font-size: 26px; font-family: monospace; font-weight: 900; color: #5b21b6; letter-spacing: 2px; }
+          .btn { display: inline-block; padding: 14px 28px; border-radius: 30px; font-size: 15px; font-weight: 800; text-decoration: none; text-align: center; margin: 10px 6px; }
+          .btn-primary { background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%); color: white !important; }
+          .instructions-box { background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 14px; padding: 22px; margin: 25px 0; }
+          .instructions-box h3 { margin-top: 0; color: #4338ca; font-size: 16px; font-weight: 800; }
+          .instructions-box ol { margin: 0; padding-left: 20px; color: #374151; font-size: 14px; }
+          .instructions-box li { margin-bottom: 10px; }
+          .footer { background: #0f172a; padding: 25px; text-align: center; color: #94a3b8; font-size: 12px; }
+          .footer p { margin: 4px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="header-badge">${badgeText}</div>
+            <h1>Registration Confirmed!</h1>
+          </div>
+          <div class="content">
+            <h2 class="greeting">Marhaban, ${options.parentName}!</h2>
+            <p class="lead">
+              Your registration for <strong>${options.studentName}</strong> (${options.grade} · ${options.category}) from <strong>${options.country}</strong> in <strong>${compName}</strong> has been confirmed!
+            </p>
+
+            <div class="ref-card">
+              <span class="ref-title">Your Official Mobile Reel Challenge Reference No.</span>
+              <div class="ref-number">${options.refNo}</div>
+              <p style="font-size: 12px; color: #b45309; margin: 8px 0 0 0;">Keep this Reference Number safe for video submissions and status updates.</p>
+            </div>
+
+            <div class="instructions-box">
+              <h3>📱 Reel Recording & Submission Guidelines:</h3>
+              <p style="margin: 0 0 12px 0; color: #312e81; font-weight: 700; font-size: 14px;">
+                Theme: <em>&ldquo;The Moments That Make Eid Special&rdquo;</em> (Capture the Spirit. Share the Moment.)
+              </p>
+              <ol>
+                <li><strong>Assigned Category:</strong> <strong>${options.category}</strong> (${options.grade})</li>
+                <li><strong>Video Duration Limit:</strong> ${durationGuide}</li>
+                <li><strong>Format:</strong> Vertical mobile video (9:16 ratio) captured by the student using a smartphone camera.</li>
+                <li><strong>Content Ideas:</strong> Ramadan lantern glow, preparing Eid gifts, picking an Eid outfit, family sweets preparation, or neighbourhood traditions.</li>
+                <li><strong>Rules:</strong> No AI-generated visuals or footage. Obtain consent before filming identifiable people. Respect privacy during prayer or private family moments.</li>
+              </ol>
+              <div style="text-align: center; margin-top: 22px;">
+                <a href="${submitUrl}" class="btn btn-primary" target="_blank" style="background:#4338ca;color:white !important;font-weight:800;">🎥 Submit Reel Online</a>
+              </div>
+            </div>
+
+            <p style="font-size: 13px; color: #64748b; line-height: 1.6;">
+              Every eligible creator receives an official verifiable Kidrove Certificate of Participation. Outstanding videos will be recognized with Gold, Silver, and Bronze awards and featured across Kidrove regional channels.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>KIDROVE · GCC Through My Lens - Reel Challenge 2027</strong></p>
+            <p>Ramadan & Eid Through My Mobile Camera · Discover. Create. Celebrate.</p>
+            <p>&copy; ${new Date().getFullYear()} Kidrove. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Marhaban, ${options.parentName}!
+
+Your registration for ${options.studentName} (${options.grade} · ${options.category}) from ${options.country} in ${compName} has been confirmed.
+
+Your Reference Number: ${options.refNo}
+Theme: "The Moments That Make Eid Special"
+Reel Duration Limit: ${durationGuide}
+
+Guidelines:
+1. Video must be captured on a mobile phone by the student (vertical format 9:16).
+2. No AI-generated footage.
+3. Every participant receives an official Kidrove Certificate of Participation.
+
+Submit your mobile reel: ${submitUrl}
+    `.trim();
+
+    await this.sendEmail({
+      to: options.to,
+      subject: `Registration Confirmed: ${options.refNo} — ${compName}`,
+      html,
+      text,
+      attachments: options.attachments,
+      notificationType: "essential",
+    });
+  }
+
+  async sendGCCRegistrationEmail(
+    options: GCCRegistrationEmailOptions,
+  ): Promise<void> {
+    const badgeText = options.competitionBadge || "✨ Young Voices of the GCC 2027";
+    const compName = options.competitionName || "Young Voices of the GCC Short Story Competition 2027";
+    const frontendUrl = config.frontendUrl || "http://localhost:5173";
+    const submitUrl = options.submissionUrl || `${frontendUrl}/competitions/young-voices-of-the-gcc/submit?ref=${options.refNo}`;
+
+    const getWordLimitByCategory = (cat: string) => {
+      const normalized = (cat || "").toLowerCase();
+      if (normalized.includes("young authors")) {
+        return "200 – 400 words";
+      }
+      if (normalized.includes("creative voices")) {
+        return "400 – 700 words";
+      }
+      return "700 – 1,000 words";
+    };
+
+    const wordGuide = getWordLimitByCategory(options.category);
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #334155; margin: 0; padding: 40px 20px; background-color: #f8fafc; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #0f766e 0%, #047857 100%); color: white; padding: 40px 30px; text-align: center; }
+          .header-badge { display: inline-block; background: rgba(0,0,0,0.25); padding: 8px 18px; border-radius: 30px; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.25); color: #9DF4F3; }
+          .header h1 { margin: 0; font-size: 28px; font-weight: 800; }
+          .content { padding: 35px 30px; background: #ffffff; }
+          .greeting { font-size: 22px; font-weight: 800; color: #0f172a; margin-top: 0; }
+          .lead { font-size: 15px; color: #475569; margin-bottom: 25px; line-height: 1.7; }
+          .ref-card { background: #f0fdfa; border: 2px dashed #0d9488; border-radius: 16px; padding: 22px; text-align: center; margin: 25px 0; }
+          .ref-title { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #0f766e; font-weight: 800; margin-bottom: 6px; display: block; }
+          .ref-number { font-size: 26px; font-family: monospace; font-weight: 900; color: #047857; letter-spacing: 2px; }
+          .btn { display: inline-block; padding: 14px 28px; border-radius: 30px; font-size: 15px; font-weight: 800; text-decoration: none; text-align: center; margin: 10px 6px; }
+          .btn-primary { background: #0f766e; color: white !important; }
+          .instructions-box { background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 14px; padding: 22px; margin: 25px 0; }
+          .instructions-box h3 { margin-top: 0; color: #0f766e; font-size: 16px; font-weight: 800; }
+          .instructions-box ol { margin: 0; padding-left: 20px; color: #374151; font-size: 14px; }
+          .instructions-box li { margin-bottom: 10px; }
+          .footer { background: #0f172a; padding: 25px; text-align: center; color: #94a3b8; font-size: 12px; }
+          .footer p { margin: 4px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="header-badge">${badgeText}</div>
+            <h1>Registration Confirmed!</h1>
+          </div>
+          <div class="content">
+            <h2 class="greeting">Hi ${options.parentName}!</h2>
+            <p class="lead">
+              Your registration for <strong>${options.studentName}</strong> (${options.grade} · ${options.category}) from <strong>${options.country}</strong> in <strong>${compName}</strong> has been successfully received and recorded!
+            </p>
+
+            <div class="ref-card">
+              <span class="ref-title">Your Official GCC Competition Reference Number</span>
+              <div class="ref-number">${options.refNo}</div>
+              <p style="font-size: 12px; color: #0f766e; margin: 8px 0 0 0;">Please keep this Reference Number safe for your story submission and competition queries.</p>
+            </div>
+
+            <div class="instructions-box">
+              <h3>✍️ Story Writing Guidelines & Next Steps:</h3>
+              <p style="margin: 0 0 12px 0; color: #115e59; font-weight: 700; font-size: 14px;">
+                Theme: <em>&ldquo;Our Heritage, Our Story&rdquo;</em> (Six Countries. Many Cultures. One Shared Story.)
+              </p>
+              <ol>
+                <li><strong>Assigned Category:</strong> <strong>${options.category}</strong> (${options.grade})</li>
+                <li><strong>Word Count Target:</strong> ${wordGuide}</li>
+                <li><strong>Original Work Only:</strong> The story must be 100% original, written by the student. Generative AI tools are strictly prohibited.</li>
+                <li><strong>Languages:</strong> Submissions in English or Arabic are welcome.</li>
+                <li><strong>Submission:</strong> If you did not provide the full story manuscript during registration, you can finalize and submit your manuscript using your Reference Number.</li>
+              </ol>
+              <div style="text-align: center; margin-top: 22px;">
+                <a href="${submitUrl}" class="btn btn-primary" target="_blank" style="background:#0f766e;color:white !important;font-weight:800;">📖 Submit Story Online</a>
+              </div>
+            </div>
+
+            <p style="font-size: 13px; color: #64748b; line-height: 1.6;">
+              Every participant receives an official verifiable Kidrove Certificate of Participation. Category winners and outstanding stories will be recognized with Gold, Silver, and Bronze honours and featured in our Young Voices anthology.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>KIDROVE · Young Voices of the GCC 2027</strong></p>
+            <p>Theme: &ldquo;Our Heritage, Our Story&rdquo; · Empowering young voices across the Gulf.</p>
+            <p>&copy; ${new Date().getFullYear()} Kidrove. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Hi ${options.parentName}!
+
+Your registration for ${options.studentName} (${options.grade} · ${options.category}) from ${options.country} in ${compName} has been confirmed.
+
+Your Reference Number: ${options.refNo}
+Theme: "Our Heritage, Our Story"
+Word Count Target: ${wordGuide}
+
+Guidelines:
+1. Stories must be 100% original and written by the student.
+2. English or Arabic stories accepted.
+3. Every participant receives an official Kidrove Certificate of Participation.
+
+Submit your story manuscript: ${submitUrl}
+    `.trim();
+
+    await this.sendEmail({
+      to: options.to,
+      subject: `Registration Confirmed: ${options.refNo} — ${compName}`,
+      html,
+      text,
+      attachments: options.attachments,
+      notificationType: "essential",
+    });
+  }
+
   async sendNationalDayRegistrationEmail(
     options: NationalDayRegistrationEmailOptions,
   ): Promise<void> {
     const badgeText = options.competitionBadge || "🇦🇪 Eid Al Etihad 2026";
     const compName = options.competitionName || "Eid Al Etihad Children's Art Competition 2026";
     const frontendUrl = config.frontendUrl || "http://localhost:5173";
-    const submitUrl = options.submissionUrl || `${frontendUrl}/national-day-art-competition/submit?ref=${encodeURIComponent(options.refNo)}&email=${encodeURIComponent(String(options.to))}`;
+    const submitUrl = options.submissionUrl || `${frontendUrl}/competitions/national-day-art-competition/submit?ref=${encodeURIComponent(options.refNo)}&email=${encodeURIComponent(String(options.to))}`;
     const downloadUrl = options.templateDownloadUrl || `${frontendUrl}/assets/eid-al-etihad-colouring-template.pdf`;
 
     const html = `

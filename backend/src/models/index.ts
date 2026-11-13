@@ -383,3 +383,8 @@ export type {
   INationalDaySubmission,
 } from "./NationalDaySubmission";
 
+
+// Winter Camp Registration Models
+export { default as WinterCampRegistration, WinterCampStatus } from './WinterCampRegistration';
+export type { IWinterCampRegistration } from './WinterCampRegistration';
+

@@ -30,7 +30,7 @@ const adminPasswordResetOTPs = new Map<
  */
 interface CreateUserRequest {
   firstName: string;
-  lastName: string;
+  lastName?: string;
   email: string;
   password?: string;
   phone?: string;
@@ -393,9 +393,9 @@ export const createUser = async (
     } = req.body;
 
     // Validate required fields
-    if (!firstName || !lastName || !email) {
+    if (!firstName || !email) {
       return next(
-        new AppError("First name, last name, and email are required", 400),
+        new AppError("First name and email are required", 400),
       );
     }
 
@@ -432,7 +432,7 @@ export const createUser = async (
     // Prepare user data
     const userData: any = {
       firstName,
-      lastName,
+      lastName: lastName ? lastName.trim() : "",
       email,
       passwordHash: plainPassword, // Plain password - will be hashed by pre-save hook
       phone: cleanPhone,
@@ -469,7 +469,7 @@ export const createUser = async (
         userId: user._id,
         employeeId: generatedEmployeeId,
         firstName: user.firstName,
-        lastName: user.lastName,
+        lastName: user.lastName || "",
         email: user.email,
         phone: user.phone,
         role: employeeRole || "scanner", // Default to scanner if not provided
