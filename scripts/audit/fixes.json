@@ -1,5 +1,5 @@
 {
-  "testsPassing": "1237 / 1261",
+  "testsPassing": "1279 / 1303",
   "issues": [
     {
       "area": "Security",
@@ -518,6 +518,48 @@
       "commit": "67bd2b0",
       "title": "Merge kept the hardened competition payments and records one order per payment",
       "text": "Merging the aditya branch kept the session-ownership check and the shared, run-once finalize for AI Art and National Day. The new order record for competition payments (admin revenue) now lives in that shared step, so the browser finalize and the Stripe webhook cannot record it twice."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "9a47e85",
+      "title": "Public competition forms could add a child to someone else's account",
+      "text": "Young Voices, Reel, Winter Camp and AI Art finalize or register without a login. When the parent email already had an account, they added the submitted child to it, so anyone who knew a parent's email could write children into that account. A child is now created only for an account made by that same registration (the rule National Day already had). Existing parents still get the order and emails. Side effect to know about: a parent who registers a second child under the same email must add that child from their profile."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "medium",
+      "commit": "1ed55fb",
+      "title": "Young Voices and Reel entries older than the newest 100 could not be found by reference number",
+      "text": "The reference lookup and the story/reel upload loaded only the newest 100 entries and matched the id tail in memory, so older families were told their registration was not found when submitting a story or reel. Lookups now search every entry. If two entries ever share the same 8-character tail, the one belonging to the supplied parent email is returned, so neither family is locked out. A non-text reference in an upload no longer causes a server error. National Day now uses the same lookup."
+    },
+    {
+      "area": "Security",
+      "sev": "low",
+      "commit": "fa4871a",
+      "title": "Email-marketing webhook crashed on a secret with special characters",
+      "text": "The webhook compared the secret in the URL by character count, then by bytes. A secret of the right length containing multi-byte characters threw an error: the opt-out POST answered 500 (so the provider kept retrying) and the registration ping hung until timeout. The check now compares bytes, answers 401, and the ping reports errors instead of hanging."
+    },
+    {
+      "area": "Testing & CI",
+      "sev": "low",
+      "commit": "1cb08a2",
+      "title": "Email marketing now has integration tests",
+      "text": "28 tests cover the opt-out webhook (including wrong secret and no echo sync back), the opt-in rules for syncing users, the sync job, and the admin settings (input validation, secrets encrypted at rest and never returned). They run against the built-in dev provider, with no network."
+    },
+    {
+      "area": "Testing & CI",
+      "sev": "low",
+      "commit": "d55e071",
+      "title": "Frontend typecheck is clean again",
+      "text": "Removed the 5 unused imports and variables the aditya merge left in the competition pages, by hand and without a formatter. The success panel that reads the registration data is unreachable (registration goes straight to Stripe and the reference number shows on the payment-success pages), so no behaviour changed."
+    },
+    {
+      "area": "Reliability & operations",
+      "sev": "low",
+      "commit": "10fef63",
+      "title": "Two test images committed by mistake removed",
+      "text": "Two localhost-3000 winter-camp uploads were committed under backend/uploads. Nothing referenced them. They remain in git history."
     }
   ],
   "tests": [
@@ -722,6 +764,17 @@
         "Open the Email Marketing overview and look at the contact sync counts."
       ],
       "expect": "Only the ticked account produces a contact sync; the unticked one produces none."
+    },
+    {
+      "title": "A child is added to a new parent account, but not to an existing one",
+      "where": "Local (Docker)",
+      "steps": [
+        "Register for Young Voices of the GCC with an email that has no account and pay with the Stripe test card.",
+        "Log in as that parent (temporary password from the welcome email in Mailpit) and open the children list.",
+        "Register a second child for any competition with the same email and pay.",
+        "Open the children list again and the order list."
+      ],
+      "expect": "The first child is listed. The second child is not added automatically, but both payments appear as orders and both confirmation emails arrive."
     }
   ]
 }
