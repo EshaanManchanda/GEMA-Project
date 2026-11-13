@@ -20,8 +20,8 @@ const router = Router();
 
 // Public routes
 router.post("/register", publicFormLimiter("reel-register"), registerParticipant);
-router.post("/create-checkout-session", createCheckoutSession);
-router.post("/finalize", finalizeSubmission);
+router.post("/create-checkout-session", publicFormLimiter("reel-checkout"), createCheckoutSession);
+router.post("/finalize", publicFormLimiter("reel-finalize"), finalizeSubmission);
 router.get("/lookup/:refNo", publicFormLimiter("reel-lookup"), lookupSubmissionByRef);
 router.post(
   "/submit-reel",
@@ -30,7 +30,7 @@ router.post(
   handleUploadError,
   submitReel
 );
-router.post("/school-inquiry", handleSchoolBulkInquiry);
+router.post("/school-inquiry", publicFormLimiter("reel-school-inquiry"), handleSchoolBulkInquiry);
 
 // Admin-only management routes
 router.get("/submissions", authenticate, authorize([UserRole.ADMIN]), getSubmissions);

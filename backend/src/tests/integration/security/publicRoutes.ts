@@ -170,4 +170,28 @@ export const PUBLIC_ROUTES: Record<string, string> = {
   "POST /api/competition/finalize": "competition entry (step 3, session-bound)",
   "POST /api/competition/submit": "LEGACY: delete after prod access-log check (Phase 2 #3)",
   "POST /api/competition/create-payment-intent": "LEGACY: delete after prod access-log check (Phase 2 #3)",
+
+  // Young Voices of the GCC and GCC Reel Challenge: parents enter without an
+  // account. All rate limited (publicFormLimiter); abuse cases are covered by
+  // regressions/new-competitions-security.test.ts.
+  "POST /api/gcc-competition/register": "public competition entry",
+  "POST /api/gcc-competition/create-checkout-session": "public checkout for an existing entry",
+  "POST /api/gcc-competition/finalize": "Stripe session must belong to the entry, at the fee",
+  "GET /api/gcc-competition/lookup/:refNo": "entry lookup (ref + parent email required)",
+  "POST /api/gcc-competition/submit-story": "manuscript upload (parent email must match)",
+  "POST /api/gcc-competition/school-inquiry": "contact form",
+  "POST /api/reel-competition/register": "public competition entry",
+  "POST /api/reel-competition/create-checkout-session": "public checkout for an existing entry",
+  "POST /api/reel-competition/finalize": "Stripe session must belong to the entry, at the fee",
+  "GET /api/reel-competition/lookup/:refNo": "entry lookup (ref + parent email required)",
+  "POST /api/reel-competition/submit-reel": "reel upload (parent email must match)",
+  "POST /api/reel-competition/school-inquiry": "contact form",
+
+  // Winter Camp: free interest registration, only ever links live free events
+  "POST /api/winter-camp/register": "public registration, rate limited",
+
+  // Sender / Mailchimp opt-out + bounce webhooks: the shared secret is a path
+  // segment compared in constant time; a wrong secret is a 401 (like Cunnekt).
+  "GET /api/webhooks/email-marketing/:provider/:secret": "provider URL check, secret in path",
+  "POST /api/webhooks/email-marketing/:provider/:secret": "unsubscribe/bounce events, secret in path",
 };

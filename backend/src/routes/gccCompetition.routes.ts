@@ -21,8 +21,8 @@ const router = Router();
 
 // Public routes
 router.post("/register", publicFormLimiter("gcc-register"), registerParticipant);
-router.post("/create-checkout-session", createCheckoutSession);
-router.post("/finalize", finalizeSubmission);
+router.post("/create-checkout-session", publicFormLimiter("gcc-checkout"), createCheckoutSession);
+router.post("/finalize", publicFormLimiter("gcc-finalize"), finalizeSubmission);
 router.get("/lookup/:refNo", publicFormLimiter("gcc-lookup"), lookupSubmissionByRef);
 router.post(
   "/submit-story",
@@ -31,7 +31,7 @@ router.post(
   handleUploadError,
   submitStory
 );
-router.post("/school-inquiry", handleSchoolBulkInquiry);
+router.post("/school-inquiry", publicFormLimiter("gcc-school-inquiry"), handleSchoolBulkInquiry);
 
 // Admin-only management routes
 router.get("/submissions", authenticate, authorize([UserRole.ADMIN]), getSubmissions);
