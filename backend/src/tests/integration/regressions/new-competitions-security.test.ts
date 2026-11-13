@@ -11,7 +11,8 @@ import GCCSubmission from "../../../models/GCCSubmission";
 import ReelSubmission from "../../../models/ReelSubmission";
 import Event from "../../../models/Event";
 import Order from "../../../models/Order";
-import User from "../../../models/User";
+import User, { UserRole, UserStatus } from "../../../models/User";
+import Student from "../../../models/Student";
 import { createTestApp } from "../setup/testApp";
 import { connectTestDB, clearTestDB, closeTestDB } from "../setup/testDB";
 import {
@@ -122,6 +123,17 @@ async function waitFor<T>(
   return null;
 }
 
+const createParent = (email: string) =>
+  User.create({
+    firstName: "Real",
+    lastName: "Parent",
+    email,
+    passwordHash: "Test@1234!",
+    role: UserRole.CUSTOMER,
+    status: UserStatus.ACTIVE,
+    isEmailVerified: true,
+  });
+
 // Seats live in dateSchedule[]; that is what the winter-camp registration decrements.
 const scheduleOf = (seats = 10) => [
   {
@@ -202,6 +214,42 @@ describe.each(COMPS)("$name finalize", ({ base, Model }) => {
     await new Promise((r) => setTimeout(r, 500)); // let a (wrong) second background run finish
     expect(await Order.countDocuments({ transactionId: "cs_ok" })).toBe(1);
     expect(await User.countDocuments({ email: PARENT })).toBe(1);
+  });
+
+  // Finalize is unauthenticated: knowing an email must not let someone add a
+  // child to that person's account.
+  it("does not attach the child to an existing parent account", async () => {
+    const parent = await createParent(PARENT);
+    const id = await insertSubmission(Model);
+    mockSessions["cs_existing"] = paidSession(id);
+
+    const res = await request(app)
+      .post(`${base}/finalize`)
+      .send({ submissionId: id, sessionId: "cs_existing" });
+
+    expect(res.status).toBe(200);
+    // The order is written after the student step, so it marks "background done".
+    expect(
+      await waitFor(() => Order.findOne({ transactionId: "cs_existing" }).lean()),
+    ).toBeTruthy();
+    expect(await Student.countDocuments({ parentUserId: parent._id })).toBe(0);
+  });
+
+  it("still creates the child for a parent account made by this registration", async () => {
+    const id = await insertSubmission(Model);
+    mockSessions["cs_new"] = paidSession(id);
+
+    const res = await request(app)
+      .post(`${base}/finalize`)
+      .send({ submissionId: id, sessionId: "cs_new" });
+
+    expect(res.status).toBe(200);
+    expect(
+      await waitFor(() => Order.findOne({ transactionId: "cs_new" }).lean()),
+    ).toBeTruthy();
+    const parent: any = await User.findOne({ email: PARENT }).lean();
+    expect(parent).toBeTruthy();
+    expect(await Student.countDocuments({ parentUserId: parent._id })).toBe(1);
   });
 });
 
@@ -368,6 +416,43 @@ describe("winter camp free registration", () => {
       paidId,
     );
     expect(await seatsOf(paidId)).toEqual({ available: 5, sold: 0 });
+  });
+
+  it("does not attach the child to an existing account, but creates one for a new account", async () => {
+    const vendor = await signUp(app, "vendor");
+    const freeId = await insertEvent(await vendorIdOf(vendor), {
+      title: "Free Camp",
+      isFreeEvent: true,
+      price: 0,
+      dateSchedule: scheduleOf(10),
+      isDeleted: false,
+    });
+    const existingEmail = "wc.existing@example.com";
+    const newEmail = "wc.brandnew@example.com";
+    const existing = await createParent(existingEmail);
+
+    for (const email of [existingEmail, newEmail]) {
+      const res = await request(app)
+        .post("/api/winter-camp/register")
+        .send({
+          studentName: "Camp Kid",
+          email,
+          grade: "4",
+          eventIds: [freeId],
+          selectedPrograms: ["Free Camp"],
+        });
+      expect(res.status).toBe(201);
+      // The order is written after the student step, so it marks "background done".
+      expect(
+        await waitFor(() =>
+          Order.findOne({ "billingAddress.email": email }).lean(),
+        ),
+      ).toBeTruthy();
+    }
+
+    expect(await Student.countDocuments({ parentUserId: existing._id })).toBe(0);
+    const created: any = await User.findOne({ email: newEmail }).lean();
+    expect(await Student.countDocuments({ parentUserId: created._id })).toBe(1);
   });
 
   it("rejects non-text names and grades instead of crashing", async () => {

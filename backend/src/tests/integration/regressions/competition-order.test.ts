@@ -6,7 +6,8 @@
 import "../setup/mocks";
 import { Types } from "mongoose";
 import CompetitionSubmission from "../../../models/CompetitionSubmission";
-import User from "../../../models/User";
+import User, { UserRole, UserStatus } from "../../../models/User";
+import Student from "../../../models/Student";
 import { Order } from "../../../models/index";
 import { activatePaidSubmission } from "../../../services/competition.service";
 import { connectTestDB, clearTestDB, closeTestDB } from "../setup/testDB";
@@ -63,6 +64,27 @@ describe("activatePaidSubmission", () => {
 
     expect(await Order.countDocuments({ transactionId: "cs_test_order_2" })).toBe(1);
     expect(await User.countDocuments({ email: "parent.twice@example.com" })).toBe(1);
+  });
+
+  it("does not attach the child to an existing parent account, but does for a new one", async () => {
+    const existing = await User.create({
+      firstName: "Real",
+      lastName: "Parent",
+      email: "parent.existing@example.com",
+      passwordHash: "Test@1234!",
+      role: UserRole.CUSTOMER,
+      status: UserStatus.ACTIVE,
+      isEmailVerified: true,
+    });
+    const existingSub = await insertSubmission("parent.existing@example.com");
+    const newSub = await insertSubmission("parent.fresh@example.com");
+
+    expect(await activatePaidSubmission(existingSub, "cs_test_link_1")).toBe(true);
+    expect(await activatePaidSubmission(newSub, "cs_test_link_2")).toBe(true);
+
+    expect(await Student.countDocuments({ parentUserId: existing._id })).toBe(0);
+    const fresh = await User.findOne({ email: "parent.fresh@example.com" }).lean();
+    expect(await Student.countDocuments({ parentUserId: fresh!._id })).toBe(1);
   });
 
   it("does not create an Order for an unknown submission", async () => {

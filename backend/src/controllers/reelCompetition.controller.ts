@@ -342,13 +342,9 @@ export const finalizeSubmission = catchAsync(
           const firstName = studentParts[0] || "Student";
           const lastName = studentParts.length > 1 ? studentParts.slice(1).join(" ") : "Student";
 
-          const existingStudent = await Student.findOne({
-            parentUserId: parentUser._id,
-            firstName,
-            lastName,
-          });
-
-          if (!existingStudent) {
+          // Finalize is unauthenticated: never attach a child to an account the caller
+          // hasn't shown they own. Existing parents still get the entry by email.
+          if (isNewUser) {
             await Student.create({
               parentUserId: parentUser._id,
               email: parentEmail,

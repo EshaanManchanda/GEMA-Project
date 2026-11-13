@@ -63,8 +63,9 @@ export async function activatePaidSubmission(
         const firstName = studentParts[0];
         const lastName = studentParts.length > 1 ? studentParts.slice(1).join(" ") : "Student";
 
-        let student = await Student.findOne({ parentUserId: parent._id, firstName, lastName });
-        if (!student) {
+        // Finalize is unauthenticated (and the Stripe webhook has no user either): never
+        // attach a child to an account the caller hasn't shown they own.
+        if (isNewUser) {
           await Student.create({
             parentUserId: parent._id,
             email: parentEmail,

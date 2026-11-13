@@ -100,13 +100,9 @@ export const registerWinterCamp = async (
           });
         }
 
-        // Link student profile if not exists
-        let student = await Student.findOne({
-          parentUserId: user._id,
-          firstName,
-          lastName: lastName || "Student",
-        });
-        if (!student) {
+        // Registration is unauthenticated: never attach a child to an account the
+        // caller hasn't shown they own. Existing accounts still get the order by email.
+        if (isNewUser) {
           await Student.create({
             parentUserId: user._id,
             email: userEmail,
