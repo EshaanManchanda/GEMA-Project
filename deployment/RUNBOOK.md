@@ -60,18 +60,41 @@ df -h /
 ```
 *Expected:* at least 5 GB free. The release needs about 2 GB (the script refuses to start with less).
 
+## 2b. SRV: Redis (this is the root cause of the CPU and disk problem: do it before anything is started)
+
+On 14 Nov the server logs showed `OOM command not allowed when used memory > 'maxmemory'`: **Redis was full**, so every queue write was refused,
+and the old code retried that error in a tight loop (the CPU) while logging it each time (the disk). Nothing may be started until Redis has room.
+```sh
+redis-cli INFO memory | grep -E "^(used_memory_human|used_memory_peak_human|maxmemory_human|maxmemory_policy)"
+redis-cli CONFIG GET maxmemory; redis-cli DBSIZE; free -m
+# what is using it (how many keys per family, then the biggest keys):
+redis-cli --scan --count 1000 | awk -F: '{k=($1=="bull")?$1":"$2":"$3:$1":"$2; print k}' | sort | uniq -c | sort -rn | head -20
+redis-cli --memkeys 2>/dev/null | tail -15
+# the dead-letter queue (it has no consumer; old code never trimmed it):
+redis-cli LLEN bull:failed-jobs:wait; for q in email qr-generation seat-expiry automation payout analytics communication certificate-generation collection-sync search-console-sync; do echo "$q failed: $(redis-cli ZCARD bull:$q:failed)"; done
+```
+Send me this output. Then, in this order:
+1. **Give Redis room now**: `redis-cli CONFIG SET maxmemory 512mb` (only if `free -m` has the RAM; runtime only). Make it permanent in `/etc/redis/redis.conf`:
+   `maxmemory 512mb` and `maxmemory-policy noeviction` (**keep `noeviction`**: BullMQ breaks on any eviction policy), then `sudo systemctl restart redis-server` in a quiet moment.
+2. If `bull:failed-jobs:*` is most of the memory: it is only a diagnostic list (nothing reads it), so it is safe to empty:
+   `redis-cli --scan --pattern 'bull:failed-jobs:*' | xargs -r redis-cli DEL`. Do **not** delete other `bull:*` keys by hand: queued emails, QR codes and payouts live there.
+   (The new worker trims this queue by itself after the release, but it cannot while Redis is full: every Lua script is refused at `maxmemory`.)
+3. Only then start the API and the worker.
+
 ## 3. SRV: the settings the new code needs (`backend/.env`)
 
 List which of these are missing (names only, no values printed):
 ```sh
 cd $APP/backend
-for v in STRIPE_WEBHOOK_SECRET FIELD_ENCRYPTION_KEY ANALYTICS_IP_SALT ADMIN_SECRET_KEY SENTRY_DSN JWT_SECRET SESSION_SECRET MONGODB_URI; do
+for v in STRIPE_WEBHOOK_SECRET FIELD_ENCRYPTION_KEY REPORT_INTEGRITY_SECRET ANALYTICS_IP_SALT ADMIN_SECRET_KEY SENTRY_DSN JWT_SECRET SESSION_SECRET MONGODB_URI; do
   grep -qE "^$v=.+" .env && echo "set      $v" || echo "MISSING  $v"; done
 grep -E '^(RATE_LIMIT_MAX|RATE_LIMIT_WINDOW_MS|UPLOAD_PROVIDER|REDIS_HOST|REDIS_PORT|REDIS_URL|PORT|ENABLE_REQUEST_LOGGING|LOG_[A-Z_]*)=' .env
 ```
 - `ENABLE_REQUEST_LOGGING`: set it to `false` (or delete the line). nginx already logs every request, and this setting writes the same line again from the app into a log file.
 - `STRIPE_WEBHOOK_SECRET`: Stripe Dashboard > Developers > Webhooks > your endpoint > *Signing secret* (`whsec_...`). Without it payment confirmations are rejected.
 - `FIELD_ENCRYPTION_KEY`: `openssl rand -hex 32`. **Back it up in your password manager now.** If it is lost, the data encrypted with it is unreadable.
+- `REPORT_INTEGRITY_SECRET`: `openssl rand -hex 32`. The app warns at boot that business-report checksums cannot be computed without it.
+- `FIELD_ENCRYPTION_KEY` matters more than it looks: the boot log says that without it vendor and teacher **Stripe secret keys are stored in plaintext**. Setting the key encrypts them on their next save; keys already saved stay plaintext until then (we will migrate them after the release).
 - `ANALYTICS_IP_SALT`: `openssl rand -hex 32`.
 - `ADMIN_SECRET_KEY`: the only thing protecting the `register-admin` route, so it must be long and random (`openssl rand -hex 32`), never a word or a default. If you never create admins that way, say so and we will switch the route off in the next release.
 - `RATE_LIMIT_MAX` now means *requests per minute* (it used to be per 15 minutes). If it is set to a small number such as `100`, raise it (e.g. `300`) or remove the line.

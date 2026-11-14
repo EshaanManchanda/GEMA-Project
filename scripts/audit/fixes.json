@@ -721,6 +721,13 @@
       "commit": "1f92f8a",
       "title": "A user record could carry its reset token, login history, 2FA secrets and legacy bank details into a response",
       "text": "The user model's JSON output only removed the password hash and the one-time-code hashes. A user document that still held passwordReset.token, loginAttempts (IP addresses and browsers), the 2FA secret and backup codes, the Stripe secret key or the old bank details on the user record would have sent them in any response that returned the whole user. Checked first: the model gap was real (10 tests red), but /auth/me, /auth/profile and login already stayed clean and the only whole-user response found (an admin creating a vendor from a partnership) returns a freshly saved record, so this was defence in depth, not a reachable leak, and its severity is Low. The JSON output now drops all of them. The admin user view reads these fields straight from the record, and the live bank details are on the vendor record, so nothing that reads them changes. 18 tests; 388 auth, admin, security and model tests pass."
+    },
+    {
+      "area": "Reliability & operations",
+      "sev": "high",
+      "commit": "a4b0ccb",
+      "title": "A full Redis made every background worker, and the website's own server, loop at full CPU and fill the disk with logs",
+      "text": "The server logs show 'OOM command not allowed when used memory > maxmemory': Redis was full, so every queue write was refused. BullMQ waits before retrying only when Redis is unreachable; for any other error it retries at once, so every worker looped (900 to 4,200 errors in 10 seconds in a local test), and each pass wrote the whole error, including the Lua script, to pm2's log. What filled Redis: the dead-letter queue (failed-jobs) has no consumer and nothing ever removed an entry, each holding a whole job payload, and the worker without a database connection failed every repeating job (seat expiry, automation, payouts) again and again; failed jobs were also kept 24 hours with no count cap. Local Redis held 369 dead-letter entries up to 31 days old. Separately, the certificate worker module started a worker as an import side effect and the API imports it, so the web server ran its own unthrottled consumer: that is why pm2 had to kill the API. Fixed: only the worker process starts the certificate worker (API code may only type-import worker modules, guarded by a test); a worker with 20 errors in 5 seconds pauses (30 s, doubling to 5 min) and resumes (measured: 20 errors then paused, against 900 to 4,200); dead-letter entries older than 7 days are removed hourly, the oldest beyond 1,000 are removed, and a payload over 20 KB is stored as a summary (real worker against 369 old entries: 369 to 88); failed jobs are capped at 1,000. 75 related tests, red first. Not yet known: the server's maxmemory and how much of its Redis is the dead-letter queue (runbook step 2b collects it). If Redis is still full the new code cannot clean it, because every script is refused at maxmemory, so memory must be freed first."
     }
   ],
   "tests": [
@@ -1010,6 +1017,16 @@
         "Open a public image such as /api/uploads/files/events/<file> in a private window."
       ],
       "expect": "The first is refused (401). The emailed link opens the PDF, and the same link without its ?exp and sig parts is refused. Public images still load."
+    },
+    {
+      "title": "Redis has room and the workers stay calm",
+      "where": "Production server, before and after deploying",
+      "steps": [
+        "Before starting anything: run the Redis commands in deployment/RUNBOOK.md step 2b and make sure used_memory is well under maxmemory (policy noeviction).",
+        "After the release: redis-cli LLEN bull:failed-jobs:wait (it should shrink by itself within an hour), and top -bn1 | head -12.",
+        "pm2 logs gema-backend --lines 50 --nostream | grep -c OOM"
+      ],
+      "expect": "used_memory under about 70% of maxmemory, the dead-letter list far below 1,000, CPU low, and no 'OOM command not allowed' lines. A 'pausing it for 30s' warning in the worker log means Redis was refusing writes again: check memory first."
     }
   ]
 }
