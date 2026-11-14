@@ -728,6 +728,13 @@
       "commit": "a4b0ccb",
       "title": "A full Redis made every background worker, and the website's own server, loop at full CPU and fill the disk with logs",
       "text": "The server logs show 'OOM command not allowed when used memory > maxmemory': Redis was full, so every queue write was refused. BullMQ waits before retrying only when Redis is unreachable; for any other error it retries at once, so every worker looped (900 to 4,200 errors in 10 seconds in a local test), and each pass wrote the whole error, including the Lua script, to pm2's log. What filled Redis: the dead-letter queue (failed-jobs) has no consumer and nothing ever removed an entry, each holding a whole job payload, and the worker without a database connection failed every repeating job (seat expiry, automation, payouts) again and again; failed jobs were also kept 24 hours with no count cap. Local Redis held 369 dead-letter entries up to 31 days old. Separately, the certificate worker module started a worker as an import side effect and the API imports it, so the web server ran its own unthrottled consumer: that is why pm2 had to kill the API. Fixed: only the worker process starts the certificate worker (API code may only type-import worker modules, guarded by a test); a worker with 20 errors in 5 seconds pauses (30 s, doubling to 5 min) and resumes (measured: 20 errors then paused, against 900 to 4,200); dead-letter entries older than 7 days are removed hourly, the oldest beyond 1,000 are removed, and a payload over 20 KB is stored as a summary (real worker against 369 old entries: 369 to 88); failed jobs are capped at 1,000. 75 related tests, red first. Not yet known: the server's maxmemory and how much of its Redis is the dead-letter queue (runbook step 2b collects it). If Redis is still full the new code cannot clean it, because every script is refused at maxmemory, so memory must be freed first."
+    },
+    {
+      "area": "Reliability & operations",
+      "sev": "medium",
+      "commit": "487c9ce",
+      "title": "Production logs now live in /var/log, and the app refuses to log into its own folder",
+      "text": "The application's own log files were written inside the app folder (backend/logs) while pm2's files went to /var/log, so the folder a release replaces and the disk that filled up held logs nobody was watching. They now go to LOG_FILE_PATH (/var/log/GEMA-Project/backend, set by ecosystem.config.js for the API and the worker), next to the pm2 files, with a logrotate rule for the pm2 ones. In production the path must be absolute and writable: otherwise the process stops with a clear message instead of quietly falling back to ./logs, and the release health check rolls back. Development keeps ./logs. The RUNBOOK adds the same setting to the server's .env, because the data-migration scripts run outside pm2."
     }
   ],
   "tests": [
@@ -1027,6 +1034,16 @@
         "pm2 logs gema-backend --lines 50 --nostream | grep -c OOM"
       ],
       "expect": "used_memory under about 70% of maxmemory, the dead-letter list far below 1,000, CPU low, and no 'OOM command not allowed' lines. A 'pausing it for 30s' warning in the worker log means Redis was refusing writes again: check memory first."
+    },
+    {
+      "title": "Logs go to /var/log, and a wrong path stops the app clearly",
+      "where": "Production server, during the release",
+      "steps": [
+        "Before the switch: sudo mkdir -p /var/log/GEMA-Project/backend and give it to the owner of the app folder (RUNBOOK step 2c), and put LOG_FILE_PATH=/var/log/GEMA-Project/backend in backend/.env (step 3).",
+        "After the release: ls -t /var/log/GEMA-Project/backend | head (fresh gema-backend-combined-*.log and gema-worker-*.log) and ls -t $APP/backend/logs | head (nothing new).",
+        "If the app does not come up: pm2 logs gema-backend --err --lines 20 --nostream | grep '\\[logger\\]'"
+      ],
+      "expect": "New application log files appear in /var/log/GEMA-Project/backend and backend/logs stops changing. A wrong or unwritable path shows '[logger] LOG_FILE_PATH=... cannot be used in production: <reason>' and the release rolls back by itself."
     }
   ]
 }
