@@ -563,6 +563,20 @@ const UserSchema = new Schema<IUser>(
             delete ret[key].otp;
           }
         }
+        // Also never serialised: the legacy plaintext reset token, the login history (IPs and user
+        // agents), 2FA secrets, the Stripe secret and the legacy bank details (live ones sit on
+        // Vendor.paymentSettings). Controllers that need one of these (the admin user view) read
+        // it from the document directly, not through toJSON.
+        if (ret.passwordReset) delete ret.passwordReset.token;
+        delete ret.loginAttempts;
+        if (ret.twoFactorAuth) {
+          delete ret.twoFactorAuth.secret;
+          delete ret.twoFactorAuth.backupCodes;
+        }
+        if (ret.vendorPaymentSettings) {
+          delete ret.vendorPaymentSettings.stripeSecretKey;
+          delete ret.vendorPaymentSettings.bankAccountDetails;
+        }
         return ret;
       },
     },
