@@ -66,7 +66,9 @@ sudo find /var/log -xdev -type f -size +100M -not -path '/var/log/GEMA-Project/*
 # c) From now on every log lives in ONE folder, /var/log/GEMA-Project/backend, and rotates by itself.
 #    (ecosystem.config.js sets LOG_FILE_PATH, so the application's own logs go there instead of $APP/backend/logs.)
 sudo mkdir -p /var/log/GEMA-Project/backend && sudo chown $(stat -c %U:%G $APP) /var/log/GEMA-Project/backend && sudo chmod 750 /var/log/GEMA-Project/backend
-scp deployment/logrotate/kidrove you@server:/tmp/ && sudo install -m 644 /tmp/kidrove /etc/logrotate.d/kidrove   # the PC's copy of this repository
+scp deployment/logrotate/kidrove deployment/logrotate/kidrove.cron you@server:/tmp/        # from the PC's copy of this repository
+sudo install -m 644 /tmp/kidrove /etc/logrotate.d/kidrove
+sudo install -m 644 /tmp/kidrove.cron /etc/cron.d/kidrove-logrotate                      # same rule every 15 minutes: the system runs logrotate only daily, too slow for a log storm
 sudo logrotate -d /etc/logrotate.d/kidrove                      # dry run: must print no errors
 pm2 ls | grep -i logrotate && pm2 uninstall pm2-logrotate       # two rotators on the same files would fight
 df -h /

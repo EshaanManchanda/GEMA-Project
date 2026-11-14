@@ -1,5 +1,9 @@
-# Install: sudo cp deployment/logrotate/kidrove /etc/logrotate.d/kidrove
+# Install: sudo install -m 644 deployment/logrotate/kidrove /etc/logrotate.d/kidrove
+#          sudo install -m 644 deployment/logrotate/kidrove.cron /etc/cron.d/kidrove-logrotate
 # Check:   sudo logrotate -d /etc/logrotate.d/kidrove      (dry run, changes nothing)
+#
+# The system runs logrotate only once a day, so kidrove.cron runs this file every 15 minutes:
+# without it the 100M cap below could be exceeded for up to 24 hours.
 #
 # Only the pm2 stdout/stderr files are rotated here. The application's own winston logs in the
 # same folder (gema-backend-*.log, gema-worker-*.log) rotate and prune themselves: 50 MB per

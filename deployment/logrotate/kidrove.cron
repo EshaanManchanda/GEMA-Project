@@ -1,0 +1,10 @@
+# Install: sudo install -m 644 deployment/logrotate/kidrove.cron /etc/cron.d/kidrove-logrotate
+#   (installed name has NO dot: cron skips /etc/cron.d files whose name contains one)
+#
+# The system runs logrotate once a day, so the 100 MB cap in /etc/logrotate.d/kidrove could be
+# exceeded for up to 24 hours, and a log storm writes gigabytes in minutes (14 Nov: ~18 GB).
+# Every 15 minutes this runs the same rule for the pm2 files only; when nothing is over the limit
+# it does nothing. Same state file as the daily run, so a file is not rotated twice.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+*/15 * * * * root /usr/sbin/logrotate /etc/logrotate.d/kidrove

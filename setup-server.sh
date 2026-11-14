@@ -239,6 +239,7 @@ cd "$PROJECT_ROOT/backend"
 # Application and pm2 logs live in /var/log (LOG_FILE_PATH is set by ecosystem.config.js), not in the app folder
 mkdir -p /var/log/GEMA-Project/backend
 install -m 644 "$PROJECT_ROOT/deployment/logrotate/kidrove" /etc/logrotate.d/kidrove
+install -m 644 "$PROJECT_ROOT/deployment/logrotate/kidrove.cron" /etc/cron.d/kidrove-logrotate
 
 # Copy environment file
 if [ ! -f .env ]; then
@@ -370,8 +371,9 @@ else
 fi
 
 ###############################################################################
-# Log Rotation (logrotate for the pm2 files; the winston logs rotate themselves.
-# Installed above with the /var/log folder. Not pm2-logrotate: two rotators on one file fight.)
+# Log Rotation (logrotate for the pm2 files, every 15 minutes via /etc/cron.d/kidrove-logrotate;
+# the winston logs rotate themselves. Installed above with the /var/log folder.
+# Not pm2-logrotate: two rotators on one file fight.)
 ###############################################################################
 
 logrotate -d /etc/logrotate.d/kidrove >/dev/null 2>&1 && success "Log rotation configured" || warning "Check: logrotate -d /etc/logrotate.d/kidrove"
