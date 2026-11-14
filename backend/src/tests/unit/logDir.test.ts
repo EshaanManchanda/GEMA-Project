@@ -38,7 +38,9 @@ describe("resolveLogDir", () => {
   });
 
   it("resolves a relative path against the working directory", () => {
-    expect(resolveLogDir("custom/out/", cwd)).toBe(path.join(cwd, "custom", "out"));
+    expect(resolveLogDir("custom/out/", cwd)).toBe(
+      path.join(cwd, "custom", "out"),
+    );
   });
 
   it("falls back to ./logs and says so when the configured path cannot be created", () => {
@@ -48,7 +50,9 @@ describe("resolveLogDir", () => {
     const result = resolveLogDir(path.join(blocker, "sub"), cwd);
     expect(result).toBe(path.join(cwd, "logs"));
     expect(fs.statSync(result).isDirectory()).toBe(true);
-    expect(String(stderr.mock.calls[0][0])).toMatch(/cannot use log directory .*falling back to .*logs/);
+    expect(String(stderr.mock.calls[0][0])).toMatch(
+      /cannot use log directory .*falling back to .*logs/,
+    );
   });
 
   // Production must never quietly log into the app folder: that is how a release ends up carrying
@@ -61,25 +65,33 @@ describe("resolveLogDir", () => {
     });
 
     it("refuses a relative path and creates nothing", () => {
-      expect(() => resolveLogDir("logs/", cwd, true)).toThrow(/LOG_FILE_PATH=logs\/ cannot be used in production.*absolute/);
+      expect(() => resolveLogDir("logs/", cwd, true)).toThrow(
+        /LOG_FILE_PATH=logs\/ cannot be used in production.*absolute/,
+      );
       expect(fs.existsSync(path.join(cwd, "logs"))).toBe(false);
     });
 
     it.each([undefined, "", "   "])("refuses an unset value (%j)", (value) => {
-      expect(() => resolveLogDir(value, cwd, true)).toThrow(/LOG_FILE_PATH.*cannot be used in production.*absolute/);
+      expect(() => resolveLogDir(value, cwd, true)).toThrow(
+        /LOG_FILE_PATH.*cannot be used in production.*absolute/,
+      );
       expect(fs.existsSync(path.join(cwd, "logs"))).toBe(false);
     });
 
     it("refuses a folder that cannot be created and does not fall back to ./logs", () => {
       const blocker = path.join(cwd, "blocker");
       fs.writeFileSync(blocker, "x");
-      expect(() => resolveLogDir(path.join(blocker, "sub"), cwd, true)).toThrow(/cannot be used in production/);
+      expect(() => resolveLogDir(path.join(blocker, "sub"), cwd, true)).toThrow(
+        /cannot be used in production/,
+      );
       expect(fs.existsSync(path.join(cwd, "logs"))).toBe(false);
       expect(stderr).not.toHaveBeenCalled();
     });
 
     it("names the folder production is expected to use", () => {
-      expect(() => resolveLogDir("logs/", cwd, true)).toThrow(/\/var\/log\/GEMA-Project\/backend/);
+      expect(() => resolveLogDir("logs/", cwd, true)).toThrow(
+        /\/var\/log\/GEMA-Project\/backend/,
+      );
     });
   });
 });
