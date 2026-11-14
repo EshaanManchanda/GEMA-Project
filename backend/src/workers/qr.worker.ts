@@ -107,6 +107,6 @@ if (qrWorker) {
   });
 }
 
-// Shutdown is owned by workers/index.ts, which closes every worker once.
+// Shutdown is owned by workers/run.ts, which closes every worker once.
 
 export default qrWorker;
