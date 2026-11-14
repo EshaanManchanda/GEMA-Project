@@ -74,6 +74,7 @@ df -h /
 *Expected:* at least 5 GB free. The release needs about 2 GB (the script refuses to start with less).
 After the release, `ls -t /var/log/GEMA-Project/backend` shows `gema-backend-combined-*.log` growing and `$APP/backend/logs` no longer changing;
 once you have checked that, the old `$APP/backend/logs` folder is dead weight and can be removed.
+(The release's `pm2 startOrReload ecosystem.config.js --env production` hands the new `LOG_FILE_PATH` to the already-running apps: tested on pm2 7.0.1, the version on this server, with and without `--update-env`, so the script does not use that flag.)
 **In production the application refuses to start if `LOG_FILE_PATH` is not an absolute, writable folder** (it never falls back to `$APP/backend/logs`):
 `pm2 logs gema-backend --err` then shows `[logger] LOG_FILE_PATH=... cannot be used in production: <reason>`, and the release's health check fails and rolls back by itself.
 So the `chown`/`chmod` above must be done before step 10, and step 3 puts the same path in `backend/.env`.
