@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false
+  },
+  "include": [],
+  "files": [
+    "src/scripts/migrateTaxToVat.ts",
+    "src/scripts/migrations/auditDuplicateRevenueTransactions.ts",
+    "src/scripts/migrations/leadPagePartialIndexes.ts",
+    "src/scripts/migrations/migrateSmsToWhatsappSetting.ts",
+    "src/scripts/migrations/backfillCompetitionOrders.ts"
+  ],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "src/tests/**/*"]
+}
