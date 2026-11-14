@@ -6,7 +6,7 @@ import { Event } from "../models/index";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { getFileUrl, getFileInfo } from "../middleware/upload";
-import { transformEventResponse } from "../utils/event.utils";
+import { transformEventResponse, PRIVATE_EVENT_FIELDS } from "../utils/event.utils";
 import { collectionSyncService } from "../services/collection-sync.service";
 import logger from "../config/logger";
 import { escapeRegex } from "../utils/regexHelpers";
@@ -335,6 +335,7 @@ export const getCollectionById = async (
         isApproved: true,
         isActive: true,
       },
+      select: PRIVATE_EVENT_FIELDS,
       populate: [
         {
           path: "vendorId",

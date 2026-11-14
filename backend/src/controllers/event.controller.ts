@@ -13,6 +13,10 @@ import {
   buildPublicEventFilter,
   sanitizeEventOutput,
   sanitizeEventsOutput,
+  PUBLIC_VENDOR_SELECT,
+  PUBLIC_VENDOR_DETAIL_SELECT,
+  PUBLIC_TEACHER_USER_SELECT,
+  PRIVATE_EVENT_FIELDS,
 } from "../utils/event.utils";
 import { cacheService } from "../services/cache.service";
 import { invalidateEventCaches } from "../utils/cache.utils";
@@ -356,14 +360,14 @@ export const getEvents = async (
     // Execute query
     const [events, total] = await Promise.all([
       Event.find(filter)
-        .populate("vendorId", "firstName lastName businessName email logo bio")
+        .populate("vendorId", PUBLIC_VENDOR_SELECT)
         .populate({
           path: "teacherId",
           select: "fullName bio specialization profileImage coverImage userId",
-          populate: { path: "userId", select: "firstName lastName email avatar" }
+          populate: { path: "userId", select: PUBLIC_TEACHER_USER_SELECT }
         }) // ✅ Populate teacher details and user data
         .populate("imageAssets", "url thumbnailUrl variations")
-        .select("-dateSchedule.price")
+        .select(`-dateSchedule.price ${PRIVATE_EVENT_FIELDS}`)
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -476,11 +480,12 @@ export const getEvent = async (
     // Add timeout to the main query - only show active, published, non-expired events
     const event = await withTimeout(
       Event.findOne(filter)
-        .populate("vendorId", "firstName lastName businessName email phone avatar logo bio")
+        .select(PRIVATE_EVENT_FIELDS)
+        .populate("vendorId", PUBLIC_VENDOR_DETAIL_SELECT)
         .populate({
           path: "teacherId",
           select: "fullName bio specialization profileImage coverImage userId",
-          populate: { path: "userId", select: "firstName lastName email avatar" }
+          populate: { path: "userId", select: PUBLIC_TEACHER_USER_SELECT }
         }) // ✅ Populate teacher and nested user details
         .populate("imageAssets", "url thumbnailUrl variations")
         .lean(), // ✅ Read-only query optimization
@@ -515,11 +520,12 @@ export const getEvent = async (
           );
 
           const recoveredEvent = await Event.findOne(filter)
-            .populate("vendorId", "firstName lastName businessName email phone avatar logo bio")
+            .select(PRIVATE_EVENT_FIELDS)
+        .populate("vendorId", PUBLIC_VENDOR_DETAIL_SELECT)
             .populate({
               path: "teacherId",
               select: "fullName bio specialization profileImage coverImage userId",
-              populate: { path: "userId", select: "firstName lastName email avatar" }
+              populate: { path: "userId", select: PUBLIC_TEACHER_USER_SELECT }
             })
             .populate("imageAssets", "url thumbnailUrl variations")
             .lean();
@@ -559,11 +565,12 @@ export const getEvent = async (
           );
 
           const recoveredEvent = await Event.findOne(filterQuery) // query by ID/slug without strict public filter
-            .populate("vendorId", "firstName lastName businessName email phone avatar logo bio")
+            .select(PRIVATE_EVENT_FIELDS)
+        .populate("vendorId", PUBLIC_VENDOR_DETAIL_SELECT)
             .populate({
               path: "teacherId",
               select: "fullName bio specialization profileImage coverImage userId",
-              populate: { path: "userId", select: "firstName lastName email avatar" }
+              populate: { path: "userId", select: PUBLIC_TEACHER_USER_SELECT }
             })
             .populate("imageAssets", "url thumbnailUrl variations")
             .lean();
@@ -1616,7 +1623,7 @@ export const deleteCertificateType = async (
 // Discovery: Similar Events (weighted scoring + fallback chain)
 // ---------------------------------------------------------------------------
 const SIMILAR_SELECT =
-  "_id slug title images imageAssets category location venueType meetingLink price tags isFeatured viewsCount averageRating reviewCount currency dateSchedule ageRange vendorId teacherId";
+  "_id slug title images imageAssets category location venueType price tags isFeatured viewsCount averageRating reviewCount currency dateSchedule ageRange vendorId teacherId";
 
 export const getSimilarEvents = async (
   req: Request,

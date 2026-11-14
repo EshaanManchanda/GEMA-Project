@@ -190,6 +190,21 @@ export const sanitizeEventsOutput = (events: any[]) => {
   return transformEventsResponse(events);
 };
 
+/**
+ * What public event responses may expose. A vendor is a business identity only (never contact,
+ * tax or payment data) and a teacher's linked account never carries an email.
+ */
+export const PUBLIC_VENDOR_SELECT = "businessName logo slug";
+export const PUBLIC_VENDOR_DETAIL_SELECT = "businessName logo coverImage description slug";
+export const PUBLIC_TEACHER_USER_SELECT = "firstName lastName avatar";
+
+/**
+ * Fields only people who booked may see (joining link and password, attached documents,
+ * insurance). Excluded from every public event query, including events nested in collections.
+ */
+export const PRIVATE_EVENT_FIELDS =
+  "-meetingLink -meetingPassword -bookingAttachments -insuranceInfo";
+
 export type EventAvailabilityStatus =
   | "available"
   | "unavailable"
