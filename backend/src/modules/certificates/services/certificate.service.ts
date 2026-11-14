@@ -14,6 +14,7 @@ import { buildCertEmailHtml, renderCertificate } from "../../../workers/certific
 import { AppError } from "../../../middleware/index";
 import logger from "../../../config/logger";
 import { downloadFileAsAttachment, safePdfFilename } from "../../../utils/emailAttachment.util";
+import { signedUploadUrl } from "../../../utils/uploadAccess";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -214,7 +215,8 @@ class CertificateService {
         certificate.recipient.name,
         eventTitle,
         certificate.serialNumber,
-        certificate.pdfUrl,
+        // the recipient is not signed in when they open the email: private local files need a signed link
+        signedUploadUrl(certificate.pdfUrl),
         certificate.qrData,
         certificate.data?.medal
       ),

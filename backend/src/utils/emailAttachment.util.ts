@@ -1,4 +1,5 @@
 import logger from "../config/logger";
+import { signedUploadUrl } from "./uploadAccess";
 
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -46,7 +47,9 @@ export async function downloadFileAsAttachment(
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await fetch(url);
+      // A private local upload (certificates, ...) is only served to a signed link; this server has no
+      // cookie when it fetches its own file. Short-lived, and `url` (unsigned) is what gets logged.
+      const response = await fetch(signedUploadUrl(url, 300));
 
       if (!response.ok) {
         const msg = `HTTP ${response.status} ${response.statusText}`;

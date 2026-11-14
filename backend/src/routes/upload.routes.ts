@@ -19,7 +19,9 @@ import {
   getFileInfo,
   deleteFile,
 } from "../middleware/upload";
-import { authenticate, authorize } from "../middleware/auth";
+import { authenticate, authenticateOptional, authorize } from "../middleware/auth";
+import { isPrivateUploadPath, verifyUploadSignature } from "../utils/uploadAccess";
+import { userMayReadPrivateUpload } from "../services/privateUploadAccess.service";
 import { uploadLimiter } from "../middleware/rateLimiter";
 import uploadService from "../services/upload.service";
 import mediaService from "../services/media.service";
@@ -29,16 +31,32 @@ import { sandboxIfActiveContent } from "../utils/activeContent";
 
 const router = Router();
 
-// Serve uploaded files statically
-router.use("/files", (req: Request, res: Response, next: NextFunction) => {
+// Serve uploaded files statically. Private folders (certificates, booking attachments, ...) need
+// the owner, an admin or a signed expiring link (utils/uploadAccess.ts); public images are open.
+router.use("/files", authenticateOptional, async (req: AuthRequest, res: Response, next: NextFunction) => {
   const filePath = path.join(process.cwd(), config.upload.path, req.path);
 
   // Security check: prevent path traversal
   const normalizedPath = path.normalize(filePath);
   const uploadDir = path.resolve(process.cwd(), config.upload.path);
 
-  if (!normalizedPath.startsWith(uploadDir)) {
+  if (!normalizedPath.startsWith(uploadDir + path.sep)) {
     return next(new AppError("Access denied", 403));
+  }
+
+  // Decide on the normalised path, so `events/../certificates/x`, `./`, `//` and letter-case tricks
+  // cannot present a private file as a public one. Checked before existence: no existence leak.
+  const rel = path.relative(uploadDir, normalizedPath).split(path.sep).join("/");
+  const isPrivate = isPrivateUploadPath(rel);
+  if (isPrivate) {
+    try {
+      const signed = verifyUploadSignature(rel, Number(req.query.exp), String(req.query.sig ?? ""));
+      if (!signed && !(await userMayReadPrivateUpload(req, rel))) {
+        return next(req.user ? new AppError("Access denied", 403) : new AppError("Authentication required", 401));
+      }
+    } catch (error) {
+      return next(error);
+    }
   }
 
   // Check if file exists
@@ -78,9 +96,14 @@ router.use("/files", (req: Request, res: Response, next: NextFunction) => {
   res.setHeader("Content-Type", mimeType);
 
   // Cache and CORS headers
-  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  res.setHeader("Access-Control-Allow-Origin", "*"); // Allow all origins for public media
-  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"); // Allow cross-origin access
+  res.setHeader("Cache-Control", isPrivate ? "private, no-store" : "no-cache, no-store, must-revalidate");
+  if (isPrivate) {
+    // Never a wildcard origin for private files; the global CORS middleware already answered for the site.
+    res.setHeader("Cross-Origin-Resource-Policy", "same-site");
+  } else {
+    res.setHeader("Access-Control-Allow-Origin", "*"); // Allow all origins for public media
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"); // Allow cross-origin access
+  }
 
   // Disable Content-Security-Policy and other Helmet security headers for static files so PDFs can render in-browser,
   // except for active content (SVG etc.), which gets a sandboxing CSP instead.
@@ -568,6 +591,10 @@ router.get(
       ];
       if (!allowedCategories.includes(category)) {
         return next(new AppError("Invalid category", 400));
+      }
+      // File names in private folders are not for every signed-in user (vendors use the file manager for public ones)
+      if (isPrivateUploadPath(category) && req.user?.role !== "admin") {
+        return next(new AppError("Admin access required", 403));
       }
 
       const categoryPath = path.join(

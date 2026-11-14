@@ -1,4 +1,5 @@
 import { downloadFileAsAttachment, safePdfFilename } from "../../../utils/emailAttachment.util";
+import { verifyUploadSignature } from "../../../utils/uploadAccess";
 
 // Mock logger so tests don't produce console noise
 jest.mock("../../../config/logger", () => ({
@@ -83,6 +84,40 @@ describe("downloadFileAsAttachment", () => {
     expect(result!.filename).toBe("Certificate-Jane.pdf");
     expect(result!.contentType).toBe("application/pdf");
     expect(result!.content).toEqual(content);
+  });
+
+  // Private local uploads (certificates, ...) need a signed link: the server fetching its own file has no cookie
+  it("TC5b signs a private local upload url for the fetch, short-lived", async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({ ok: true, contentType: "application/pdf", body: Buffer.from("%PDF-1.4") }),
+    );
+
+    const result = await downloadFileAsAttachment(
+      "https://api.kidrove.com/api/uploads/files/certificates/certificate-1-1.pdf",
+      "cert.pdf",
+      { expectedType: "application/pdf" },
+    );
+
+    expect(result).not.toBeNull();
+    const fetched = new URL(fetchMock.mock.calls[0][0] as string);
+    expect(fetched.origin + fetched.pathname).toBe("https://api.kidrove.com/api/uploads/files/certificates/certificate-1-1.pdf");
+    const exp = Number(fetched.searchParams.get("exp"));
+    expect(verifyUploadSignature("certificates/certificate-1-1.pdf", exp, fetched.searchParams.get("sig") ?? "")).toBe(true);
+    expect(exp - Date.now() / 1000).toBeLessThanOrEqual(600);
+  });
+
+  it("TC5c fetches public and Cloudinary urls exactly as given", async () => {
+    for (const u of [
+      "/api/uploads/files/events/a.jpg",
+      "https://res.cloudinary.com/demo/raw/upload/v1/gema/certificates/a.pdf",
+    ]) {
+      fetchMock.mockResolvedValueOnce(mockResponse({ ok: true, contentType: "application/pdf", body: Buffer.from("%PDF") }));
+      await downloadFileAsAttachment(u, "a.pdf");
+    }
+    expect(fetchMock.mock.calls.map((c) => c[0])).toEqual([
+      "/api/uploads/files/events/a.jpg",
+      "https://res.cloudinary.com/demo/raw/upload/v1/gema/certificates/a.pdf",
+    ]);
   });
 
   // TC6a — text/html rejected (the 200 SVG/HTML placeholder trap)
