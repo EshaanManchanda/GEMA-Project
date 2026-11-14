@@ -248,12 +248,8 @@ const EventDetailPage: React.FC = () => {
       })),
       organizer: {
         id: eventData.vendorId?._id || eventData.vendorId,
-        name: eventData.vendorId?.firstName && eventData.vendorId?.lastName ?
-          `${eventData.vendorId.firstName} ${eventData.vendorId.lastName}` :
-          'Event Organizer',
-        logo: getVendorLogo(undefined, eventData.vendorId?.firstName && eventData.vendorId?.lastName ?
-          `${eventData.vendorId.firstName} ${eventData.vendorId.lastName}` :
-          'Event Organizer', 100),
+        name: eventData.vendorId?.businessName || 'Event Organizer',
+        logo: getVendorLogo(undefined, eventData.vendorId?.businessName || 'Event Organizer', 100),
         rating: 4.8
       },
       features: [
@@ -275,7 +271,6 @@ const EventDetailPage: React.FC = () => {
           || eventData.teacherId.fullName
           || (`${eventData.teacherId.firstName || ''} ${eventData.teacherId.lastName || ''}`).trim()
           || 'Instructor',
-        email: eventData.teacherId.userId?.email || eventData.teacherId.email || '',
         photo: eventData.teacherId.userId?.avatar || eventData.teacherId.profileImage || eventData.teacherId.photo || '',
         bio: eventData.teacherId.bio || 'Experienced instructor.',
         specialization: eventData.teacherId.specialization || 'Education'
@@ -2234,7 +2229,6 @@ const EventDetailPage: React.FC = () => {
                           {event.teacher.name}
                         </div>
                         <div className="text-sm text-gray-600">{event.teacher.specialization}</div>
-                        {event.teacher.email && <div className="text-xs text-gray-500 mt-1">{event.teacher.email}</div>}
                       </div>
                     </div>
 
@@ -2276,7 +2270,6 @@ const EventDetailPage: React.FC = () => {
                       <div className="font-semibold text-lg text-gray-900">
                         {event.vendorId?.businessName || `${event.vendorId?.firstName || ''} ${event.vendorId?.lastName || ''}`.trim()}
                       </div>
-                      <div className="text-sm text-gray-600">{event.vendorId?.email}</div>
                     </div>
                   </div>
 
