@@ -27,7 +27,9 @@ const getClientIp = (req: Request): string | undefined =>
  */
 router.get("/", async (req: Request, res: Response) => {
   try {
+    // `leads` holds every visitor's submitted name, email, phone, message and IP: never public.
     const leadPages = await LeadPage.find({ isActive: true })
+      .select("-leads")
       .populate({
         path: "event",
         select:
