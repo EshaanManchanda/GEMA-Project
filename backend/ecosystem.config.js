@@ -56,7 +56,6 @@ module.exports = {
     // Logging Configuration
     error_file: '/var/log/GEMA-Project/backend/api-error.log',
     out_file: '/var/log/GEMA-Project/backend/api-output.log',
-    log_file: '/var/log/GEMA-Project/backend/api-combined.log',
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     merge_logs: true,
 
@@ -164,7 +163,6 @@ module.exports = {
     // Logging Configuration (separate logs for worker)
     error_file: '/var/log/GEMA-Project/backend/worker-error.log',
     out_file: '/var/log/GEMA-Project/backend/worker-output.log',
-    log_file: '/var/log/GEMA-Project/backend/worker-combined.log',
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     merge_logs: true,
 
