@@ -35,23 +35,37 @@ const logFormat = winston.format.printf(
   },
 );
 
-// One file per day, gzipped once rotated, deleted after the retention window.
-// Override with LOG_RETENTION_DAYS / ERROR_LOG_RETENTION_DAYS (whole days).
-const retentionDays = (envVar: string, fallback: number): number => {
-  const n = parseInt(process.env[envVar] || "", 10);
+const positiveInt = (value: string | undefined, fallback: number): number => {
+  const n = parseInt(value || "", 10);
   return n > 0 ? n : fallback;
 };
+
+/**
+ * Disk budget for each kind of log (combined, error). A file rotates when it reaches
+ * LOG_MAX_FILE_MB or at midnight, and only the newest LOG_MAX_FILES are kept: older ones
+ * are deleted, so a runaway error loop can never fill the disk. The defaults (50 MB x 20
+ * files x 2 kinds) are at most 2 GB, and rotated files are gzipped so real use is far lower.
+ */
+export const logRotation = (env: NodeJS.ProcessEnv = process.env) => ({
+  maxSize: `${positiveInt(env.LOG_MAX_FILE_MB, 50)}m`,
+  maxFiles: positiveInt(env.LOG_MAX_FILES, 20),
+});
+
 // PM2 sets `name` per app, so the API and worker rotate their own files and
 // audit JSON instead of pruning each other's.
-const filePrefix = process.env.name ? `${process.env.name}-` : "";
-const rotatingFile = (kind: string, days: number, level?: string) =>
+export const rotatingFile = (
+  dir: string,
+  kind: string,
+  level?: string,
+  env: NodeJS.ProcessEnv = process.env,
+) =>
   new DailyRotateFile({
-    dirname: logsDir,
-    filename: `${filePrefix}${kind}-%DATE%.log`,
+    dirname: dir,
+    filename: `${process.env.name ? `${process.env.name}-` : ""}${kind}-%DATE%.log`,
     datePattern: "YYYY-MM-DD",
     level,
     zippedArchive: true,
-    maxFiles: `${days}d`,
+    ...logRotation(env),
     // Owner + group only: logs contain emails/IPs.
     options: { flags: "a", mode: 0o640 },
   });
@@ -78,8 +92,8 @@ const logger = winston.createLogger({
   ),
   defaultMeta: { service: "gema-backend" },
   transports: [
-    rotatingFile("error", retentionDays("ERROR_LOG_RETENTION_DAYS", 30), "error"),
-    rotatingFile("combined", retentionDays("LOG_RETENTION_DAYS", 15)),
+    rotatingFile(logsDir, "error", "error"),
+    rotatingFile(logsDir, "combined"),
   ],
 });
 
