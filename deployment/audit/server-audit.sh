@@ -19,6 +19,7 @@
 #   LOG_LINES  300000                       how many recent lines of each access log to analyse
 #   MASK_IPS   1
 #   QUICK      0
+#   SAMPLE_SECONDS 30                       how long the baseline watches log files grow
 #   OUT        $HOME/kidrove-audit-<timestamp>.txt
 
 set -u
@@ -30,6 +31,7 @@ NGINX_LOG_DIR="${NGINX_LOG_DIR:-/var/log/nginx}"
 LOG_LINES="${LOG_LINES:-300000}"
 MASK_IPS="${MASK_IPS:-1}"
 QUICK="${QUICK:-0}"
+SAMPLE_SECONDS="${SAMPLE_SECONDS:-30}"
 OUT="${OUT:-${HOME:-/tmp}/kidrove-audit-$(date +%Y%m%d-%H%M%S).txt}"
 
 have() { command -v "$1" >/dev/null 2>&1; }
@@ -118,6 +120,96 @@ disk() {
   ls -lh /var/backups/kidrove 2>/dev/null | head -10
   echo "leftover chromium profiles in /tmp: $(ls -d /tmp/puppeteer_dev_chrome_profile-* /tmp/.org.chromium.* 2>/dev/null | wc -l)"
   have docker && { sub "docker"; t docker system df 2>/dev/null; }
+}
+
+# ---------------------------------------------------------------------------------------------
+# log_growth <seconds> <file...>: bytes per minute each file grew over the window, largest first.
+log_growth() {
+  local secs="$1" f after; shift
+  declare -A before=()
+  for f in "$@"; do [ -f "$f" ] && before["$f"]=$(stat -c %s "$f" 2>/dev/null); done
+  sleep "$secs"
+  for f in "$@"; do
+    [ -n "${before[$f]:-}" ] || continue
+    after=$(stat -c %s "$f" 2>/dev/null) || continue
+    printf '%12d B/min  %s\n' $(( (after - ${before[$f]}) * 60 / secs )) "$f"
+  done | sort -rn
+}
+
+# The "before" numbers every later fix is compared with: who burns CPU, what grows and how fast,
+# which code is deployed, what the queues look like, and why nginx answers 500/502.
+baseline() {
+  section "BASELINE: CPU per process, growth per minute, deployed code, queues, nginx errors"
+  local g="git -c safe.directory=$APP_DIR -C $APP_DIR"
+  sub "deployed code ($APP_DIR)"
+  if [ -d "$APP_DIR/.git" ]; then
+    $g log -1 --format='commit %h  %ci  %an  %s' 2>/dev/null
+    echo "branch: $($g rev-parse --abbrev-ref HEAD 2>/dev/null)"
+    $g status -sb 2>/dev/null | head -8
+  else
+    note "no git checkout at $APP_DIR"
+  fi
+  sub "frontend build in place? (a missing index.html makes nginx answer 500)"
+  ls -l --time-style=long-iso "$APP_DIR/frontend/dist/index.html" 2>/dev/null || echo "MISSING: $APP_DIR/frontend/dist/index.html"
+  echo "leftover dist.backup.* directories: $(ls -d "$APP_DIR"/frontend/dist.backup.* "$APP_DIR"/backend/dist.backup.* 2>/dev/null | wc -l)"
+
+  sub "CPU: third of 3 samples, 2 s apart (busiest processes)"
+  have top && top -b -n 3 -d 2 -o %CPU 2>/dev/null | awk '/^top -/{n++} n==3' | head -16 | cut -c1-160
+  sub "memory pressure and swap (vmstat, 3 samples)"
+  have vmstat && vmstat 2 3
+
+  sub "pm2 processes for every user (restart count and uptime reveal crash loops)"
+  local h
+  for h in /root /home/*; do
+    [ -d "$h/.pm2" ] || continue
+    echo "[$h/.pm2]"
+    have node && have pm2 && PM2_HOME="$h/.pm2" pm2 jlist 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{for(const p of JSON.parse(s.slice(s.indexOf("[")))){const e=p.pm2_env||{},m=p.monit||{};console.log([p.name,"pid="+p.pid,e.status,"restarts="+e.restart_time,"unstable="+e.unstable_restarts,"up_min="+(e.pm_uptime?Math.round((Date.now()-e.pm_uptime)/6e4):0),"cpu="+m.cpu+"%","mem_mb="+Math.round((m.memory||0)/1048576)].join("  "))}}catch(x){console.log("cannot parse pm2 jlist: "+x.message)}})'
+  done
+
+  sub "growth: bytes per minute over ${SAMPLE_SECONDS}s (application, pm2 and nginx logs)"
+  local logs used1 used2
+  mapfile -t logs < <(printf '%s\n' "$APP_DIR"/backend/logs/*.log /var/log/GEMA-Project/backend/*.log /root/.pm2/logs/*.log /home/*/.pm2/logs/*.log "$NGINX_LOG_DIR"/*.log | sort -u)
+  used1=$(df -B1 --output=used / 2>/dev/null | tail -1 | tr -d ' ')
+  log_growth "$SAMPLE_SECONDS" "${logs[@]}" | head -15
+  used2=$(df -B1 --output=used / 2>/dev/null | tail -1 | tr -d ' ')
+  [ -n "$used1" ] && [ -n "$used2" ] && printf 'whole disk (everything, not just logs): %d B/min\n' $(( (used2 - used1) * 60 / SAMPLE_SECONDS ))
+
+  sub "Redis memory, clients, busiest commands, slow log, queue lengths"
+  if have redis-cli; then
+    redis-cli INFO memory 2>/dev/null | grep -E '^(used_memory_human|maxmemory_human|maxmemory_policy|mem_fragmentation_ratio):'
+    redis-cli INFO clients 2>/dev/null | grep -E '^(connected_clients|blocked_clients):'
+    redis-cli INFO stats 2>/dev/null | grep -E '^(instantaneous_ops_per_sec|total_commands_processed):'
+    echo "most used commands (calls  name):"
+    redis-cli INFO commandstats 2>/dev/null | sed -nE 's/^cmdstat_([^:]+):calls=([0-9]+),.*/\2 \1/p' | sort -rn | head -8
+    echo "SLOWLOG GET 10:"
+    redis-cli SLOWLOG GET 10 2>/dev/null | head -40
+    echo "DBSIZE: $(redis-cli DBSIZE 2>/dev/null)"
+    local k kind
+    for kind in wait active delayed failed; do
+      redis-cli --scan --pattern "*:$kind" 2>/dev/null | head -20 | while read -r k; do
+        case "$(redis-cli TYPE "$k" 2>/dev/null)" in
+          list) echo "$kind  $(redis-cli LLEN "$k")  $k" ;;
+          zset) echo "$kind  $(redis-cli ZCARD "$k")  $k" ;;
+        esac
+      done
+    done
+  else
+    note "redis-cli not installed"
+  fi
+  sub "MongoDB"
+  note "the database is remote (MONGODB_URI): read connections, CPU and slow operations in the provider console; nothing is queried from here"
+
+  sub "nginx error logs: signatures of the 500 / 502 responses"
+  local f p
+  for f in "$NGINX_LOG_DIR"/error.log "$NGINX_LOG_DIR"/*-error.log; do
+    [ -r "$f" ] || continue
+    echo "$f  $(du -h "$f" | cut -f1)  last 50000 lines:"
+    for p in 'index\.html.*(failed|not found)|directory index .* is forbidden|No such file or directory' 'connect\(\) failed|upstream prematurely closed|Connection refused' 'redirection cycle' 'limiting requests' 'worker_connections' 'upstream timed out'; do
+      printf '%8s  %s\n' "$(tail -n 50000 "$f" | grep -ciE "$p")" "$p"
+    done
+    echo "most recent 3 lines:"
+    tail -n 3 "$f" | cut -c1-240
+  done
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -307,6 +399,7 @@ main() {
   [ "$(id -u)" != "0" ] && echo "NOTE: not running as root. Many checks will be empty. Re-run with sudo."
   echo "settings: APP_DIR=$APP_DIR NGINX_LOG_DIR=$NGINX_LOG_DIR LOG_LINES=$LOG_LINES MASK_IPS=$MASK_IPS QUICK=$QUICK"
   disk
+  baseline
   applogs
   cpu
   net

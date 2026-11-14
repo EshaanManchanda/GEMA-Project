@@ -4,6 +4,8 @@
  * reach the report. Skipped when bash is not installed.
  */
 import { spawnSync } from "child_process";
+import fs from "fs";
+import os from "os";
 import path from "path";
 
 const script = path
@@ -44,5 +46,55 @@ suite("server-audit.sh", () => {
 
   it("keeps full IPv4 addresses when MASK_IPS=0", () => {
     expect(redact("from 203.0.113.77\n", "0")).toBe("from 203.0.113.77\n");
+  });
+
+  const source = fs.readFileSync(script, "utf8");
+  const code = source
+    .split("\n")
+    .filter((l) => !/^\s*#/.test(l))
+    .join("\n");
+
+  // It runs as root on production: it may only look, never change anything.
+  it("is read-only: no command that changes the server", () => {
+    expect(code).not.toMatch(
+      /\b(rm|truncate|kill|pkill|killall|reboot|shutdown|chmod|chown|mv|dd|mkfs)\s/,
+    );
+    expect(code).not.toMatch(/systemctl\s+(restart|stop|start|disable|enable|mask)/);
+    expect(code).not.toMatch(/pm2\s+(restart|reload|stop|delete|flush|install|set|save|kill)/);
+    expect(code).not.toMatch(/apt(-get)?\s+(install|remove|upgrade|purge)/);
+    expect(code).not.toMatch(/redis-cli\s+(flushall|flushdb|config\s+set|shutdown|del|set)\b/i);
+  });
+
+  it("measures per-process CPU, log growth per minute and the deployed commit (baseline)", () => {
+    const r = spawnSync("bash", ["-c", 'source "$1"; type -t baseline', "_", script], {
+      encoding: "utf8",
+    });
+    expect(r.stdout.trim()).toBe("function");
+    expect(code).toMatch(/^\s*baseline\s*$/m); // main() runs it
+    expect(code).toMatch(/growth/i);
+    expect(code).toMatch(/rev-parse|log -1/); // deployed commit
+    expect(code).toMatch(/SLOWLOG/i);
+    expect(code).toMatch(/error\.log/); // nginx error log (500/502 cause)
+  });
+
+  it("samples log growth only for the configured window and prints bytes per minute", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "audit-growth-"));
+    const f = path.join(dir, "a.log").replace(/\\/g, "/");
+    fs.writeFileSync(f, "x".repeat(100));
+    const r = spawnSync(
+      "bash",
+      [
+        "-c",
+        'source "$1"; (sleep 1; printf %0600d 0 >> "$2") & log_growth 2 "$2"; wait',
+        "_",
+        script,
+        f,
+      ],
+      { encoding: "utf8" },
+    );
+    expect(r.status).toBe(0);
+    // 600 bytes in a 2 s window = 18000 bytes/min
+    expect(r.stdout).toMatch(/18000 B\/min/);
+    expect(r.stdout).toContain(f);
   });
 });

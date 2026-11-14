@@ -78,3 +78,7 @@ kidrove-bd4ea980b604.json
 
 # Local Docker overrides (real test keys)
 docker/*.local.env
+
+# Server audit reports contain host/user details: never commit
+deployment/audit/report*.txt
+deployment/audit/kidrove-audit-*.txt
