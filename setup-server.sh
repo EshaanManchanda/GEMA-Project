@@ -236,8 +236,9 @@ log "Setting up backend..."
 
 cd "$PROJECT_ROOT/backend"
 
-# Create logs directory
-mkdir -p logs
+# Application and pm2 logs live in /var/log (LOG_FILE_PATH is set by ecosystem.config.js), not in the app folder
+mkdir -p /var/log/GEMA-Project/backend
+install -m 644 "$PROJECT_ROOT/deployment/logrotate/kidrove" /etc/logrotate.d/kidrove
 
 # Copy environment file
 if [ ! -f .env ]; then
@@ -369,15 +370,11 @@ else
 fi
 
 ###############################################################################
-# Install PM2 Log Rotation
+# Log Rotation (logrotate for the pm2 files; the winston logs rotate themselves.
+# Installed above with the /var/log folder. Not pm2-logrotate: two rotators on one file fight.)
 ###############################################################################
 
-log "Installing PM2 log rotation..."
-pm2 install pm2-logrotate
-pm2 set pm2-logrotate:max_size 10M
-pm2 set pm2-logrotate:retain 10
-pm2 set pm2-logrotate:compress true
-success "PM2 log rotation configured"
+logrotate -d /etc/logrotate.d/kidrove >/dev/null 2>&1 && success "Log rotation configured" || warning "Check: logrotate -d /etc/logrotate.d/kidrove"
 
 ###############################################################################
 # Setup Automatic Security Updates
@@ -461,7 +458,7 @@ success "  sudo systemctl reload nginx - Reload NGINX"
 success "  sudo systemctl status nginx - Check status"
 success ""
 success "Logs:"
-success "  ls -t $PROJECT_ROOT/backend/logs/   (<pm2-app>-combined-YYYY-MM-DD.log: rotated at 50 MB, newest 20 kept; LOG_MAX_FILE_MB / LOG_MAX_FILES)"
+success "  ls -t /var/log/GEMA-Project/backend/   (<pm2-app>-combined-YYYY-MM-DD.log: rotated at 50 MB, newest 20 kept; LOG_MAX_FILE_MB / LOG_MAX_FILES)"
 success "  tail -f /var/log/nginx/kidrove_error.log"
 success ""
 success "========================================="

@@ -388,9 +388,11 @@ apps() {
 
 # ---------------------------------------------------------------------------------------------
 applogs() {
-  section "APPLICATION LOGS: what is filling backend/logs"
-  local d="$APP_DIR/backend/logs" f
-  [ -d "$d" ] || { note "no $d"; return; }
+  section "APPLICATION LOGS: what is filling /var/log/GEMA-Project/backend (and the old backend/logs)"
+  local d f
+  for d in /var/log/GEMA-Project/backend "$APP_DIR/backend/logs"; do
+  [ -d "$d" ] || { note "no $d"; continue; }
+  sub "$d"
   ls -lhS --time-style=long-iso "$d" 2>/dev/null | head -15
   # The old unrotated files, plus the newest dated file of each kind from the rotating logger.
   for f in "$d/error.log" "$d/combined.log" $(ls -t "$d"/*error-*.log 2>/dev/null | head -1) $(ls -t "$d"/*combined-*.log 2>/dev/null | head -1); do
@@ -404,6 +406,7 @@ applogs() {
     echo "most repeated messages, last 200000 lines:"
     tail -n 200000 "$f" | grep -oE '"message": ?"[^"]{0,140}' | sed -E 's/[0-9a-fA-F]{24}/<id>/g; s/[0-9]+/N/g' | sort | uniq -c | sort -rn | head -15
     echo "BullMQ auto-pipelining signature 'pipeline[functionName]' in last 200000 lines: $(tail -n 200000 "$f" | grep -c 'pipeline\[functionName\]')"
+  done
   done
   if pm2_running; then
     sub "pm2: last error lines of the worker and the API"

@@ -20,6 +20,14 @@ describe("ecosystem.config.js", () => {
     expect(app.out_file).not.toEqual(app.error_file);
   });
 
+  it.each(apps.map((a) => [a.name as string, a]))("%s: every log (pm2 and winston) lives in one /var/log folder", (_name, app) => {
+    const env = app.env_production as Record<string, string>;
+    const dir = "/var/log/GEMA-Project/backend";
+    expect(env.LOG_FILE_PATH).toBe(dir);
+    expect(path.posix.dirname(app.out_file as string)).toBe(dir);
+    expect(path.posix.dirname(app.error_file as string)).toBe(dir);
+  });
+
   it("defines the API and the worker", () => {
     expect(apps.map((a) => a.name)).toEqual(["gema-backend", "gema-worker"]);
   });

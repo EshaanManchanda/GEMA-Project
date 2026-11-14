@@ -1,0 +1,17 @@
+# Install: sudo cp deployment/logrotate/kidrove /etc/logrotate.d/kidrove
+# Check:   sudo logrotate -d /etc/logrotate.d/kidrove      (dry run, changes nothing)
+#
+# Only the pm2 stdout/stderr files are rotated here. The application's own winston logs in the
+# same folder (gema-backend-*.log, gema-worker-*.log) rotate and prune themselves: 50 MB per
+# file, newest 20 kept (LOG_MAX_FILE_MB / LOG_MAX_FILES), so they are deliberately not matched.
+# copytruncate: pm2 keeps these files open, so they are copied then emptied, never renamed.
+/var/log/GEMA-Project/backend/api-*.log /var/log/GEMA-Project/backend/worker-*.log {
+    daily
+    maxsize 100M
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}

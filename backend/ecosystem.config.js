@@ -34,6 +34,10 @@ module.exports = {
       NODE_ENV: 'production',
       PORT: 5000,
 
+      // Application (winston) logs go to /var/log, next to the pm2 files below, not into the
+      // app folder. A value here wins over backend/.env. See deployment/RUNBOOK.md step 2.
+      LOG_FILE_PATH: '/var/log/GEMA-Project/backend',
+
       // These will be overridden by .env file if present
       // PM2 will load .env automatically if it exists
     },
@@ -59,9 +63,8 @@ module.exports = {
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     merge_logs: true,
 
-    // Log rotation (requires pm2-logrotate module)
-    // Install: pm2 install pm2-logrotate
-    // Configure: pm2 set pm2-logrotate:max_size 10M
+    // Log rotation: /etc/logrotate.d/kidrove (deployment/logrotate/kidrove) rotates these pm2 files.
+    // Do not also install pm2-logrotate: two rotators on one file fight.
 
     // Process Management
     kill_timeout: 5000, // Time to wait before force kill (ms)
@@ -143,6 +146,7 @@ module.exports = {
     // Environment Variables - Production
     env_production: {
       NODE_ENV: 'production',
+      LOG_FILE_PATH: '/var/log/GEMA-Project/backend',
       // Worker will use same .env file as API server
     },
 
@@ -269,11 +273,7 @@ module.exports = {
  * # Update PM2
  * pm2 update
  *
- * # Install log rotation
- * pm2 install pm2-logrotate
- * pm2 set pm2-logrotate:max_size 10M
- * pm2 set pm2-logrotate:retain 10
- * pm2 set pm2-logrotate:compress true
+ * # Log rotation: sudo install -m 644 deployment/logrotate/kidrove /etc/logrotate.d/kidrove
  *
  * # Deployment (if using PM2 Deploy)
  * pm2 deploy ecosystem.config.js production setup

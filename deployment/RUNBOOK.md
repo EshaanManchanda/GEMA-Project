@@ -52,13 +52,31 @@ sudo cp /var/log/auth.log* . 2>/dev/null; ls -la
 ## 2. SRV: free the disk (only after step 1)
 
 ```sh
-du -ah $APP/backend/logs /var/log/GEMA-Project ~/.pm2/logs 2>/dev/null | sort -rh | head -15
-# for each big log that is already saved in step 1:
-: > /path/to/the/big.log          # truncate (do NOT rm: pm2 and winston keep the file open)
-pm2 install pm2-logrotate && pm2 set pm2-logrotate:max_size 50M && pm2 set pm2-logrotate:retain 5 && pm2 set pm2-logrotate:compress true
+du -ah $APP/backend/logs /var/log ~/.pm2/logs 2>/dev/null | sort -rh | head -15
+
+# a) Big application / pm2 logs that are already saved in step 1: truncate (do NOT rm: pm2 and winston keep the file open)
+: > /path/to/the/big.log
+
+# b) System logs nobody needs. None of this is read by the website; rotated copies and the journal only.
+sudo journalctl --vacuum-size=200M
+sudo find /var/log -type f \( -name '*.gz' -o -name '*.[0-9]' -o -name '*.old' \) -mtime +7 -print   # look at the list first,
+#   then run it again with -delete instead of -print
+sudo find /var/log -xdev -type f -size +100M -not -path '/var/log/GEMA-Project/*' -exec ls -lh {} +  # any other huge file: save it, then : > file
+
+# c) From now on every log lives in ONE folder, /var/log/GEMA-Project/backend, and rotates by itself.
+#    (ecosystem.config.js sets LOG_FILE_PATH, so the application's own logs go there instead of $APP/backend/logs.)
+sudo mkdir -p /var/log/GEMA-Project/backend && sudo chown $(stat -c %U:%G $APP) /var/log/GEMA-Project/backend && sudo chmod 750 /var/log/GEMA-Project/backend
+scp deployment/logrotate/kidrove you@server:/tmp/ && sudo install -m 644 /tmp/kidrove /etc/logrotate.d/kidrove   # the PC's copy of this repository
+sudo logrotate -d /etc/logrotate.d/kidrove                      # dry run: must print no errors
+pm2 ls | grep -i logrotate && pm2 uninstall pm2-logrotate       # two rotators on the same files would fight
 df -h /
 ```
 *Expected:* at least 5 GB free. The release needs about 2 GB (the script refuses to start with less).
+After the release, `ls -t /var/log/GEMA-Project/backend` shows `gema-backend-combined-*.log` growing and `$APP/backend/logs` no longer changing;
+once you have checked that, the old `$APP/backend/logs` folder is dead weight and can be removed.
+**In production the application refuses to start if `LOG_FILE_PATH` is not an absolute, writable folder** (it never falls back to `$APP/backend/logs`):
+`pm2 logs gema-backend --err` then shows `[logger] LOG_FILE_PATH=... cannot be used in production: <reason>`, and the release's health check fails and rolls back by itself.
+So the `chown`/`chmod` above must be done before step 10, and step 3 puts the same path in `backend/.env`.
 
 ## 2b. SRV: Redis (this is the root cause of the CPU and disk problem: do it before anything is started)
 
@@ -92,6 +110,9 @@ for v in STRIPE_WEBHOOK_SECRET FIELD_ENCRYPTION_KEY REPORT_INTEGRITY_SECRET ANAL
   grep -qE "^$v=.+" .env && echo "set      $v" || echo "MISSING  $v"; done
 grep -E '^(RATE_LIMIT_MAX|RATE_LIMIT_WINDOW_MS|UPLOAD_PROVIDER|REDIS_HOST|REDIS_PORT|REDIS_URL|PORT|ENABLE_REQUEST_LOGGING|LOG_[A-Z_]*)=' .env
 ```
+- `LOG_FILE_PATH`: set it to `/var/log/GEMA-Project/backend` (the folder from step 2c). pm2 already sets it for the two apps, but the data-migration scripts in steps 8-9
+  (`NODE_ENV=production node dist/scripts/...`, run from `backend/`) run outside pm2 and read only this file. Some of them load the application's logger (through the models or
+  config they import); with the old default `logs/` those now stop with `[logger] LOG_FILE_PATH=logs/ cannot be used in production`, instead of logging into the app folder. Setting it here covers all of them.
 - `ENABLE_REQUEST_LOGGING`: set it to `false` (or delete the line). nginx already logs every request, and this setting writes the same line again from the app into a log file.
 - `STRIPE_WEBHOOK_SECRET`: Stripe Dashboard > Developers > Webhooks > your endpoint > *Signing secret* (`whsec_...`). Without it payment confirmations are rejected.
 - `FIELD_ENCRYPTION_KEY`: `openssl rand -hex 32`. **Back it up in your password manager now.** If it is lost, the data encrypted with it is unreadable.

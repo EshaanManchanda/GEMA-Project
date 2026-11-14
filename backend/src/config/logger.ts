@@ -5,11 +5,61 @@ import * as fs from "fs";
 import * as path from "path";
 import * as util from "util";
 
-// Ensure logs directory exists
-const logsDir = path.resolve(process.cwd(), "logs");
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true, mode: 0o750 });
-}
+const PRODUCTION_LOG_DIR = "/var/log/GEMA-Project/backend";
+
+const productionLogDirError = (configured: string | undefined, reason: string): Error =>
+  new Error(
+    `[logger] LOG_FILE_PATH=${configured || "(unset)"} cannot be used in production: ${reason}. ` +
+      `Set LOG_FILE_PATH to a writable absolute folder (ecosystem.config.js uses ${PRODUCTION_LOG_DIR}).`,
+  );
+
+/**
+ * Where the application log files go: LOG_FILE_PATH (production sets /var/log/GEMA-Project/backend
+ * in ecosystem.config.js), default ./logs.
+ *
+ * Development and tests: relative paths are under the working directory, and a folder that cannot
+ * be created or written falls back to ./logs with a note on stderr, so a typo never blocks work.
+ *
+ * Production: the path must be absolute and writable, otherwise this throws and the process stops
+ * with a clear message. It never falls back to ./logs: logs quietly written into the app folder
+ * are the ones nobody watches, and they fill the disk the release lives on.
+ */
+export const resolveLogDir = (
+  configured: string | undefined,
+  cwd: string = process.cwd(),
+  production = false,
+): string => {
+  if (production) {
+    const requested = configured?.trim();
+    if (!requested || !path.isAbsolute(requested)) {
+      throw productionLogDirError(requested, "it must be an absolute path outside the application folder");
+    }
+    try {
+      fs.mkdirSync(requested, { recursive: true, mode: 0o750 });
+      fs.accessSync(requested, fs.constants.W_OK);
+    } catch (err) {
+      throw productionLogDirError(requested, (err as Error).message);
+    }
+    return path.resolve(requested);
+  }
+
+  const dir = path.resolve(cwd, configured?.trim() || "logs");
+  try {
+    fs.mkdirSync(dir, { recursive: true, mode: 0o750 });
+    fs.accessSync(dir, fs.constants.W_OK);
+    return dir;
+  } catch (err) {
+    const fallback = path.resolve(cwd, "logs");
+    if (fallback === dir) throw err;
+    process.stderr.write(
+      `[logger] cannot use log directory ${dir} (${(err as Error).message}); falling back to ${fallback}\n`,
+    );
+    fs.mkdirSync(fallback, { recursive: true, mode: 0o750 });
+    return fallback;
+  }
+};
+
+export const logsDir = resolveLogDir(config.logging.filePath, process.cwd(), config.nodeEnv === "production");
 
 // Safe stringify that handles circular structures
 function safeStringify(obj: any): string {
