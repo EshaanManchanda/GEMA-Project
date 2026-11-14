@@ -735,6 +735,13 @@
       "commit": "487c9ce",
       "title": "Production logs now live in /var/log, and the app refuses to log into its own folder",
       "text": "The application's own log files were written inside the app folder (backend/logs) while pm2's files went to /var/log, so the folder a release replaces and the disk that filled up held logs nobody was watching. They now go to LOG_FILE_PATH (/var/log/GEMA-Project/backend, set by ecosystem.config.js for the API and the worker), next to the pm2 files, with a logrotate rule for the pm2 ones. In production the path must be absolute and writable: otherwise the process stops with a clear message instead of quietly falling back to ./logs, and the release health check rolls back. Development keeps ./logs. The RUNBOOK adds the same setting to the server's .env, because the data-migration scripts run outside pm2."
+    },
+    {
+      "area": "Reliability & operations",
+      "sev": "medium",
+      "commit": "2a7bf07",
+      "title": "Log lines can no longer carry passwords, tokens or a whole Lua script",
+      "text": "Every line written to a log file (and the development console) now passes through one sanitizer. Values under keys ending in password, secret, token, authorization, cookie, api key or otp are replaced with [REDACTED] at any depth; the arguments of a failed Redis command are replaced with their count (a failed queue script used to write its whole source, about 1,600 lines per error); strings over 8 KB are cut, Buffers become a size, long arrays and deep objects are capped and circular references are marked. Dates, ids and Mongoose documents still serialise as before. Limits: emails and IP addresses are still logged in clear text, and nothing scrubs secrets that are embedded inside a free-text message."
     }
   ],
   "tests": [
@@ -1044,6 +1051,15 @@
         "If the app does not come up: pm2 logs gema-backend --err --lines 20 --nostream | grep '\\[logger\\]'"
       ],
       "expect": "New application log files appear in /var/log/GEMA-Project/backend and backend/logs stops changing. A wrong or unwritable path shows '[logger] LOG_FILE_PATH=... cannot be used in production: <reason>' and the release rolls back by itself."
+    },
+    {
+      "title": "No credentials in the log files",
+      "where": "Production server, after the release and an hour of normal traffic",
+      "steps": [
+        "grep -ciE 'Bearer ey|\"password\":\"[^[]' /var/log/GEMA-Project/backend/gema-backend-combined-*.log | tail -5",
+        "grep -c 'evalsha' /var/log/GEMA-Project/backend/gema-*-error-*.log | tail -5"
+      ],
+      "expect": "Every count in the first command is 0 (no bearer token and no password value in any line). The second shows no file with more than a handful of lines: a failed queue command is one short line, not 1,600. A count of REDACTED markers is not part of the check: the application rarely logs credentials, which is the point."
     }
   ]
 }
