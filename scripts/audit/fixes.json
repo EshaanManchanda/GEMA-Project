@@ -658,6 +658,41 @@
       "commit": "a5abcd4",
       "title": "Booking confirmation no longer shows a Join Meeting button built from public event data",
       "text": "The confirmation screen linked to the meeting URL taken from the public event, which no longer carries it. For online events it now says the joining details are in the confirmation e-mail and under My Bookings, with a link. Covered by 3 component tests that fail on the old screen. Not checked in a browser, because reaching the screen needs a completed payment."
+    },
+    {
+      "area": "Background jobs",
+      "sev": "high",
+      "commit": "e4dc390",
+      "title": "The background-job process never connected to the database, so jobs that touch orders and events failed",
+      "text": "Only the web server opened a MongoDB connection. The worker process (seat release, review reminders, payouts, business snapshots, collection sync) ran queries without one and failed after a 10-second wait: the local worker log from 8 Nov shows 'events.find() buffering timed out' and 'orders.find() buffering timed out'. The worker now connects first and only then starts its workers; if the connection fails it exits instead of hanging. 4 unit tests (connects first, nothing loads while connecting, skipped when queues are off, a failed start exits 1), red on the old layout. Checked in the real local worker: MongoDB connected at 12:15:45, the 10 workers started at 12:15:57, no errors. Not yet seen on the production server."
+    },
+    {
+      "area": "Logging",
+      "sev": "medium",
+      "commit": "85c1266",
+      "title": "A repeating worker error could write thousands of log lines a second",
+      "text": "BullMQ retries a failing job fetch at once, so one persistent error repeats without pause. Six workers had no error listener (BullMQ then prints to the console, which pm2 writes into its own files) and four logged a full stack trace per event. One shared listener now logs the first error per worker per minute and then a single 'N more' line; Redis reconnect noise stays a warning. 5 unit tests plus 2 static guards (the guards were added after the change and not run red). This limits the damage of any error loop; it is not shown to be what filled the server disk (see the open item on the VPS cause)."
+    },
+    {
+      "area": "Operations",
+      "sev": "medium",
+      "commit": "3e0ba6a",
+      "title": "The process manager wrote every log line twice",
+      "text": "ecosystem.config.js set stdout, stderr and a combined log file, so pm2 wrote each line again into api-combined.log and worker-combined.log, which nothing rotates. The combined files are removed from both copies of the config (they were identical). 4 tests, red first. The existing *-combined.log files on the server stay until someone deletes them by hand after the evidence is saved."
+    },
+    {
+      "area": "Operations",
+      "sev": "medium",
+      "commit": "66fae71",
+      "title": "The server audit script could run another user's git config or pm2 as root",
+      "text": "The new baseline section ran git (with safe.directory overridden) and pm2 as root against folders owned by the deploy user. A planted git config or pm2 daemon there would have executed with root rights. Found by the automated security review of commit 07c3a2c. Now git and pm2 run as the folder's owner, never override safe.directory, and no pm2 command runs unless a daemon already exists (this also stops the older pm2 list/logs calls from starting a root pm2). 2 tests lock this; the script is also checked to stay read-only."
+    },
+    {
+      "area": "Operations",
+      "sev": "low",
+      "commit": "07c3a2c",
+      "title": "The server audit now records the numbers every later fix is compared with",
+      "text": "Adds CPU per process, log growth in bytes per minute for each log file and for the whole disk, the deployed git commit, whether the frontend index.html exists, pm2 restart counts, Redis memory, slow log and queue lengths, and the nginx error signatures behind the 500 and 502 answers. Ran the new section locally (Windows, so top, vmstat, redis-cli and pm2 are absent and it degrades cleanly); it has not run on the server. 3 new tests."
     }
   ],
   "tests": [
@@ -915,10 +950,19 @@
       "title": "Server audit report",
       "where": "Production server (read-only)",
       "steps": [
-        "Copy deployment/audit/server-audit.sh to the server and run: bash server-audit.sh > report.txt",
-        "Read the report and check the sections on what fills the disk and which log message repeats."
+        "Copy deployment/audit/server-audit.sh to the server and run: sudo bash server-audit.sh   (it watches log growth for 30 seconds)",
+        "Copy the whole report file to your PC instead of pasting from the terminal, then read the BASELINE, DISK and APPLICATION LOGS sections."
       ],
-      "expect": "A masked report is written and nothing on the server changes. The disk and error-log sections show what to fix next."
+      "expect": "A masked report is written and nothing on the server changes (no daemon is started). BASELINE names the busiest process, the logs that grow and by how much, the deployed commit and why nginx answers 500 or 502."
+    },
+    {
+      "title": "Worker process connects to the database",
+      "where": "Server or local Docker, after deploying",
+      "steps": [
+        "Restart the worker (pm2 reload gema-worker, or docker compose up -d worker).",
+        "Read its log: pm2 logs gema-worker --lines 80 --nostream"
+      ],
+      "expect": "'MongoDB Connected Successfully' appears before 'Starting background workers', and there are no 'buffering timed out' lines afterwards."
     }
   ]
 }
