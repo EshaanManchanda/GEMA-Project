@@ -1,5 +1,5 @@
 {
-  "testsPassing": "1279 / 1303",
+  "testsPassing": "1416 / 1455",
   "issues": [
     {
       "area": "Security",
@@ -560,6 +560,104 @@
       "commit": "10fef63",
       "title": "Two test images committed by mistake removed",
       "text": "Two localhost-3000 winter-camp uploads were committed under backend/uploads. Nothing referenced them. They remain in git history."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "7779d8e",
+      "title": "Production Origin check blocked payment and messaging webhooks; blocked cross-site requests answered 500",
+      "text": "The production Origin check had no exemption for server-to-server calls. A read-only probe on 13 Nov 2026 showed POST /api/payments/webhook with no Origin header (what Stripe sends) answered 403 before the signature check, and the Cunnekt and Sender/Mailchimp webhooks send no Origin either. Those three webhook mounts are now exempt (they authenticate by signature or secret), and a disallowed Origin gets a 403 instead of a 500. After deploying, check the Stripe Dashboard for failed webhook deliveries."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "22bc99d",
+      "title": "A crafted secret with multi-byte characters could stop the API or return a 500",
+      "text": "Three constant-time secret checks compared string length first, so a same-length value containing a multi-byte character made crypto.timingSafeEqual throw. On the Cunnekt webhook the throw was an unhandled rejection and the server exits on those, so one unauthenticated request could stop the API (only when a Cunnekt secret is set; not live today because that webhook is newer than the last commit on main). The CSRF check and the review-link token returned 500. One helper, safeEqual(), now backs all four checks and never throws."
+    },
+    {
+      "area": "Reliability & operations",
+      "sev": "medium",
+      "commit": "65f0ee2",
+      "title": "Log level and request logging could not be controlled from the environment",
+      "text": "LOG_LEVEL was read but never used, and ENABLE_REQUEST_LOGGING was parsed but unused, so log volume could not be tuned. LOG_LEVEL is now honoured (an invalid value falls back to the default with a warning), only 4xx and 5xx requests are logged unless ENABLE_REQUEST_LOGGING=true, and per-request cache messages moved to debug. This lowers volume; it does not cap it and does not stop an error loop."
+    },
+    {
+      "area": "Reliability & operations",
+      "sev": "high",
+      "commit": "9d25943",
+      "title": "Log files had no size limit and filled the 50 GB server disk",
+      "text": "Production ran plain file loggers with no size limit and no rotation; combined.log and error.log were reported at about 18 GB each. Each log kind now rotates at 50 MB (LOG_MAX_FILE_MB) or at midnight and keeps the newest 20 files (LOG_MAX_FILES), deleting older ones: at most 2 GB in total, less once gzipped. Limits: the old unrotated files already on the server are not pruned and must be removed by hand, and this is not deployed yet."
+    },
+    {
+      "area": "Reliability & operations",
+      "sev": "low",
+      "commit": "25af90a",
+      "title": "Read-only script to find what fills the server disk and CPU",
+      "text": "deployment/audit/server-audit.sh writes one report on disk usage, repeated log messages, what uses the CPU, nginx traffic patterns and signs of compromise. It changes nothing, runs at lowest priority and masks passwords, tokens, e-mail addresses and the last part of IP addresses. Tested against fabricated logs; it has not been run on the real server yet."
+    },
+    {
+      "area": "Testing & CI",
+      "sev": "medium",
+      "commit": "2aa27bf",
+      "title": "One test now scans every public endpoint for private data",
+      "text": "A new suite seeds a vendor, teacher, blog, comment and lead page with recognisable private values, then checks each public endpoint three ways: a sensitive field name with a value, a vendor object with fields beyond the public list, and any private value in the raw text. Each endpoint must also contain the seeded record, so an empty answer cannot pass. Against the old code 35 of 87 cases failed; it is now 86 cases, all passing, and it also checks that owners and admins still see their own data. Last full backend run: 1416 passed, 24 skipped, 15 failed. The 15 were 30-second timeouts in three suites plus one MongoDB 5 ms lock timeout while four test workers ran at once; those four suites pass when run alone (31 of 31)."
+    },
+    {
+      "area": "Security",
+      "sev": "critical",
+      "commit": "fa1bd4b",
+      "title": "Public homepage returned whole vendor records",
+      "text": "GET /api/homepage embedded the entire vendor document for collection events: e-mail, phone, contact person, tax id, business licence and tax certificate links, Stripe account ids, bank details and total revenue. A read-only check on 13 Nov 2026 found them on 110 of 110 events. The query now returns id, business name, logo and slug only. The featured blogs section also exposed the author's e-mail; that is fixed too."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "9246690",
+      "title": "Public event pages returned vendor and teacher contact details and the online meeting link",
+      "text": "Public event endpoints returned the vendor's e-mail and phone (seen on 20 of 20 events on 13 Nov 2026), the teacher's account e-mail, and the whole event including the meeting link and password, booking attachments and insurance details, so anyone could read the join link of a paid online class. They now return public fields only. Booked users get the link from their booking and the confirmation e-mail; owners and admins still see their own data."
+    },
+    {
+      "area": "Privacy",
+      "sev": "high",
+      "commit": "b3ea432",
+      "title": "Public blogs and comments returned author and commenter e-mails and visitor IP addresses",
+      "text": "Every public blog carried the author's e-mail (10 of 10 posts on 13 Nov 2026), the user ids of everyone who liked it and the IP addresses of visitors who liked it. Comment lists returned each commenter's e-mail. All of that is removed from public responses; the viewer's own 'liked' flag still works and the admin blog list keeps the author e-mail."
+    },
+    {
+      "area": "Privacy",
+      "sev": "critical",
+      "commit": "5791b5a",
+      "title": "Public lead-page list returned every parent's enquiry details",
+      "text": "GET /api/lead-pages (no login) returned each lead page together with its leads: the name, e-mail, phone, message and IP address of everyone who submitted an enquiry, including parents. The list now leaves them out; admins still read them through the admin API. Anyone who submitted before this ships had their details readable by anyone, and you may want to tell them."
+    },
+    {
+      "area": "Privacy",
+      "sev": "high",
+      "commit": "6f04aa2",
+      "title": "Public teacher pages returned account e-mail, phone and lifetime earnings",
+      "text": "The public teacher profile returned the linked account's e-mail and phone, and the teacher list returned the whole stats record including total earnings. Both now return only the name, avatar and public counters (classes, students, rating, reviews, views)."
+    },
+    {
+      "area": "Privacy",
+      "sev": "medium",
+      "commit": "fdc91b4",
+      "title": "Public vendor page returned street address, exact coordinates and revenue; search matched and returned vendor e-mail",
+      "text": "The vendor profile returned the full street address, postcode, exact coordinates and total revenue. It now shows city, state and country and the public counters only. Vendor search also matched the query against the vendor's e-mail and returned it, so a query like '@gmail.com' listed addresses; e-mail is removed from both. Separate bug found and not fixed here: vendor search filters on a field the user record does not have, so it returns no vendors for real accounts."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "low",
+      "commit": "c6abe6b",
+      "title": "Event page printed vendor and teacher e-mail and always said 'Event Organizer'",
+      "text": "The page showed the vendor's e-mail under the organizer and the teacher's e-mail on the instructor card; both lines are gone. The organizer name was built from fields the vendor record does not have, so it always read 'Event Organizer'; it now shows the business name. Checked in a real browser against the local stack."
+    },
+    {
+      "area": "Frontend UX",
+      "sev": "medium",
+      "commit": "a5abcd4",
+      "title": "Booking confirmation no longer shows a Join Meeting button built from public event data",
+      "text": "The confirmation screen linked to the meeting URL taken from the public event, which no longer carries it. For online events it now says the joining details are in the confirmation e-mail and under My Bookings, with a link. Covered by 3 component tests that fail on the old screen. Not checked in a browser, because reaching the screen needs a completed payment."
     }
   ],
   "tests": [
@@ -775,6 +873,52 @@
         "Open the children list again and the order list."
       ],
       "expect": "The first child is listed. The second child is not added automatically, but both payments appear as orders and both confirmation emails arrive."
+    },
+    {
+      "title": "Public pages and API responses carry no private data",
+      "where": "Local (Docker)",
+      "steps": [
+        "Start the local stack: docker compose -p kidrove up -d.",
+        "Run: cd backend && npx jest src/tests/integration/security/publicDataExposure.test.ts",
+        "Optionally open http://localhost:5001/api/homepage, /api/events, /api/blogs and /api/lead-pages in a browser and search the text for an e-mail address, 'phone', 'meetingLink' and 'leads'."
+      ],
+      "expect": "86 of 86 tests pass. The pages contain no vendor, teacher or author e-mail, no phone number, no meetingLink and no leads list."
+    },
+    {
+      "title": "Event page shows the business name and no e-mail",
+      "where": "Local (Docker)",
+      "steps": [
+        "Open the local site and open any event page.",
+        "Look at the Event Organizer card and, for a teacher-led event, the Instructor card."
+      ],
+      "expect": "The organizer shows the vendor's business name (not 'Event Organizer') and neither card shows an e-mail address."
+    },
+    {
+      "title": "Online-event confirmation points to the e-mail and My Bookings",
+      "where": "Local (Docker, Stripe test keys)",
+      "steps": [
+        "Book an online event and pay with the Stripe test card.",
+        "Look at the confirmation screen, then click My Bookings."
+      ],
+      "expect": "The confirmation says the joining details are in the confirmation e-mail and under My Bookings, with a link, and has no Join Meeting button. Not yet run by me: it needs a payment with Stripe test keys."
+    },
+    {
+      "title": "Stripe webhooks get through the production Origin check",
+      "where": "Production, after this is deployed",
+      "steps": [
+        "In the Stripe Dashboard open Developers, then Webhooks, then your endpoint, then Event deliveries.",
+        "Look at deliveries to /api/payments/webhook sent after the deploy, and resend any that failed before it."
+      ],
+      "expect": "New deliveries show a success response instead of 403."
+    },
+    {
+      "title": "Server audit report",
+      "where": "Production server (read-only)",
+      "steps": [
+        "Copy deployment/audit/server-audit.sh to the server and run: bash server-audit.sh > report.txt",
+        "Read the report and check the sections on what fills the disk and which log message repeats."
+      ],
+      "expect": "A masked report is written and nothing on the server changes. The disk and error-log sections show what to fix next."
     }
   ]
 }
