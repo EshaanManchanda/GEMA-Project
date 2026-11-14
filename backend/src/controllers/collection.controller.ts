@@ -269,7 +269,7 @@ export const getCollections = async (
 
     const collections = await Collection.aggregate(finalPipeline);
 
-    logger.info(
+    logger.debug(
       `Found ${collections.length} collections out of ${total} total`,
     );
 
@@ -311,7 +311,7 @@ export const getCollectionById = async (
     const identifier = (id || "").trim();
     const isObjectId = mongoose.Types.ObjectId.isValid(identifier);
 
-    logger.info(`Fetching collection with identifier: ${identifier}`);
+    logger.debug(`Fetching collection with identifier: ${identifier}`);
 
     const query = isObjectId
       ? { _id: identifier, isActive: true }
@@ -364,7 +364,7 @@ export const getCollectionById = async (
       ? collection.events.length
       : 0;
 
-    logger.info(
+    logger.debug(
       `Found collection: ${collection.title} with ${collection.events.length} events`,
     );
 

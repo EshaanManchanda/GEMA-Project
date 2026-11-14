@@ -34,6 +34,7 @@ import { maintenanceModeGuard } from "./middleware/maintenance.middleware";
 import { verifyCsrfToken } from "./middleware/csrf";
 import { requireOriginForStateChanges } from "./middleware/originGate";
 import { corsOptions } from "./middleware/corsOptions";
+import { accessLogSkip } from "./middleware/accessLog";
 import routes from "./routes/index";
 import healthRoutes from "./routes/health.routes";
 import { applyBodyParsers } from "./middleware/bodyParsers";
@@ -242,7 +243,13 @@ morgan.token("url", (req: Request) => {
       "$1/[redacted]",
     );
 });
-app.use(morgan(config.nodeEnv === "development" ? "dev" : "combined"));
+const logAllRequests =
+  config.nodeEnv === "development" || config.logging.enableRequestLogging;
+app.use(
+  morgan(config.nodeEnv === "development" ? "dev" : "combined", {
+    skip: accessLogSkip(logAllRequests),
+  }),
+);
 
 // Performance monitoring middleware
 app.use(performanceMonitor);

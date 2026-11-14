@@ -56,9 +56,20 @@ const rotatingFile = (kind: string, days: number, level?: string) =>
     options: { flags: "a", mode: 0o640 },
   });
 
+// Winston's npm levels. An unknown LOG_LEVEL (e.g. "warning") would leave the
+// logger with no valid threshold and silently drop everything, errors included.
+const LOG_LEVELS = ["error", "warn", "info", "http", "verbose", "debug", "silly"];
+
+/** LOG_LEVEL when it is a valid level, otherwise info in production and debug elsewhere. */
+export const resolveLogLevel = (requested: string | undefined, nodeEnv: string): string => {
+  const level = (requested || "").trim().toLowerCase();
+  if (LOG_LEVELS.includes(level)) return level;
+  return nodeEnv === "production" ? "info" : "debug";
+};
+
 // Create the logger instance
 const logger = winston.createLogger({
-  level: config.nodeEnv === "production" ? "info" : "debug",
+  level: resolveLogLevel(process.env.LOG_LEVEL, config.nodeEnv),
   format: winston.format.combine(
     winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
     winston.format.errors({ stack: true }),
@@ -71,6 +82,10 @@ const logger = winston.createLogger({
     rotatingFile("combined", retentionDays("LOG_RETENTION_DAYS", 15)),
   ],
 });
+
+if (process.env.LOG_LEVEL && !LOG_LEVELS.includes(process.env.LOG_LEVEL.trim().toLowerCase())) {
+  logger.warn(`Ignoring invalid LOG_LEVEL "${process.env.LOG_LEVEL}", using "${logger.level}". Valid: ${LOG_LEVELS.join(", ")}`);
+}
 
 // If we're not in production, also log to the console with a simpler format
 if (config.nodeEnv !== "production") {

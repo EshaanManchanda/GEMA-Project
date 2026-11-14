@@ -228,7 +228,7 @@ export const getEvents = async (
     // Try to get from cache first
     const cached = await cacheService.get<any>(cacheKey);
     if (cached) {
-      logger.info("✅ Cache HIT for events listing");
+      logger.debug("✅ Cache HIT for events listing");
       return res.status(200).json({
         success: true,
         message: "Events retrieved successfully",
@@ -237,7 +237,7 @@ export const getEvents = async (
       });
     }
 
-    logger.info("❌ Cache MISS for events listing");
+    logger.debug("❌ Cache MISS for events listing");
 
     // Build additional filters based on query params
     const additionalFilters: any = {};
@@ -373,16 +373,7 @@ export const getEvents = async (
 
     await applyOrderSeatStatsToEvents(events as any[]);
 
-    logger.info("Query results:");
-    logger.info("- Total events matching filter:", total);
-    logger.info("- Events returned:", events.length);
-    logger.info(
-      "- Sample event viewsCounts:",
-      events.map((e) => ({
-        title: e.title.substring(0, 20),
-        viewsCount: e.viewsCount,
-      })),
-    );
+    logger.debug(`Events query: ${events.length} returned of ${total} matching`);
 
     // Calculate pagination info
     const totalPages = Math.ceil(total / limitNum);
@@ -441,7 +432,7 @@ export const getEvent = async (
     const cached = await cacheService.get<any>(cacheKey);
 
     if (cached) {
-      logger.info(`✅ Cache HIT for event ${lookupValue} (${lookupField})`);
+      logger.debug(`✅ Cache HIT for event ${lookupValue} (${lookupField})`);
       // Still increment view count (async, non-blocking)
       const updateQuery = isMongoId
         ? { _id: lookupValue }
@@ -462,7 +453,7 @@ export const getEvent = async (
       });
     }
 
-    logger.info(`❌ Cache MISS for event ${lookupValue} (${lookupField})`);
+    logger.debug(`❌ Cache MISS for event ${lookupValue} (${lookupField})`);
 
     // Check database health before proceeding
     const isDBHealthy = await checkDBHealth();
