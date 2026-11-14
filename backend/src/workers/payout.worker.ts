@@ -9,7 +9,6 @@ import { WORKER_TUNING } from "../config/workerTuning";
 import logger from "../config/logger";
 import PayoutService from "../services/payout.service";
 import RevenueTransaction from "../models/RevenueTransaction";
-import { isRedisConnectionError } from "../utils/redisError.util";
 
 export interface StripePayoutJobData {
   type: "process-stripe-payout";
@@ -120,17 +119,6 @@ if (payoutWorker) {
       vendorId: job?.data?.vendorId,
       error: error.message,
     });
-  });
-
-  payoutWorker.on("error", (error: Error) => {
-    if (isRedisConnectionError(error)) {
-      logger.warn(
-        "Payout worker: Redis connection issue, waiting for reconnection...",
-        { error: error.message },
-      );
-    } else {
-      logger.error("Payout worker error:", error);
-    }
   });
 }
 

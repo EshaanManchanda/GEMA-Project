@@ -10,7 +10,6 @@ import { WORKER_TUNING } from "../config/workerTuning";
 import logger from "../config/logger";
 import { emailService } from "../services/email.service";
 import { emailRateLimiter } from "../utils/email-rate-limiter";
-import { isRedisConnectionError } from "../utils/redisError.util";
 
 // Re-export the email queue for use by other modules
 export const emailQueue = configEmailQueue;
@@ -221,19 +220,6 @@ if (emailWorker) {
       type: job?.data?.type,
       to: job?.data?.to,
     });
-  });
-
-  emailWorker.on("error", (error: Error) => {
-    // Distinguish connection errors from job processing errors
-    if (isRedisConnectionError(error)) {
-      logger.warn(
-        "Email worker: Redis connection issue detected, waiting for reconnection...",
-        { error: error.message },
-      );
-      // Don't exit - let retry strategy handle reconnection
-    } else {
-      logger.error("Email worker error:", error);
-    }
   });
 }
 

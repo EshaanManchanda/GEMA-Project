@@ -31,6 +31,7 @@ import payoutWorker from "./payout.worker";
 import certificateWorker, {
   closeCertificateBrowser,
 } from "./certificate.worker";
+import { attachThrottledErrorListener } from "./errorListener";
 import seatExpiryWorker from "./seat-expiry.worker";
 import communicationWorker from "./communication.worker";
 import automationWorker from "./automation.worker";
@@ -110,6 +111,9 @@ for (const { worker, startupMessage } of WORKERS) {
 // Route permanently-failed jobs to Dead Letter Queue for visibility and manual replay
 for (const { worker, dlqName } of WORKERS) {
   if (!worker) continue;
+  // The one 'error' listener for every worker: throttled, so a retry storm cannot fill the disk.
+  // (Without any listener BullMQ falls back to console.error, which pm2 writes to its own logs.)
+  attachThrottledErrorListener(worker, dlqName);
   worker.on("failed", async (job, err) => {
     if (job && job.attemptsMade >= (job.opts.attempts ?? 3)) {
       await failedJobsQueue

@@ -9,7 +9,6 @@ import {
 import { WORKER_TUNING } from "../config/workerTuning";
 import logger from "../config/logger";
 import { collectionSyncService } from "../services/collection-sync.service";
-import { isRedisConnectionError } from "../utils/redisError.util";
 
 export interface CollectionSyncJobData {
   type: "syncEvent" | "removeEvent" | "syncCollection" | "reconcileAll";
@@ -103,19 +102,6 @@ if (collectionSyncWorker) {
       error: error.message,
       type: job?.data?.type,
     });
-  });
-
-  collectionSyncWorker.on("error", (error: Error) => {
-    // Distinguish connection errors from job processing errors
-    if (isRedisConnectionError(error)) {
-      logger.warn(
-        "Collection sync worker: Redis connection issue detected, waiting for reconnection...",
-        { error: error.message },
-      );
-      // Don't exit - let retry strategy handle reconnection
-    } else {
-      logger.error("Collection sync worker error:", error);
-    }
   });
 }
 

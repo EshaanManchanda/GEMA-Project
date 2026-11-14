@@ -8,7 +8,6 @@ import {
 import { WORKER_TUNING } from "../config/workerTuning";
 import logger from "../config/logger";
 import { generateQRCode, generateSecureQRData } from "../utils/qrcode";
-import { isRedisConnectionError } from "../utils/redisError.util";
 
 export interface QRJobData {
   ticketNumber: string;
@@ -91,19 +90,6 @@ if (qrWorker) {
       error: error.message,
       data: job?.data,
     });
-  });
-
-  qrWorker.on("error", (error: Error) => {
-    // Distinguish connection errors from job processing errors
-    if (isRedisConnectionError(error)) {
-      logger.warn(
-        "QR worker: Redis connection issue detected, waiting for reconnection...",
-        { error: error.message },
-      );
-      // Don't exit - let retry strategy handle reconnection
-    } else {
-      logger.error("QR worker error:", error);
-    }
   });
 }
 
