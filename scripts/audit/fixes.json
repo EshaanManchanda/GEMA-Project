@@ -714,6 +714,13 @@
       "commit": "f63f986",
       "title": "Certificate PDFs and booking attachments stored on the server could be downloaded by anyone",
       "text": "/api/uploads/files/* served every file to anyone, including the certificate PDFs (children's names) and booking attachments that are in the repository's uploads folder. The folders certificates, booking-attachments, registrations, tickets and documents now need the owner (a certificate's recipient or the event's vendor staff; a user with a confirmed booking for a booking attachment), an admin, or a server-signed link that expires. The check uses the cleaned-up path, so ../ , ./ , // and capital-letter tricks do not get through, and a missing file looks the same as an existing one. Private files are no longer sent with a wildcard CORS header or cached. The file list for those folders is admin-only (vendors keep the file manager for public images). Links that leave the server are signed: the certificate email link (7 days) and the PDF attachment fetch (5 minutes). 97 tests, red first on the old route; also checked end to end with a real email in Mailpit (PDF attached, signed link opens without login, unsigned/tampered/reused links get 401). Not covered: production uses Cloudinary, whose links are public to anyone who has them, so new certificates and tickets there are not protected by this (needs authenticated Cloudinary delivery). Old emailed links to local private files stop working for recipients who are not signed in. Needs the server's upload folder list to confirm no other private folder exists there."
+    },
+    {
+      "area": "Security",
+      "sev": "low",
+      "commit": "1f92f8a",
+      "title": "A user record could carry its reset token, login history, 2FA secrets and legacy bank details into a response",
+      "text": "The user model's JSON output only removed the password hash and the one-time-code hashes. A user document that still held passwordReset.token, loginAttempts (IP addresses and browsers), the 2FA secret and backup codes, the Stripe secret key or the old bank details on the user record would have sent them in any response that returned the whole user. Checked first: the model gap was real (10 tests red), but /auth/me, /auth/profile and login already stayed clean and the only whole-user response found (an admin creating a vendor from a partnership) returns a freshly saved record, so this was defence in depth, not a reachable leak, and its severity is Low. The JSON output now drops all of them. The admin user view reads these fields straight from the record, and the live bank details are on the vendor record, so nothing that reads them changes. 18 tests; 388 auth, admin, security and model tests pass."
     }
   ],
   "tests": [
