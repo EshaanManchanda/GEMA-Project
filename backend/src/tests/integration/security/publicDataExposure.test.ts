@@ -43,6 +43,7 @@ const CANARY: Record<string, string> = {
   stripeAccount: "acct_canary_9921",
   bankAccount: "CANARY-IBAN-55501",
   street: "12 Canary Private Street",
+  latitude: "25.2048", // exact vendor coordinates
   meetingOnline: "https://meet.example.com/canary-online-room",
   meetingClass: "https://meet.example.com/canary-class-room",
   meetingPassword: "pw-canary-7788",
@@ -90,10 +91,6 @@ const clean = { sensitiveKeys: [], vendorKeys: [], canaries: [] };
  * goes red then green in the same commit as the fix. The end state is an empty set.
  */
 const KNOWN_LEAKS = new Set<string>([
-  "vendor profile by user id",
-  "vendor profile by slug",
-  "search: vendors by email",
-  "search: vendors by name",
 ]);
 
 const expectNoLeak = (label: string, res: request.Response, allowedKeys?: RegExp) => {
@@ -139,7 +136,7 @@ beforeAll(async () => {
           bankAccountDetails: { accountNumber: CANARY.bankAccount },
         },
         address: { street: CANARY.street, city: "Dubai", state: "Dubai", zipCode: "00000", country: "AE" },
-        location: { city: "Dubai", address: CANARY.street, coordinates: { lat: 25.2048, lng: 55.2708 } },
+        location: { city: "Dubai", address: CANARY.street, coordinates: { lat: Number(CANARY.latitude), lng: 55.2708 } },
         stats: { totalEvents: 2, totalBookings: 3, totalRevenue: 987654, averageRating: 4.5, totalReviews: 2 },
       },
     },

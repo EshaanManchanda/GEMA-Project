@@ -1271,8 +1271,12 @@ class VendorService {
     const vendorProfile = await Vendor.findOne({
       userId: resolvedUserId,
     }).select(
-      "businessName description category address location website " +
-        "socialMedia businessHours stats coverImage logo",
+      // City-level location only: never the street, postcode or exact coordinates, and never
+      // revenue. Contact, tax and payment fields are not selected at all.
+      "businessName description category address.city address.state address.country " +
+        "location.city website socialMedia businessHours " +
+        "stats.totalEvents stats.totalBookings stats.averageRating stats.totalReviews " +
+        "coverImage logo",
     );
 
     if (!vendorProfile) throw new AppError("Vendor not found", 404);

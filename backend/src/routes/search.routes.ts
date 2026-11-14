@@ -118,7 +118,6 @@ router.get(
               $or: [
                 { firstName: searchRegex },
                 { lastName: searchRegex },
-                { email: searchRegex },
                 { "profile.businessName": searchRegex },
                 { "profile.description": searchRegex },
               ],
@@ -126,7 +125,7 @@ router.get(
           ],
         })
           .select(
-            "firstName lastName email profile.businessName profile.description profile.avatar",
+            "firstName lastName profile.businessName profile.description profile.avatar",
           )
           .limit(searchLimit)
           .sort({ createdAt: -1 });
