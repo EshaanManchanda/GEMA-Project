@@ -19,6 +19,50 @@ import { transformBlogResponse } from "../utils/blog.utils";
 import { attachDirectUrl } from "../utils/mediaUrl.util";
 import logger from "../config/logger";
 
+// The homepage only renders cards. A card shows a short plain-text snippet of the description and
+// the first date slot, so full HTML descriptions and every date slot are not sent: they made
+// /api/homepage about 2.8 MB.
+const SNIPPET_CHARS = 300;
+const MAX_SLOTS = 3;
+// The only collection HomePage reads events from (the pills need just _id, slug and title).
+const HANDPICKED_SLUGS = new Set([
+  "handpicked-experience",
+  "handpicked-experiences",
+]);
+
+const ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&nbsp;": " ",
+};
+
+export function toSnippet(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (m) => ENTITIES[m])
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, SNIPPET_CHARS);
+}
+
+export function slimEventCard<
+  T extends { description?: unknown; dateSchedule?: unknown },
+>(event: T): T {
+  return {
+    ...event,
+    description:
+      typeof event.description === "string"
+        ? toSnippet(event.description)
+        : event.description,
+    dateSchedule: Array.isArray(event.dateSchedule)
+      ? event.dateSchedule.slice(0, MAX_SLOTS)
+      : event.dateSchedule,
+  };
+}
+
 export interface HomepageVenue {
   _id: string;
   title: string;
@@ -94,7 +138,6 @@ class HomepageService {
       seoContent,
       collections,
       teachingEvents,
-      venues,
     ] = await Promise.all([
       // Regular events (limit 12, published only)
       Event.find({
@@ -388,16 +431,15 @@ class HomepageService {
           },
         },
         {
+          // No description or seo block: the pills and the handpicked row do not read them.
           $project: {
             title: 1,
-            description: 1,
             slug: 1,
             iconAsset: 1,
             featuredImageAsset: 1,
             count: 1,
             category: 1,
             sortOrder: 1,
-            seo: 1,
             events: 1,
           },
         },
@@ -424,19 +466,6 @@ class HomepageService {
         .sort({ createdAt: -1 })
         .limit(8)
         .lean(),
-
-      // Active venues (limit 12, approved only)
-      Event.find({
-        type: "Venue",
-        isApproved: true,
-        status: "published",
-      })
-        .select(
-          "title slug description location.address location.coordinates venueType capacity facilities amenities images averageRating totalEvents isAffiliateEvent externalBookingLink",
-        )
-        .sort({ averageRating: -1, totalEvents: -1 })
-        .limit(12)
-        .lean(),
     ]);
 
     // Transform events to extract image URLs from populated imageAssets
@@ -461,19 +490,29 @@ class HomepageService {
     reels.forEach((r) => attachDirectUrl(r as any, "thumbnailAsset"));
 
     const data: HomepageData = {
-      events: transformedEvents,
-      bestPriceEvents: transformedBestPriceEvents,
-      featuredEvents: transformedFeaturedEvents,
-      trendingEvents: transformedTrendingEvents,
+      events: transformedEvents.map(slimEventCard),
+      bestPriceEvents: transformedBestPriceEvents.map(slimEventCard),
+      featuredEvents: transformedFeaturedEvents.map(slimEventCard),
+      trendingEvents: transformedTrendingEvents.map(slimEventCard),
       banners: validBanners as unknown as IBanner[],
       categories: categories as unknown as ICategory[],
       featuredBlogs,
       reels: reels as unknown as IReel[],
       stats,
       seoContent: (seoContent as unknown as ISEOContent) || null,
-      collections: collections || [],
-      educationalEvents: (teachingEvents as unknown as IEvent[]) || [],
-      venues: (venues as unknown as HomepageVenue[]) || [],
+      // Events only for the handpicked collection; every other collection is a pill.
+      collections: (collections || []).map((c: any) => ({
+        ...c,
+        events: HANDPICKED_SLUGS.has(c.slug)
+          ? (c.events || []).map(slimEventCard)
+          : [],
+      })) as unknown as ICollection[],
+      educationalEvents: ((teachingEvents as unknown as IEvent[]) || []).map(
+        slimEventCard,
+      ),
+      // Nothing on the page reads venues (the venue list has its own endpoint), so the query
+      // is gone. The key stays so the response shape the frontend types declare is unchanged.
+      venues: [],
     };
 
     // Debug logs (gated behind DEBUG_LOGS env var)
@@ -488,7 +527,6 @@ class HomepageService {
       logger.info("   - Stats:", stats ? "loaded" : "missing");
       logger.info("   - SEO Content:", seoContent ? "loaded" : "missing");
       logger.info("   - Collections:", collections.length, "items");
-      logger.info("   - Venues:", venues.length, "items");
 
       if (events.length > 0) {
         const event = events[0] as any;
