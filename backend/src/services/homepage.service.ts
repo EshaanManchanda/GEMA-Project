@@ -217,7 +217,7 @@ class HomepageService {
         featured: true,
       })
         .select(
-          "title slug excerpt featuredImage featuredImageAsset author category readTime publishedAt",
+          "title slug excerpt featuredImage featuredImageAsset author.name author.avatar author.bio category readTime publishedAt",
         )
         .populate("category", "name slug color")
         .populate(
@@ -351,7 +351,19 @@ class HomepageService {
                   category: 1,
                   location: { city: 1 },
                   dateSchedule: { $slice: ["$dateSchedule", 5] },
-                  vendorId: { $arrayElemAt: ["$vendorDoc", 0] },
+                  // Public pages get the business identity only. The whole vendor document
+                  // (email, phone, tax and licence data, payment settings) must never be projected.
+                  vendorId: {
+                    $let: {
+                      vars: { v: { $arrayElemAt: ["$vendorDoc", 0] } },
+                      in: {
+                        _id: "$$v._id",
+                        businessName: "$$v.businessName",
+                        logo: "$$v.logo",
+                        slug: "$$v.slug",
+                      },
+                    },
+                  },
                   rating: 1,
                   reviewCount: 1,
                   viewsCount: 1,

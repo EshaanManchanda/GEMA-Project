@@ -90,7 +90,6 @@ const clean = { sensitiveKeys: [], vendorKeys: [], canaries: [] };
  * goes red then green in the same commit as the fix. The end state is an empty set.
  */
 const KNOWN_LEAKS = new Set<string>([
-  "homepage",
   "events list",
   "event detail by id",
   "event detail by slug (teaching)",
@@ -114,7 +113,6 @@ const KNOWN_LEAKS = new Set<string>([
   "vendor profile by slug",
   "search: vendors by email",
   "search: vendors by name",
-  "loop /api/homepage/",
   "loop /api/events/",
   "loop /api/events/trending-near-you",
   "loop /api/teachers/public",
