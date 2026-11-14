@@ -149,6 +149,7 @@ const queueConfig = {
     },
     removeOnFail: {
       age: 24 * 3600, // Keep failed jobs for 1 day (reduced from 7 days) for debugging
+      count: 1000, // Hard cap: a failure storm must not be able to fill Redis (age alone is no limit)
     },
   },
 };

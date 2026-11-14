@@ -41,3 +41,77 @@ export function attachThrottledErrorListener(
     }
   });
 }
+
+export interface ErrorBackoffOptions {
+  /** Errors within windowMs that count as a busy loop. */
+  burst?: number;
+  windowMs?: number;
+  /** First pause; it doubles for each burst that follows, up to maxMs. */
+  baseMs?: number;
+  maxMs?: number;
+  /** Quiet time after a resume before the pause length starts over. */
+  resetAfterMs?: number;
+  now?: () => number;
+  schedule?: (fn: () => void, ms: number) => void;
+}
+
+/**
+ * BullMQ waits runRetryDelay (15 s) only after a Redis CONNECTION error. Any other error from the job fetch,
+ * such as a full Redis answering "OOM command not allowed", is emitted and the fetch is retried at once: a busy
+ * loop that pinned the CPU and stopped the API from shutting down. A worker that errors in a burst is paused,
+ * then resumed after a delay that doubles while the trouble lasts, so a broken Redis costs a trickle of CPU.
+ */
+export function attachErrorBackoff(
+  worker: Worker | null,
+  name: string,
+  {
+    burst = 20,
+    windowMs = 5_000,
+    baseMs = 30_000,
+    maxMs = 300_000,
+    resetAfterMs = 600_000,
+    now = Date.now,
+    schedule = (fn, ms) => {
+      setTimeout(fn, ms).unref?.(); // never keep the process alive just to resume a worker
+    },
+  }: ErrorBackoffOptions = {},
+): void {
+  if (!worker) return;
+  let stamps: number[] = [];
+  let cooling = false;
+  let closed = false;
+  let level = 0;
+  let lastResumeAt: number | null = null;
+
+  worker.on("closing", () => {
+    closed = true;
+  });
+
+  worker.on("error", (error: Error) => {
+    if (cooling || closed || isRedisConnectionError(error)) return;
+    const t = now();
+    stamps = stamps.filter((s) => t - s < windowMs);
+    stamps.push(t);
+    if (stamps.length < burst) return;
+
+    stamps = [];
+    cooling = true;
+    if (lastResumeAt !== null && t - lastResumeAt > resetAfterMs) level = 0;
+    const delay = Math.min(baseMs * 2 ** level, maxMs);
+    level++;
+    logger.warn(
+      `${name} worker: ${burst}+ errors in ${Math.round(windowMs / 1000)}s (${error.message}); pausing it for ${Math.round(delay / 1000)}s instead of retrying in a loop`,
+    );
+    worker.pause(true).catch((err: Error) => logger.warn(`${name} worker: pause failed: ${err.message}`));
+    schedule(() => {
+      cooling = false;
+      lastResumeAt = now();
+      if (closed) return;
+      try {
+        worker.resume();
+      } catch (err) {
+        logger.warn(`${name} worker: resume failed: ${(err as Error).message}`);
+      }
+    }, delay);
+  });
+}

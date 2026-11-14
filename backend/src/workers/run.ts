@@ -28,10 +28,12 @@ import qrWorker from "./qr.worker";
 import emailWorker from "./email.worker";
 import collectionSyncWorker from "./collection-sync.worker";
 import payoutWorker from "./payout.worker";
-import certificateWorker, {
+import {
+  createCertificateWorker,
   closeCertificateBrowser,
 } from "./certificate.worker";
-import { attachThrottledErrorListener } from "./errorListener";
+import { attachThrottledErrorListener, attachErrorBackoff } from "./errorListener";
+import { snapshotJobData, startDeadLetterTrimmer } from "./deadLetter";
 import seatExpiryWorker from "./seat-expiry.worker";
 import communicationWorker from "./communication.worker";
 import automationWorker from "./automation.worker";
@@ -66,7 +68,7 @@ const WORKERS: WorkerEntry[] = [
   { dlqName: "payout", worker: payoutWorker, startupMessage: "Payout Worker" },
   {
     dlqName: "certificate-generation",
-    worker: certificateWorker,
+    worker: createCertificateWorker(),
     startupMessage: "Certificate Worker",
   },
   {
@@ -114,13 +116,15 @@ for (const { worker, dlqName } of WORKERS) {
   // The one 'error' listener for every worker: throttled, so a retry storm cannot fill the disk.
   // (Without any listener BullMQ falls back to console.error, which pm2 writes to its own logs.)
   attachThrottledErrorListener(worker, dlqName);
+  // ...and a worker whose fetch keeps failing (a full Redis) is paused and retried later, not spun on.
+  attachErrorBackoff(worker, dlqName);
   worker.on("failed", async (job, err) => {
     if (job && job.attemptsMade >= (job.opts.attempts ?? 3)) {
       await failedJobsQueue
         ?.add("dead-letter", {
           originalQueue: dlqName,
           jobName: job.name,
-          jobData: job.data,
+          jobData: snapshotJobData(job.data), // bounded: the raw payload can be megabytes (attachments)
           error: err.message,
           failedAt: new Date().toISOString(),
         })
@@ -128,6 +132,9 @@ for (const { worker, dlqName } of WORKERS) {
     }
   });
 }
+
+// Nothing consumes the dead-letter queue, so keep it small (old entries expire, the oldest go beyond a cap)
+startDeadLetterTrimmer(failedJobsQueue);
 
 // Monitor BullMQ Redis connection health
 if (bullMQClient) {

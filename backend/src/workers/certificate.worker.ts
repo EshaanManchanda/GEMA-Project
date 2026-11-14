@@ -65,8 +65,16 @@ Handlebars.registerHelper(
 
 // ─── Worker ───────────────────────────────────────────────────────────────────
 
-const certificateWorker = areQueuesEnabled
-  ? new Worker(
+let certificateWorker: Worker | null = null;
+
+/**
+ * Starts the certificate Worker. Only the worker process (workers/run.ts) calls this. The API imports this
+ * module for renderCertificate / buildCertEmailHtml, and it used to start a Worker as an import side effect:
+ * a second consumer inside the web server with no error throttle, which on a full Redis spun in a busy loop.
+ */
+export function createCertificateWorker(): Worker | null {
+  if (!areQueuesEnabled) return null;
+  certificateWorker ??= new Worker(
       QUEUE_NAMES.CERTIFICATE_GENERATION,
       async (job: Job<CertificateJobData>) => {
         const {
@@ -310,8 +318,9 @@ const certificateWorker = areQueuesEnabled
         prefix: QUEUE_PREFIX, connection: bullMQConnection!,
         concurrency: WORKER_TUNING.CERTIFICATE_GENERATION.CONCURRENCY,
       },
-    )
-  : null;
+    );
+  return certificateWorker;
+}
 
 // ─── Puppeteer browser lifecycle ─────────────────────────────────────────────
 // Launching Chromium per job costs ~1-2s; since concurrency is 1 there's no
@@ -700,5 +709,3 @@ export function buildCertEmailHtml(
     </html>
   `;
 }
-
-export default certificateWorker;

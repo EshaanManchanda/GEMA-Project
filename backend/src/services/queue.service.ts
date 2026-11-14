@@ -1,6 +1,6 @@
 import { qrQueue, emailQueue, ticketQueue } from "../config/queue";
-import { QRJobData } from "../workers/qr.worker";
-import { EmailJobData } from "../workers/email.worker";
+import type { QRJobData } from "../workers/qr.worker";
+import type { EmailJobData } from "../workers/email.worker";
 import { emailService } from "./email.service";
 import logger from "../config/logger";
 
