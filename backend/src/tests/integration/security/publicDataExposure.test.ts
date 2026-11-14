@@ -85,19 +85,10 @@ const inspect = (res: request.Response) => ({
 });
 const clean = { sensitiveKeys: [], vendorKeys: [], canaries: [] };
 
-/**
- * Endpoints that still leak and have not been fixed yet. Each must STILL leak: when a fix makes
- * one clean, its assertion breaks and the fix commit deletes the entry, so the regression case
- * goes red then green in the same commit as the fix. The end state is an empty set.
- */
-const KNOWN_LEAKS = new Set<string>([
-]);
-
-const expectNoLeak = (label: string, res: request.Response, allowedKeys?: RegExp) => {
+const expectNoLeak = (res: request.Response, allowedKeys?: RegExp) => {
   const found = inspect(res);
   if (allowedKeys) found.sensitiveKeys = found.sensitiveKeys.filter((k) => !allowedKeys.test(k));
-  if (KNOWN_LEAKS.has(label)) expect({ label, leaking: found }).not.toEqual({ label, leaking: clean });
-  else expect(found).toEqual(clean);
+  expect(found).toEqual(clean);
 };
 
 /** Keys that are public on purpose, per route, with the reason. */
@@ -349,11 +340,11 @@ const ENDPOINTS: Endpoint[] = [
 ];
 
 describe("public endpoints serve seeded records without private data", () => {
-  it.each(ENDPOINTS)("%s", async (name, url, present) => {
+  it.each(ENDPOINTS)("%s", async (_name, url, present) => {
     const res = await request(app).get(url(seed));
     expect(res.status).toBe(200);
     expect(res.text).toContain(present); // the seeded record is really in the response
-    expectNoLeak(name, res);
+    expectNoLeak(res);
   });
 });
 
@@ -363,15 +354,14 @@ describe("public search", () => {
     const localPart = CANARY.vendorUserEmail.split("@")[0];
     const res = await request(app).get(`/api/search?type=vendors&q=${encodeURIComponent(localPart)}`);
     expect(res.status).toBe(200);
-    const matched = res.body.data.vendors.length > 0;
-    expect(matched).toBe(KNOWN_LEAKS.has("search: vendors by email")); // true only while the leak exists
+    expect(res.body.data.vendors).toHaveLength(0);
   });
 
   it("still finds a vendor by name, without their email", async () => {
     const res = await request(app).get("/api/search?type=vendors&q=T");
     expect(res.status).toBe(200);
     expect(res.body.data.vendors.length).toBeGreaterThan(0); // the vendor really is returned
-    expectNoLeak("search: vendors by name", res);
+    expectNoLeak(res);
   });
 });
 
@@ -382,7 +372,7 @@ describe("every parameterless public GET in the reviewed allowlist", () => {
 
   it.each(paths)("%s", async (path) => {
     const res = await request(app).get(path);
-    expectNoLeak(`loop ${path}`, res, ALLOWED[path]);
+    expectNoLeak(res, ALLOWED[path]);
   });
 });
 
