@@ -18,6 +18,7 @@ import {
   Video
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
 import {
   selectBookingFlow,
@@ -230,16 +231,16 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
           {isDownloading ? 'Preparing…' : 'Download Tickets'}
         </Button>
 
-        {event.venueType === 'Online' && event.meetingLink && (
-          <a
-            href={event.meetingLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-          >
-            <Video className="w-5 h-5 mr-2" />
-            Join Meeting
-          </a>
+        {/* The joining link is private to people who booked, so it is not part of the public event
+            data. It is in the confirmation email and on the booking in My Bookings. */}
+        {event.venueType === 'Online' && (
+          <p className="flex items-center justify-center px-4 py-3 bg-green-50 text-green-800 rounded-lg text-sm text-center">
+            <Video className="w-5 h-5 mr-2 shrink-0" />
+            <span>
+              Online event: your joining details are in your confirmation email and under{' '}
+              <Link to="/bookings" className="font-medium underline">My Bookings</Link>.
+            </span>
+          </p>
         )}
 
         <Button
