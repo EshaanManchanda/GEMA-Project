@@ -90,13 +90,10 @@ const clean = { sensitiveKeys: [], vendorKeys: [], canaries: [] };
  * goes red then green in the same commit as the fix. The end state is an empty set.
  */
 const KNOWN_LEAKS = new Set<string>([
-  "teacher profile by user id",
-  "teachers list",
   "vendor profile by user id",
   "vendor profile by slug",
   "search: vendors by email",
   "search: vendors by name",
-  "loop /api/teachers/public",
 ]);
 
 const expectNoLeak = (label: string, res: request.Response, allowedKeys?: RegExp) => {

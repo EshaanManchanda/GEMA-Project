@@ -1330,7 +1330,7 @@ export const getPublicTeacherProfile = catchAsync(
         _id: param,
         role: "teacher",
         status: "active",
-      }).select("firstName lastName email phone avatar createdAt");
+      }).select("firstName lastName avatar createdAt");
 
       if (!user) return next(new AppError("Teacher not found", 404));
 
@@ -1353,7 +1353,7 @@ export const getPublicTeacherProfile = catchAsync(
         _id: teacherProfile.userId,
         role: "teacher",
         status: "active",
-      }).select("firstName lastName email phone avatar createdAt");
+      }).select("firstName lastName avatar createdAt");
     }
 
     if (!teacherProfile) return next(new AppError("Teacher profile not found", 404));
@@ -1854,7 +1854,7 @@ export const getPublicTeachersList = catchAsync(
 
     const [teacherProfiles, total] = await Promise.all([
       Teacher.find({ userId: { $in: userIds }, isDeleted: false, isActive: true })
-        .select("userId fullName bio subjects specialization yearsOfExperience languagesSpoken coverImage teachingMode verificationStatus stats createdAt")
+        .select("userId fullName bio subjects specialization yearsOfExperience languagesSpoken coverImage teachingMode verificationStatus stats.totalClasses stats.totalStudents stats.averageRating stats.totalReviews stats.viewsCount createdAt")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
