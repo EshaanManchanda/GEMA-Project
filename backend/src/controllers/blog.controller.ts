@@ -14,6 +14,9 @@ import logger from "../config/logger";
 import { escapeRegex } from "../utils/regexHelpers";
 
 // Public blog controllers
+// Public blog responses never carry the author's email or who (user id, visitor IP) liked a post.
+const PUBLIC_BLOG_EXCLUDE = "-content -author.email -likedBy -likedByIPs";
+
 export const getAllBlogs = catchAsync(async (req: Request, res: Response) => {
   const {
     page = 1,
@@ -79,7 +82,7 @@ export const getAllBlogs = catchAsync(async (req: Request, res: Response) => {
     Blog.find(filter)
       .populate("category", "name slug color")
       .populate("featuredImageAsset", "url thumbnailUrl variations altText")
-      .select("-content") // Exclude content for list view
+      .select(PUBLIC_BLOG_EXCLUDE) // Exclude content for list view
       .sort(sortQuery)
       .skip(skip)
       .limit(limitNumber)
@@ -116,6 +119,7 @@ export const getBlogBySlug = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?._id?.toString() || req.user?.id;
 
   const blog = await Blog.findOne({ slug, status: "published" })
+    .select("-author.email -likedByIPs")
     .populate("category", "name slug color description")
     .populate("featuredImageAsset", "url thumbnailUrl variations altText")
     .lean();
@@ -127,13 +131,15 @@ export const getBlogBySlug = catchAsync(async (req: Request, res: Response) => {
     });
   }
 
-  // Transform to extract image URL from featuredImageAsset
-  const transformedBlog = transformBlogResponse(blog);
-
   // Check if current user has liked this blog (if user is logged in)
   const hasLiked = userId
     ? blog.likedBy?.some((id: any) => id.toString() === userId) || false
     : false;
+  // Who liked a post is private (user ids): the response only carries the viewer's own flag.
+  delete (blog as any).likedBy;
+
+  // Transform to extract image URL from featuredImageAsset
+  const transformedBlog = transformBlogResponse(blog);
 
   // Increment view count (fire and forget)
   Blog.findByIdAndUpdate(blog._id, { $inc: { viewCount: 1 } }).exec();
@@ -159,7 +165,7 @@ export const getFeaturedBlogs = catchAsync(
     })
       .populate("category", "name slug color")
       .populate("featuredImageAsset", "url thumbnailUrl variations altText")
-      .select("-content")
+      .select(PUBLIC_BLOG_EXCLUDE)
       .sort({ publishedAt: -1 })
       .limit(limitNumber)
       .lean();
@@ -197,7 +203,7 @@ export const getPopularBlogs = catchAsync(
     const blogs = await Blog.find({ status: "published" })
       .populate("category", "name slug color")
       .populate("featuredImageAsset", "url thumbnailUrl variations altText")
-      .select("-content")
+      .select(PUBLIC_BLOG_EXCLUDE)
       .sort({ viewCount: -1, likeCount: -1 })
       .limit(limitNumber)
       .lean();
@@ -221,7 +227,7 @@ export const getRecentBlogs = catchAsync(
     const blogs = await Blog.find({ status: "published" })
       .populate("category", "name slug color")
       .populate("featuredImageAsset", "url thumbnailUrl variations altText")
-      .select("-content")
+      .select(PUBLIC_BLOG_EXCLUDE)
       .sort({ publishedAt: -1 })
       .limit(limitNumber)
       .lean();
@@ -265,7 +271,7 @@ export const getRelatedBlogs = catchAsync(
     })
       .populate("category", "name slug color")
       .populate("featuredImageAsset", "url thumbnailUrl variations altText")
-      .select("-content")
+      .select(PUBLIC_BLOG_EXCLUDE)
       .sort({ publishedAt: -1 })
       .limit(limitNumber)
       .lean();

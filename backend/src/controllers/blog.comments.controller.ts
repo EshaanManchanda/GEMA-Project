@@ -460,7 +460,7 @@ export const getCommentReplies = async (
       parentComment: commentId,
       status: "active",
     })
-      .populate("author", "firstName lastName email avatar")
+      .populate("author", "firstName lastName avatar")
       .sort({ createdAt: 1 })
       .skip(skip)
       .limit(limitNum);

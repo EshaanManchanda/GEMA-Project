@@ -202,7 +202,6 @@ commentSchema.statics.getCommentsWithReplies = async function (
           {
             $project: {
               name: { $concat: ["$firstName", " ", "$lastName"] },
-              email: 1,
               avatar: 1,
             },
           },
@@ -242,7 +241,6 @@ commentSchema.statics.getCommentsWithReplies = async function (
                 {
                   $project: {
                     name: { $concat: ["$firstName", " ", "$lastName"] },
-                    email: 1,
                     avatar: 1,
                   },
                 },
