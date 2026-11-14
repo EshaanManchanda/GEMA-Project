@@ -67,8 +67,9 @@ List which of these are missing (names only, no values printed):
 cd $APP/backend
 for v in STRIPE_WEBHOOK_SECRET FIELD_ENCRYPTION_KEY ANALYTICS_IP_SALT ADMIN_SECRET_KEY SENTRY_DSN JWT_SECRET SESSION_SECRET MONGODB_URI; do
   grep -qE "^$v=.+" .env && echo "set      $v" || echo "MISSING  $v"; done
-grep -E '^(RATE_LIMIT_MAX|RATE_LIMIT_WINDOW_MS|UPLOAD_PROVIDER|REDIS_HOST|REDIS_PORT|REDIS_URL|PORT)=' .env
+grep -E '^(RATE_LIMIT_MAX|RATE_LIMIT_WINDOW_MS|UPLOAD_PROVIDER|REDIS_HOST|REDIS_PORT|REDIS_URL|PORT|ENABLE_REQUEST_LOGGING|LOG_[A-Z_]*)=' .env
 ```
+- `ENABLE_REQUEST_LOGGING`: set it to `false` (or delete the line). nginx already logs every request, and this setting writes the same line again from the app into a log file.
 - `STRIPE_WEBHOOK_SECRET`: Stripe Dashboard > Developers > Webhooks > your endpoint > *Signing secret* (`whsec_...`). Without it payment confirmations are rejected.
 - `FIELD_ENCRYPTION_KEY`: `openssl rand -hex 32`. **Back it up in your password manager now.** If it is lost, the data encrypted with it is unreadable.
 - `ANALYTICS_IP_SALT`: `openssl rand -hex 32`.

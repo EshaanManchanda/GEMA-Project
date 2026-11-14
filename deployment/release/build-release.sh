@@ -109,7 +109,8 @@ FINAL="$OUT/kidrove-$ID.tar.gz"
 mv "$TMP_TAR" "$FINAL"; trap - EXIT
 
 # the release must contain what deploy-release.sh checks for, and no secrets or dev files
-LIST=$(tar -tzf "$FINAL")
+# (relative path: GNU tar on Windows reads "C:/..." as a remote host)
+LIST=$(cd "$OUT" && tar -tzf "kidrove-$ID.tar.gz")
 for must in "$ID/backend/dist/server.js" "$ID/backend/dist/workers/index.js" "$ID/backend/package-lock.json" \
             "$ID/frontend/dist/index.html" "$ID/ecosystem.config.js" "$ID/RELEASE.json"; do
   echo "$LIST" | grep -qx "$must" || die "release is missing $must"
