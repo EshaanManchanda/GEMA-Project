@@ -1,0 +1,2 @@
+# Shell scripts run on the Linux server: a CRLF checkout on Windows breaks them ("\r: command not found").
+deployment/audit/*.sh text eol=lf
