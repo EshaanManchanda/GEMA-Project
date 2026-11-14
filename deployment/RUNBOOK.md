@@ -76,6 +76,8 @@ redis-cli LLEN bull:failed-jobs:wait; for q in email qr-generation seat-expiry a
 Send me this output. Then, in this order:
 1. **Give Redis room now**: `redis-cli CONFIG SET maxmemory 512mb` (only if `free -m` has the RAM; runtime only). Make it permanent in `/etc/redis/redis.conf`:
    `maxmemory 512mb` and `maxmemory-policy noeviction` (**keep `noeviction`**: BullMQ breaks on any eviction policy), then `sudo systemctl restart redis-server` in a quiet moment.
+   Do not leave `maxmemory` at `0` (no limit) either: on this 4 GB server shared with four other sites a runaway queue could take all the RAM. On 14 Nov, after Redis was emptied it showed `maxmemory_human:0B`.
+   A restart or flush also drops every queued job (emails, QR codes, payouts); repeating jobs re-register when the worker starts.
 2. If `bull:failed-jobs:*` is most of the memory: it is only a diagnostic list (nothing reads it), so it is safe to empty:
    `redis-cli --scan --pattern 'bull:failed-jobs:*' | xargs -r redis-cli DEL`. Do **not** delete other `bull:*` keys by hand: queued emails, QR codes and payouts live there.
    (The new worker trims this queue by itself after the release, but it cannot while Redis is full: every Lua script is refused at `maxmemory`.)
