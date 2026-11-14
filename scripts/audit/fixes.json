@@ -693,6 +693,20 @@
       "commit": "07c3a2c",
       "title": "The server audit now records the numbers every later fix is compared with",
       "text": "Adds CPU per process, log growth in bytes per minute for each log file and for the whole disk, the deployed git commit, whether the frontend index.html exists, pm2 restart counts, Redis memory, slow log and queue lengths, and the nginx error signatures behind the 500 and 502 answers. Ran the new section locally (Windows, so top, vmstat, redis-cli and pm2 are absent and it degrades cleanly); it has not run on the server. 3 new tests."
+    },
+    {
+      "area": "Performance",
+      "sev": "medium",
+      "commit": "8da7514",
+      "title": "The public homepage sent about 2.8 MB, mostly data no card displays",
+      "text": "/api/homepage carried up to 16 events inside every collection with full HTML descriptions and all date slots, plus a list of venues that nothing on the page reads. The page only needs the collection pills (id, slug, title), events for the handpicked row, a short plain-text snippet per event and the first date slot. It now sends exactly that: events only for the handpicked collection, descriptions stripped to 300 characters, at most 3 date slots, no collection description or seo block, no venues query (the key stays as an empty list). 13 tests, red first: on 20 KB descriptions and 12 slots the response went from 1,052,978 bytes to under the 60,000 byte bound; the 86-test exposure suite and the stats and venue suites still pass. The sizes come from synthetic fixtures; the real production size is not measured. Left alone on purpose: the homepage sends 'educationalEvents' but the frontend reads 'teachingEvents', so the teaching section is always empty; fixing the key would switch on a hidden section with a different data shape, which needs a decision."
+    },
+    {
+      "area": "Performance",
+      "sev": "low",
+      "commit": "d9cc93b",
+      "title": "The homepage had no HTTP cache headers, so every visit re-downloaded it",
+      "text": "It now sends Cache-Control: public, max-age=60, stale-while-revalidate=300 (shorter than the 5 minute server cache so an admin edit appears quickly). Test red first; two guards confirm signed-in responses and a 401 are never marked public. nginx still does not cache this URL on the server (the repo's cached proxy snippet is not wired in); that needs the nginx install step."
     }
   ],
   "tests": [
@@ -963,6 +977,15 @@
         "Read its log: pm2 logs gema-worker --lines 80 --nostream"
       ],
       "expect": "'MongoDB Connected Successfully' appears before 'Starting background workers', and there are no 'buffering timed out' lines afterwards."
+    },
+    {
+      "title": "Homepage size and look after deploy",
+      "where": "Public site, after deploying",
+      "steps": [
+        "Run: curl -s --compressed -o /dev/null -w \"%{size_download} bytes\n\" https://api.kidrove.com/api/homepage",
+        "Open the homepage on a phone-sized window: check the collection pills, the handpicked row (cards show a text snippet and a date) and the browser console."
+      ],
+      "expect": "Well under 300000 bytes (it was about 2800000). Pills and the handpicked row look as before, with no console errors. The teaching section is still absent (known, see the issue)."
     }
   ]
 }
