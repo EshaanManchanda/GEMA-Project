@@ -742,6 +742,13 @@
       "commit": "2a7bf07",
       "title": "Log lines can no longer carry passwords, tokens or a whole Lua script",
       "text": "Every line written to a log file (and the development console) now passes through one sanitizer. Values under keys ending in password, secret, token, authorization, cookie, api key or otp are replaced with [REDACTED] at any depth; the arguments of a failed Redis command are replaced with their count (a failed queue script used to write its whole source, about 1,600 lines per error); strings over 8 KB are cut, Buffers become a size, long arrays and deep objects are capped and circular references are marked. Dates, ids and Mongoose documents still serialise as before. Limits: emails and IP addresses are still logged in clear text, and nothing scrubs secrets that are embedded inside a free-text message."
+    },
+    {
+      "area": "Reliability & operations",
+      "sev": "medium",
+      "commit": "b6049ea",
+      "title": "A runaway log can no longer outgrow its size cap for a whole day",
+      "text": "The pm2 output and error files were capped at 100 MB by logrotate, but the system only runs logrotate once a day, so a log storm could write gigabytes (about 18 GB on 14 Nov) long before the next run. A cron entry now runs the same rule every 15 minutes; when no file is over the limit it does nothing. Tested with a real cron daemon and logrotate 3.21: an oversized pm2 file was rotated by cron's own run, other files in the folder were left alone, and a second run changed nothing. Limits: a storm can still write for up to 15 minutes between runs, and the application's own winston files are not covered here (they cap and prune themselves at 50 MB x 20); not installed on the server yet, RUNBOOK step 2c does it."
     }
   ],
   "tests": [
@@ -1060,6 +1067,16 @@
         "grep -c 'evalsha' /var/log/GEMA-Project/backend/gema-*-error-*.log | tail -5"
       ],
       "expect": "Every count in the first command is 0 (no bearer token and no password value in any line). The second shows no file with more than a handful of lines: a failed queue command is one short line, not 1,600. A count of REDACTED markers is not part of the check: the application rarely logs credentials, which is the point."
+    },
+    {
+      "title": "pm2 log rotation runs every 15 minutes",
+      "where": "Production server, after step 2c",
+      "steps": [
+        "ls -l /etc/cron.d/kidrove-logrotate /etc/logrotate.d/kidrove   (both exist, mode 644, owner root)",
+        "sudo logrotate -d /etc/logrotate.d/kidrove 2>&1 | grep -iE '^error|could not|unknown option'   (no output)",
+        "After a quarter of an hour: ls -l /var/log/GEMA-Project/backend/api-*.log /var/log/GEMA-Project/backend/worker-*.log   (none larger than about 100 MB)"
+      ],
+      "expect": "Both files are in place and the dry run prints no errors. No pm2 log file stays above the 100 MB cap for longer than one cron interval; rotated copies appear as api-output.log.1, .2.gz and so on."
     }
   ]
 }
