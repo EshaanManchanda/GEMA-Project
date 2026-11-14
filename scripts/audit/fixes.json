@@ -707,6 +707,13 @@
       "commit": "d9cc93b",
       "title": "The homepage had no HTTP cache headers, so every visit re-downloaded it",
       "text": "It now sends Cache-Control: public, max-age=60, stale-while-revalidate=300 (shorter than the 5 minute server cache so an admin edit appears quickly). Test red first; two guards confirm signed-in responses and a 401 are never marked public. nginx still does not cache this URL on the server (the repo's cached proxy snippet is not wired in); that needs the nginx install step."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "f63f986",
+      "title": "Certificate PDFs and booking attachments stored on the server could be downloaded by anyone",
+      "text": "/api/uploads/files/* served every file to anyone, including the certificate PDFs (children's names) and booking attachments that are in the repository's uploads folder. The folders certificates, booking-attachments, registrations, tickets and documents now need the owner (a certificate's recipient or the event's vendor staff; a user with a confirmed booking for a booking attachment), an admin, or a server-signed link that expires. The check uses the cleaned-up path, so ../ , ./ , // and capital-letter tricks do not get through, and a missing file looks the same as an existing one. Private files are no longer sent with a wildcard CORS header or cached. The file list for those folders is admin-only (vendors keep the file manager for public images). Links that leave the server are signed: the certificate email link (7 days) and the PDF attachment fetch (5 minutes). 97 tests, red first on the old route; also checked end to end with a real email in Mailpit (PDF attached, signed link opens without login, unsigned/tampered/reused links get 401). Not covered: production uses Cloudinary, whose links are public to anyone who has them, so new certificates and tickets there are not protected by this (needs authenticated Cloudinary delivery). Old emailed links to local private files stop working for recipients who are not signed in. Needs the server's upload folder list to confirm no other private folder exists there."
     }
   ],
   "tests": [
@@ -986,6 +993,16 @@
         "Open the homepage on a phone-sized window: check the collection pills, the handpicked row (cards show a text snippet and a date) and the browser console."
       ],
       "expect": "Well under 300000 bytes (it was about 2800000). Pills and the handpicked row look as before, with no console errors. The teaching section is still absent (known, see the issue)."
+    },
+    {
+      "title": "Private uploads need a login or a signed link",
+      "where": "Local Docker (Mailpit at http://localhost:8025) or the server, after deploying",
+      "steps": [
+        "Without logging in, open /api/uploads/files/certificates/<any file name> in a private window.",
+        "Send a certificate email from Admin, open it in Mailpit, and click the PDF link in a private window.",
+        "Open a public image such as /api/uploads/files/events/<file> in a private window."
+      ],
+      "expect": "The first is refused (401). The emailed link opens the PDF, and the same link without its ?exp and sig parts is refused. Public images still load."
     }
   ]
 }
