@@ -39,6 +39,23 @@ t() { if have timeout; then timeout "${CMD_TIMEOUT:-90}" "$@"; else "$@"; fi; }
 # Lowest CPU and disk priority for this whole script, so it cannot slow a busy server further.
 have renice && renice -n 19 -p $$ >/dev/null 2>&1
 have ionice && ionice -c3 -p $$ >/dev/null 2>&1
+# as_owner <dir> <command...>: when running as root, run the command as the owner of <dir>.
+# The checkout and ~/.pm2 belong to another user; git config (core.fsmonitor) or a pm2 daemon in
+# a directory that user controls must never execute with root privileges.
+as_owner() {
+  local dir="$1" owner home; shift
+  owner=$(stat -c %U "$dir" 2>/dev/null)
+  if [ "$(id -u)" = "0" ] && [ -n "$owner" ] && [ "$owner" != "root" ] && have runuser; then
+    home=$(getent passwd "$owner" | cut -d: -f6)
+    runuser -u "$owner" -- env HOME="${home:-/nonexistent}" "$@"
+  elif [ "$(id -u)" = "0" ] && [ -n "$owner" ] && [ "$owner" != "root" ]; then
+    echo "(skipped: no runuser to drop privileges to $owner)"
+  else
+    "$@"
+  fi
+}
+# True only if a pm2 daemon already runs for this user: pm2 commands would otherwise START one.
+pm2_running() { have pm2 && [ -S "${PM2_HOME:-${HOME:-/root}/.pm2}/rpc.sock" ]; }
 section() { printf '\n==================== %s ====================\n' "$1"; }
 sub() { printf '\n--- %s ---\n' "$1"; }
 note() { printf '(%s)\n' "$1"; }
@@ -99,7 +116,7 @@ disk() {
   [ -d /var/log/GEMA-Project ] && { echo "/var/log/GEMA-Project:"; ls -lhS /var/log/GEMA-Project/* 2>/dev/null | head -10; }
   [ -d "$APP_DIR/backend/logs" ] && { echo "$APP_DIR/backend/logs:"; ls -lhS "$APP_DIR/backend/logs" | head -10; }
   have journalctl && journalctl --disk-usage 2>/dev/null
-  have pm2 && { echo; echo "pm2-logrotate installed?"; pm2 ls 2>/dev/null | grep -i logrotate || echo "NO: pm2 logs are never rotated"; }
+  pm2_running && { echo; echo "pm2-logrotate installed?"; pm2 ls 2>/dev/null | grep -i logrotate || echo "NO: pm2 logs are never rotated"; }
 
   sub "uploads (user files stored on this disk)"
   U="$APP_DIR/backend/uploads"
@@ -140,12 +157,11 @@ log_growth() {
 # which code is deployed, what the queues look like, and why nginx answers 500/502.
 baseline() {
   section "BASELINE: CPU per process, growth per minute, deployed code, queues, nginx errors"
-  local g="git -c safe.directory=$APP_DIR -C $APP_DIR"
   sub "deployed code ($APP_DIR)"
   if [ -d "$APP_DIR/.git" ]; then
-    $g log -1 --format='commit %h  %ci  %an  %s' 2>/dev/null
-    echo "branch: $($g rev-parse --abbrev-ref HEAD 2>/dev/null)"
-    $g status -sb 2>/dev/null | head -8
+    as_owner "$APP_DIR" git -C "$APP_DIR" log -1 --format='commit %h  %ci  %an  %s' 2>/dev/null
+    echo "branch: $(as_owner "$APP_DIR" git -C "$APP_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+    as_owner "$APP_DIR" git -C "$APP_DIR" status -sb 2>/dev/null | head -8
   else
     note "no git checkout at $APP_DIR"
   fi
@@ -163,7 +179,9 @@ baseline() {
   for h in /root /home/*; do
     [ -d "$h/.pm2" ] || continue
     echo "[$h/.pm2]"
-    have node && have pm2 && PM2_HOME="$h/.pm2" pm2 jlist 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{for(const p of JSON.parse(s.slice(s.indexOf("[")))){const e=p.pm2_env||{},m=p.monit||{};console.log([p.name,"pid="+p.pid,e.status,"restarts="+e.restart_time,"unstable="+e.unstable_restarts,"up_min="+(e.pm_uptime?Math.round((Date.now()-e.pm_uptime)/6e4):0),"cpu="+m.cpu+"%","mem_mb="+Math.round((m.memory||0)/1048576)].join("  "))}}catch(x){console.log("cannot parse pm2 jlist: "+x.message)}})'
+    # only talk to a daemon that already runs: never start one (and never as root for another user)
+    [ -S "$h/.pm2/rpc.sock" ] || { echo "(no running pm2 daemon)"; continue; }
+    have node && have pm2 && as_owner "$h/.pm2" env PM2_HOME="$h/.pm2" pm2 jlist 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{for(const p of JSON.parse(s.slice(s.indexOf("[")))){const e=p.pm2_env||{},m=p.monit||{};console.log([p.name,"pid="+p.pid,e.status,"restarts="+e.restart_time,"unstable="+e.unstable_restarts,"up_min="+(e.pm_uptime?Math.round((Date.now()-e.pm_uptime)/6e4):0),"cpu="+m.cpu+"%","mem_mb="+Math.round((m.memory||0)/1048576)].join("  "))}}catch(x){console.log("cannot parse pm2 jlist: "+x.message)}})'
   done
 
   sub "growth: bytes per minute over ${SAMPLE_SECONDS}s (application, pm2 and nginx logs)"
@@ -226,7 +244,7 @@ cpu() {
   pgrep -fal 'xmrig|kdevtmpfsi|kinsing|minerd|cpuminer|cryptonight|stratum|\.systemd-private|/tmp/\.' 2>/dev/null | head || true
   sub "processes running from /tmp, /dev/shm, /var/tmp, or from a deleted binary"
   ls -l /proc/[0-9]*/exe 2>/dev/null | grep -E ' /tmp/| /dev/shm/| /var/tmp/|\(deleted\)' | head -15
-  have pm2 && { sub "pm2 (note the restart count and uptime columns)"; pm2 list 2>/dev/null; }
+  pm2_running && { sub "pm2 (note the restart count and uptime columns)"; pm2 list 2>/dev/null; }
   have sar && { sub "CPU history (sar)"; sar -u 2>/dev/null | tail -15; }
 }
 
@@ -387,7 +405,7 @@ applogs() {
     tail -n 200000 "$f" | grep -oE '"message": ?"[^"]{0,140}' | sed -E 's/[0-9a-fA-F]{24}/<id>/g; s/[0-9]+/N/g' | sort | uniq -c | sort -rn | head -15
     echo "BullMQ auto-pipelining signature 'pipeline[functionName]' in last 200000 lines: $(tail -n 200000 "$f" | grep -c 'pipeline\[functionName\]')"
   done
-  if have pm2; then
+  if pm2_running; then
     sub "pm2: last error lines of the worker and the API"
     pm2 logs gema-worker --lines 20 --nostream --err 2>/dev/null | cut -c1-220
     pm2 logs gema-backend --lines 20 --nostream --err 2>/dev/null | cut -c1-220

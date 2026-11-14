@@ -77,6 +77,34 @@ suite("server-audit.sh", () => {
     expect(code).toMatch(/error\.log/); // nginx error log (500/502 cause)
   });
 
+  // The script runs as root, the checkout and ~/.pm2 belong to another user: git config
+  // (core.fsmonitor) or a pm2 daemon there must not execute with root privileges.
+  it("never overrides git's safe.directory and drops privileges for foreign-owned directories", () => {
+    expect(code).not.toMatch(/safe\.directory/);
+    expect(code).toMatch(/runuser -u/);
+    expect(code).toMatch(/as_owner "\$APP_DIR" git/);
+    expect(code).toMatch(/-S "\$h\/\.pm2\/rpc\.sock"/); // only talk to a daemon that already runs
+    expect(code).not.toMatch(/^\s*(have node && have pm2 && )?PM2_HOME=/m);
+    // every other pm2 command would start a daemon if none runs: it must sit behind pm2_running
+    const bare = code
+      .split("\n")
+      .filter((l) => /\bpm2 (ls|list|logs|jlist|describe|status)\b/.test(l))
+      .filter((l) => !/pm2_running|as_owner/.test(l));
+    const guarded = (l: string) => {
+      const i = code.split("\n").indexOf(l);
+      return code.split("\n").slice(Math.max(0, i - 3), i).some((p) => /pm2_running/.test(p));
+    };
+    expect(bare.filter((l) => !guarded(l))).toEqual([]);
+  });
+
+  it("as_owner runs the command directly when the directory is ours", () => {
+    const r = spawnSync("bash", ["-c", 'source "$1"; as_owner "$2" echo hello', "_", script, os.tmpdir().replace(/\\/g, "/")], {
+      encoding: "utf8",
+    });
+    expect(r.stdout.trim()).toBe("hello");
+    expect(r.status).toBe(0);
+  });
+
   it("samples log growth only for the configured window and prints bytes per minute", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "audit-growth-"));
     const f = path.join(dir, "a.log").replace(/\\/g, "/");
