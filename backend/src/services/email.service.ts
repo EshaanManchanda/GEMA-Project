@@ -1,4 +1,4 @@
-import nodemailer, { type Mail } from "nodemailer";
+import nodemailer from "nodemailer";
 import { config } from "../config/index";
 import { escapeHtml } from "../utils/htmlHelpers";
 import {
@@ -305,7 +305,7 @@ export interface NationalDayRegistrationEmailOptions {
 }
 
 class EmailService {
-  private transporter: Mail;
+  private transporter: nodemailer.Transporter;
 
   constructor() {
     this.transporter = this.buildTransporter({
@@ -321,7 +321,7 @@ class EmailService {
     port: number;
     username: string;
     password: string;
-  }): Mail {
+  }): nodemailer.Transporter {
     return nodemailer.createTransport({
       host: cfg.host,
       port: cfg.port,

@@ -1,9 +1,16 @@
 import * as winston from "winston";
-import DailyRotateFile from "winston-daily-rotate-file";
 import { config } from "./env";
 import * as fs from "fs";
 import * as path from "path";
 import * as util from "util";
+
+let DailyRotateFile: any;
+try {
+  DailyRotateFile = require("winston-daily-rotate-file");
+} catch {
+  // Graceful fallback to standard file transport when winston-daily-rotate-file isn't present
+  DailyRotateFile = winston.transports.File;
+}
 
 // Ensure logs directory exists
 const logsDir = path.resolve(process.cwd(), "logs");
