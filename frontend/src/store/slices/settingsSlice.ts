@@ -5,6 +5,7 @@ import { RootState } from '../index';
 interface SocialSettings {
   facebookUrl: string;
   twitterUrl: string;
+  whatsappNumber: string;
   instagramUrl: string;
   youtubeUrl: string;
   linkedinUrl: string;
@@ -22,6 +23,7 @@ const initialState: SettingsState = {
   socialSettings: {
     facebookUrl: '',
     twitterUrl: '',
+    whatsappNumber: '971529881170',
     instagramUrl: '',
     youtubeUrl: '',
     linkedinUrl: ''

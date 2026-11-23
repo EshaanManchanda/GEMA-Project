@@ -48,6 +48,7 @@ export const getSocialSettings = async (
       data: {
         facebookUrl: socialSettings.facebookUrl,
         twitterUrl: socialSettings.twitterUrl,
+        whatsappNumber: socialSettings.whatsappNumber || "971529881170",
         instagramUrl: socialSettings.instagramUrl,
         youtubeUrl: socialSettings.youtubeUrl,
         linkedinUrl: socialSettings.linkedinUrl,

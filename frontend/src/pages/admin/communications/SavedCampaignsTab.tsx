@@ -218,7 +218,7 @@ export const SavedCampaignsTab: React.FC<SavedCampaignsTabProps> = ({
                       onClick={() => {
                         if (
                           window.confirm(
-                            `Are you sure you want to blast "${c.title}" to ${audienceText} via Sender.net now?`
+                            `Are you sure you want to blast "${c.title}" to ${audienceText} now?`
                           )
                         ) {
                           blastMutation.mutate(c);

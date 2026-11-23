@@ -12,7 +12,6 @@ import {
   FaShare,
   FaExclamationTriangle,
   FaFacebook,
-  FaTwitter,
   FaLinkedin,
   FaWhatsapp
 } from 'react-icons/fa';
@@ -363,13 +362,6 @@ const BlogDetailPage: React.FC = () => {
                 aria-label="Share on Facebook"
               >
                 <FaFacebook />
-              </button>
-              <button
-                onClick={() => handleShare('twitter')}
-                className="p-2 text-sky-500 hover:bg-sky-50 rounded transition-colors"
-                aria-label="Share on Twitter"
-              >
-                <FaTwitter />
               </button>
               <button
                 onClick={() => handleShare('linkedin')}

@@ -610,6 +610,110 @@ export class NewsletterDigestService {
       }
     }
 
+    // 3. Real Bulk Sending via Mailchimp API v3
+    if (cfg.provider === "mailchimp" && cfg.mailchimpApiKey && cfg.mailchimpAudienceId) {
+      try {
+        const prefix =
+          cfg.mailchimpServerPrefix || cfg.mailchimpApiKey.split("-")[1] || "";
+        if (!prefix) {
+          throw new Error("Mailchimp server prefix is missing (e.g. us21).");
+        }
+
+        const baseUrl = `https://${prefix}.api.mailchimp.com/3.0`;
+        const authHeader = `Basic ${Buffer.from(`anystring:${cfg.mailchimpApiKey}`).toString("base64")}`;
+        const replyToEmail = process.env.MAILCHIMP_FROM_EMAIL || "newsletter@kidrove.com";
+        const senderName = "Kidrove";
+
+        // Step A: Create Regular Campaign in Mailchimp
+        const createCampRes = await fetch(`${baseUrl}/campaigns`, {
+          method: "POST",
+          headers: {
+            Authorization: authHeader,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "regular",
+            recipients: {
+              list_id: cfg.mailchimpAudienceId,
+            },
+            settings: {
+              subject_line: data.subject,
+              preview_text: data.preheader || "Updates from Kidrove",
+              title: `Kidrove [${data.campaignType}] - ${new Date().toISOString().slice(0, 10)}`,
+              from_name: senderName,
+              reply_to: replyToEmail,
+            },
+          }),
+        });
+
+        const campData: any = await createCampRes.json().catch(() => ({}));
+        if (!createCampRes.ok) {
+          const detail = campData?.detail || campData?.title || `Status ${createCampRes.status}`;
+          throw new Error(`Mailchimp campaign creation failed: ${detail}`);
+        }
+
+        const campaignId = campData?.id;
+        if (!campaignId) {
+          throw new Error("Mailchimp campaign created but returned no campaign ID.");
+        }
+
+        // Step B: Set Campaign HTML Content
+        const setContentRes = await fetch(`${baseUrl}/campaigns/${campaignId}/content`, {
+          method: "PUT",
+          headers: {
+            Authorization: authHeader,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            html,
+          }),
+        });
+
+        const contentData: any = await setContentRes.json().catch(() => ({}));
+        if (!setContentRes.ok) {
+          const detail = contentData?.detail || contentData?.title || `Status ${setContentRes.status}`;
+          throw new Error(`Mailchimp content setup failed: ${detail}`);
+        }
+
+        // Step C: Send the Campaign immediately
+        const sendCampRes = await fetch(`${baseUrl}/campaigns/${campaignId}/actions/send`, {
+          method: "POST",
+          headers: {
+            Authorization: authHeader,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!sendCampRes.ok) {
+          const sendErr: any = await sendCampRes.json().catch(() => ({}));
+          const detail = sendErr?.detail || sendErr?.title || `Status ${sendCampRes.status}`;
+          throw new Error(`Mailchimp campaign send failed: ${detail}`);
+        }
+
+        // Update settings last sent stats
+        await EmailDigestSettings.updateOne(
+          {},
+          {
+            lastSentAt: new Date(),
+            lastSentStatus: "success",
+            lastSentRecipientCount: campData?.emails_sent || 0,
+            lastSentCampaignType: data.campaignType,
+          },
+        );
+
+        return {
+          success: true,
+          campaignId,
+          recipientCount: campData?.emails_sent || 0,
+          message: `Campaign (${data.campaignType}) dispatched to ${data.audienceLabel} via Mailchimp!`,
+        };
+      } catch (error: any) {
+        logger.error("Mailchimp campaign dispatch failed:", error);
+        await EmailDigestSettings.updateOne({}, { lastSentAt: new Date(), lastSentStatus: "failed" });
+        throw error;
+      }
+    }
+
     // 3. Dev / Fallback Mode (Simulated or Local)
     logger.info("Email marketing provider is dev or credentials missing. Simulated dispatch.");
     await EmailDigestSettings.updateOne(

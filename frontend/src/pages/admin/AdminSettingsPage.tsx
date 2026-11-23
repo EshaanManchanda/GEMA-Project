@@ -60,6 +60,7 @@ interface PaymentSettings {
 interface SocialSettings {
   facebookUrl: string;
   twitterUrl: string;
+  whatsappNumber: string;
   instagramUrl: string;
   youtubeUrl: string;
   linkedinUrl: string;
@@ -141,11 +142,12 @@ const AdminSettingsPage: React.FC = () => {
 
   // Social Settings
   const [socialSettings, setSocialSettings] = useState<SocialSettings>({
-    facebookUrl: 'https://facebook.com/gemaevents',
-    twitterUrl: 'https://twitter.com/gemaevents',
-    instagramUrl: 'https://instagram.com/gemaevents',
-    youtubeUrl: 'https://youtube.com/gemaevents',
-    linkedinUrl: 'https://linkedin.com/company/gemaevents',
+    facebookUrl: 'https://facebook.com/kidrove',
+    twitterUrl: '',
+    whatsappNumber: '971529881170',
+    instagramUrl: 'https://instagram.com/kidrove',
+    youtubeUrl: 'https://youtube.com/kidrove',
+    linkedinUrl: 'https://linkedin.com/company/kidrove',
   });
 
   // Fetch settings from backend API
@@ -1083,12 +1085,13 @@ const AdminSettingsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Twitter URL</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number (e.g. 971529881170)</label>
                     <input
-                      type="url"
-                      name="twitterUrl"
-                      value={socialSettings.twitterUrl}
+                      type="text"
+                      name="whatsappNumber"
+                      value={socialSettings.whatsappNumber || ''}
                       onChange={handleSocialSettingsChange}
+                      placeholder="971529881170"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                     />
                   </div>

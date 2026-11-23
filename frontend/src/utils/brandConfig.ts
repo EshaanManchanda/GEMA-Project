@@ -32,7 +32,7 @@ export const getBrandConfig = (): BrandConfig => ({
   siteName: import.meta.env.VITE_SITE_NAME || 'Kidrove',
   siteDescription: import.meta.env.VITE_SITE_DESCRIPTION || 'Discover and book amazing family events and kids activities across the UAE',
   contactEmail: import.meta.env.VITE_CONTACT_EMAIL || 'contact@kidrove.com',
-  contactPhone: import.meta.env.VITE_CONTACT_PHONE || '+971 52 780 9450',
+  contactPhone: import.meta.env.VITE_CONTACT_PHONE || '+971 52 988 1170',
   supportEmail: import.meta.env.VITE_SUPPORT_EMAIL || 'contact@kidrove.com',
   companyAddress: import.meta.env.VITE_COMPANY_ADDRESS || 'Level 20, Burj Gate Tower, Downtown Dubai, UAE',
   siteAuthor: import.meta.env.VITE_SITE_AUTHOR || 'Kidrove Team',

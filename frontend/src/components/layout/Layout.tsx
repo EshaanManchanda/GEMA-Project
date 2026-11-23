@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import logger from '@/utils/logger';
@@ -29,7 +29,7 @@ const kidroveLogo = import.meta.env.VITE_SITE_LOGO || '/assets/images/Kidrove-lo
 // const kidroveLogoWhite = import.meta.env.VITE_SITE_LOGO_WHITE || '/assets/images/KidRove-Logo-white.png';
 import {
   FaFacebookF,
-  FaTwitter,
+  FaWhatsapp,
   FaInstagram,
   FaYoutube,
   FaLinkedinIn,
@@ -240,11 +240,15 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                   <FaFacebookF size={14} />
                 </a>
               )}
-              {socialSettings.twitterUrl && (
-                <a href={socialSettings.twitterUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our Twitter page" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
-                  <FaTwitter size={14} />
-                </a>
-              )}
+              <a
+                href={`https://wa.me/${socialSettings.whatsappNumber || '971529881170'}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Contact us on WhatsApp"
+                className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10"
+              >
+                <FaWhatsapp size={14} />
+              </a>
               {socialSettings.instagramUrl && (
                 <a href={socialSettings.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our Instagram page" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
                   <FaInstagram size={14} />
@@ -789,11 +793,16 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                     <FaFacebookF size={14} />
                   </a>
                 )}
-                {socialSettings.twitterUrl && (
-                  <a href={socialSettings.twitterUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our Twitter page" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
-                    <FaTwitter size={14} />
-                  </a>
-                )}
+                <a
+                  href={`https://wa.me/${socialSettings.whatsappNumber || '971529881170'}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Contact us on WhatsApp"
+                  className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full"
+                  style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}
+                >
+                  <FaWhatsapp size={14} />
+                </a>
                 {socialSettings.instagramUrl && (
                   <a href={socialSettings.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our Instagram page" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
                     <FaInstagram size={14} />

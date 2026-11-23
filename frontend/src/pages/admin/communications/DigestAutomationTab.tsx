@@ -370,7 +370,7 @@ export const DigestAutomationTab: React.FC<DigestAutomationTabProps> = ({
               <p className="text-xs text-gray-500 mt-1">
                 {editingCampaign
                   ? 'Editing existing campaign record. Click Save to persist changes or Reset to start fresh.'
-                  : 'Choose a single clear purpose, pick your audience segment, and dispatch clean, high-converting emails via Sender.net.'}
+                  : 'Choose a single clear purpose, pick your audience segment, and dispatch clean, high-converting emails via your configured provider.'}
               </p>
               {settings.lastSentAt && (
                 <p className="text-[11px] text-gray-400 mt-0.5">
@@ -1035,7 +1035,7 @@ export const DigestAutomationTab: React.FC<DigestAutomationTabProps> = ({
                 onClick={() => {
                   if (
                     window.confirm(
-                      `Are you sure you want to blast this [${settings.campaignType?.toUpperCase()}] campaign to ${settings.targetAudience?.toUpperCase()} via Sender.net now?`
+                      `Are you sure you want to blast this [${settings.campaignType?.toUpperCase()}] campaign to ${settings.targetAudience?.toUpperCase()} now?`
                     )
                   ) {
                     dispatchMutation.mutate({
@@ -1045,7 +1045,7 @@ export const DigestAutomationTab: React.FC<DigestAutomationTabProps> = ({
                 }}
                 loading={dispatchMutation.isPending}
               >
-                Blast to Audience via Sender.net
+                Blast to Audience Now
               </Button>
             </div>
           </div>
