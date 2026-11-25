@@ -26,6 +26,15 @@ const LOCAL_UPLOAD_URL =
 export const isPrivateUploadPath = (rel: string): boolean =>
   PRIVATE_CATEGORIES.has(rel.replace(/^\/+/, "").split("/")[0].toLowerCase());
 
+/**
+ * A folder a client may choose for its upload (media endpoints): up to 4 segments of
+ * letters, digits, ".", "_" and "-", each starting with a letter or digit (so no "..",
+ * no absolute path, no drive letter), and never a private folder.
+ */
+const CLIENT_FOLDER = /^[a-z0-9][a-z0-9._-]{0,63}(\/[a-z0-9][a-z0-9._-]{0,63}){0,3}$/i;
+export const isAllowedClientUploadFolder = (folder: string): boolean =>
+  CLIENT_FOLDER.test(folder) && !isPrivateUploadPath(folder);
+
 // Derived from the JWT secret with a domain prefix so no new secret has to be provisioned and a
 // signature can never be confused with anything else signed by that secret.
 const mac = (rel: string, exp: number): string =>

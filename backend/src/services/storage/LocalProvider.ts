@@ -24,6 +24,20 @@ export class LocalProvider implements IStorageProvider {
     // Ensure upload directory exists
     this.ensureDirectoryExists(this.uploadDir);
   }
+  /**
+   * Resolve a caller-supplied folder or relative path under the upload directory.
+   * Throws when it would land outside it ("../", absolute paths, drive letters): the
+   * media upload passes the client's `folder` here, and delete/list take stored paths.
+   */
+  private inside(rel: string): string {
+    const full = path.resolve(this.uploadDir, rel);
+    const back = path.relative(this.uploadDir, full);
+    if (back.startsWith("..") || path.isAbsolute(back)) {
+      throw new Error(`Path is outside the upload directory: ${rel}`);
+    }
+    return full;
+  }
+
 
   /**
    * Ensure a directory exists, create it if not
@@ -60,7 +74,7 @@ export class LocalProvider implements IStorageProvider {
 
       // Determine the destination folder
       const subFolder = folder || category;
-      const destinationDir = path.join(this.uploadDir, subFolder);
+      const destinationDir = this.inside(subFolder);
 
       // Ensure destination directory exists
       await this.ensureDirectoryExists(destinationDir);
@@ -108,7 +122,7 @@ export class LocalProvider implements IStorageProvider {
    */
   async delete(relativePath: string): Promise<boolean> {
     try {
-      const fullPath = path.join(this.uploadDir, relativePath);
+      const fullPath = this.inside(relativePath);
 
       if (await this.exists(relativePath)) {
         await fs.unlink(fullPath);
@@ -138,7 +152,7 @@ export class LocalProvider implements IStorageProvider {
    */
   async exists(relativePath: string): Promise<boolean> {
     try {
-      const fullPath = path.join(this.uploadDir, relativePath);
+      const fullPath = this.inside(relativePath);
       await fs.access(fullPath);
       return true;
     } catch {
@@ -151,7 +165,7 @@ export class LocalProvider implements IStorageProvider {
    */
   async getMetadata(relativePath: string): Promise<any> {
     try {
-      const fullPath = path.join(this.uploadDir, relativePath);
+      const fullPath = this.inside(relativePath);
 
       if (!(await this.exists(relativePath))) {
         return null;
@@ -186,7 +200,7 @@ export class LocalProvider implements IStorageProvider {
     offset: number = 0,
   ): Promise<any[]> {
     try {
-      const folderPath = path.join(this.uploadDir, subFolder);
+      const folderPath = this.inside(subFolder);
 
       if (!fsSync.existsSync(folderPath)) {
         return [];
@@ -223,7 +237,7 @@ export class LocalProvider implements IStorageProvider {
   async getDirectorySize(subFolder?: string): Promise<number> {
     try {
       const targetDir = subFolder
-        ? path.join(this.uploadDir, subFolder)
+        ? this.inside(subFolder)
         : this.uploadDir;
 
       let totalSize = 0;

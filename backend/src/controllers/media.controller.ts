@@ -5,6 +5,12 @@ import { AppError } from "../middleware/error";
 import { AuthRequest } from "../types/express";
 import { config } from "../config/env";
 import { normalizeAltText } from "../utils/uploadHelpers";
+import { isAllowedClientUploadFolder } from "../utils/uploadAccess";
+
+const invalidFolder = (folder: unknown): boolean =>
+  folder !== undefined && folder !== "" && (typeof folder !== "string" || !isAllowedClientUploadFolder(folder));
+const FOLDER_ERROR =
+  "Invalid folder: use up to 4 levels of letters, digits, '.', '_' or '-' (not a private folder)";
 
 /**
  * Media Controller
@@ -54,6 +60,10 @@ export const uploadMedia = async (
     validateFileSize(req.file);
 
     const { category, folder, tags, altText } = req.body;
+
+    if (invalidFolder(folder)) {
+      return next(new AppError(FOLDER_ERROR, 400));
+    }
 
     // Validate category
     const validCategories = [
@@ -118,6 +128,10 @@ export const uploadMultipleMedia = async (
     }
 
     const { category, folder, tags, altText } = req.body;
+
+    if (invalidFolder(folder)) {
+      return next(new AppError(FOLDER_ERROR, 400));
+    }
 
     // Shared alt text is opt-in only — applied to every file in the batch
     // when the client explicitly sent a non-empty value. Otherwise assets are
