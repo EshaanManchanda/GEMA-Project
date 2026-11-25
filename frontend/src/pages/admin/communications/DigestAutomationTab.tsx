@@ -1112,6 +1112,7 @@ export const DigestAutomationTab: React.FC<DigestAutomationTabProps> = ({
                   <iframe
                     srcDoc={previewMutation.data.html}
                     title="Newsletter Full Preview"
+                    sandbox=""
                     className="w-full h-full border-0"
                   />
                 </div>

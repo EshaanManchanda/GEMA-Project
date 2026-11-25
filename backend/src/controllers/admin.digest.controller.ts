@@ -5,6 +5,26 @@ import EmailCampaignRecord from "../models/EmailCampaignRecord";
 import newsletterDigestService from "../services/communication/newsletterDigest.service";
 
 /**
+ * The campaign fields an admin may set. Everything else in a body (`_id`,
+ * `__v`, timestamps, `lastSent*` delivery tracking that gates the cron,
+ * `senderCampaignId`) is dropped: the edit form posts the whole saved record
+ * back, and copying its `_id` onto the settings singleton made save() fail.
+ */
+const CAMPAIGN_FIELDS = [
+  "title", "subject", "preheader", "campaignType", "targetAudience", "status",
+  "autoSend", "scheduleDay", "scheduleTime", "blogMode", "autoBlogCount",
+  "selectedBlogIds", "featuredEventId", "secondaryEventIds", "eventCustomMessage",
+  "selectedCompetitionSlugs", "competitionCustomMessage", "customBroadcast",
+] as const;
+
+const pickCampaignFields = (src: object | null | undefined) => {
+  const out: Record<string, unknown> = {};
+  const from = (src ?? {}) as Record<string, unknown>;
+  for (const k of CAMPAIGN_FIELDS) if (from[k] !== undefined) out[k] = from[k];
+  return out;
+};
+
+/**
  * @desc    Get current digest and automation builder settings
  * @route   GET /api/admin/communication/email-marketing/digest-settings
  * @access  Private (admin)
@@ -33,25 +53,27 @@ export const updateEmailDigestSettings = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const payload = req.body || {};
+    const body = req.body || {};
+    const payload = pickCampaignFields(body);
 
-    // 1. Update singleton active settings
+    // 1. Update singleton active settings (title is a record-only field)
     const settings = await EmailDigestSettings.getSettings();
-    Object.assign(settings, payload);
+    const { title: _recordTitle, ...settingsFields } = payload;
+    Object.assign(settings, settingsFields);
     await settings.save();
 
     // 2. Also save or update as a persistent campaign record for history / editing
     const title =
-      payload.title ||
-      payload.subject ||
-      `${payload.campaignType || "Campaign"} - ${new Date().toLocaleDateString()}`;
+      (payload.title as string) ||
+      (payload.subject as string) ||
+      `${(payload.campaignType as string) || "Campaign"} - ${new Date().toLocaleDateString()}`;
 
     let campaignRecord;
-    if (payload.campaignRecordId) {
+    if (body.campaignRecordId) {
       campaignRecord = await EmailCampaignRecord.findByIdAndUpdate(
-        payload.campaignRecordId,
+        body.campaignRecordId,
         { ...payload, title },
-        { new: true },
+        { new: true, runValidators: true },
       );
     } else {
       campaignRecord = await EmailCampaignRecord.create({
@@ -104,8 +126,9 @@ export const updateCampaignRecord = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const updated = await EmailCampaignRecord.findByIdAndUpdate(id, req.body, {
+    const updated = await EmailCampaignRecord.findByIdAndUpdate(id, pickCampaignFields(req.body), {
       new: true,
+      runValidators: true,
     });
     if (!updated) {
       res.status(404).json({ success: false, message: "Campaign not found" });
@@ -115,7 +138,8 @@ export const updateCampaignRecord = async (
     // If status was changed to active, sync to EmailDigestSettings so node-cron picks it up
     if (req.body.status === "active") {
       const settings = await EmailDigestSettings.getSettings();
-      Object.assign(settings, updated.toObject());
+      const { title: _title, ...fields } = pickCampaignFields(updated.toObject());
+      Object.assign(settings, fields);
       settings.status = "active";
       await settings.save();
     }
@@ -138,7 +162,11 @@ export const deleteCampaignRecord = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    await EmailCampaignRecord.findByIdAndDelete(id);
+    const deleted = await EmailCampaignRecord.findByIdAndDelete(id);
+    if (!deleted) {
+      res.status(404).json({ success: false, message: "Campaign not found" });
+      return;
+    }
     res.status(200).json({ success: true, message: "Campaign deleted" });
   } catch (error) {
     next(error);

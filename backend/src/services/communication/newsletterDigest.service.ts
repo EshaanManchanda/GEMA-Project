@@ -9,6 +9,13 @@ import EmailDigestSettings, {
 import { getEmailMarketingConfig } from "./emailMarketingConfig.service";
 import emailService from "../email.service";
 import logger from "../../config/logger";
+import { escapeHtml } from "../../utils/htmlHelpers";
+
+// Blog/event text is written by vendors and authors, and this HTML is emailed to every
+// subscriber and rendered in the admin preview iframe: escape every interpolated value.
+// customBroadcast.bodyHtml is the one deliberate exception (admin-authored HTML).
+const esc = (v: unknown): string => (v === undefined || v === null ? "" : escapeHtml(String(v)));
+const SAFE_URL = /^https?:\/\//i;
 
 // Official Competitions mapping from /competitions
 export const OFFICIAL_COMPETITIONS = [
@@ -190,7 +197,7 @@ export class NewsletterDigestService {
       // Primary featured event
       let featuredEventDoc = null;
       if (settings.featuredEventId) {
-        featuredEventDoc = await Event.findById(settings.featuredEventId).lean();
+        featuredEventDoc = await Event.findOne({ _id: settings.featuredEventId, status: "published" }).lean();
       }
       if (!featuredEventDoc) {
         featuredEventDoc = await Event.findOne({
@@ -288,17 +295,17 @@ export class NewsletterDigestService {
                       ${
                         b.image
                           ? `<td width="115" style="vertical-align: top; padding-right: 18px;">
-                              <img src="${b.image}" alt="${b.title}" width="115" height="85" style="border-radius: 8px; object-fit: cover; display: block;" />
+                              <img src="${esc(b.image)}" alt="${esc(b.title)}" width="115" height="85" style="border-radius: 8px; object-fit: cover; display: block;" />
                             </td>`
                           : ""
                       }
                       <td style="vertical-align: top;">
-                        <span style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; margin-bottom: 4px;">${b.category}</span>
+                        <span style="font-size: 11px; font-weight: 700; color: #0284c7; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; margin-bottom: 4px;">${esc(b.category)}</span>
                         <h3 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 700; line-height: 1.3;">
-                          <a href="${frontendUrl}/blog/${b.slug}" style="color: #0f172a; text-decoration: none;">${b.title}</a>
+                          <a href="${frontendUrl}/blog/${esc(b.slug)}" style="color: #0f172a; text-decoration: none;">${esc(b.title)}</a>
                         </h3>
-                        <p style="margin: 0 0 10px 0; font-size: 13px; color: #64748b; line-height: 1.5;">${b.excerpt}</p>
-                        <a href="${frontendUrl}/blog/${b.slug}" style="color: #0284c7; font-size: 13px; font-weight: 600; text-decoration: none;">Read full story →</a>
+                        <p style="margin: 0 0 10px 0; font-size: 13px; color: #64748b; line-height: 1.5;">${esc(b.excerpt)}</p>
+                        <a href="${frontendUrl}/blog/${esc(b.slug)}" style="color: #0284c7; font-size: 13px; font-weight: 600; text-decoration: none;">Read full story →</a>
                       </td>
                     </tr>
                   </table>
@@ -323,7 +330,7 @@ export class NewsletterDigestService {
         <div style="margin-bottom: 24px;">
           ${
             data.eventCustomMessage
-              ? `<div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 16px; margin-bottom: 24px; font-size: 14px; color: #1e3a8a; line-height: 1.5;">${data.eventCustomMessage}</div>`
+              ? `<div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 16px; margin-bottom: 24px; font-size: 14px; color: #1e3a8a; line-height: 1.5;">${esc(data.eventCustomMessage)}</div>`
               : ""
           }
 
@@ -331,28 +338,28 @@ export class NewsletterDigestService {
           <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
             ${
               e.image
-                ? `<img src="${e.image}" alt="${e.title}" width="100%" style="max-height: 280px; object-fit: cover; display: block;" />`
+                ? `<img src="${esc(e.image)}" alt="${esc(e.title)}" width="100%" style="max-height: 280px; object-fit: cover; display: block;" />`
                 : ""
             }
             <div style="padding: 24px;">
               <span style="display: inline-block; background: #e0f2fe; color: #0284c7; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; margin-bottom: 10px;">
-                ${e.category || "Special Activity"}
+                ${esc(e.category) || "Special Activity"}
               </span>
-              <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 10px 0; line-height: 1.3;">${e.title}</h2>
-              <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 18px 0;">${e.description}</p>
+              <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 10px 0; line-height: 1.3;">${esc(e.title)}</h2>
+              <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 18px 0;">${esc(e.description)}</p>
               
               <div style="background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 10px; padding: 14px; margin-bottom: 20px;">
                 <table width="100%">
                   <tr>
-                    <td style="font-size: 13px; color: #64748b;">📍 <strong>Location:</strong> ${e.location || "Dubai, UAE"}</td>
-                    <td align="right" style="font-size: 16px; font-weight: 800; color: #0284c7;">${e.price ? `${e.currency} ${e.price}` : "Free"}</td>
+                    <td style="font-size: 13px; color: #64748b;">📍 <strong>Location:</strong> ${esc(e.location) || "Dubai, UAE"}</td>
+                    <td align="right" style="font-size: 16px; font-weight: 800; color: #0284c7;">${e.price ? `${esc(e.currency)} ${esc(String(e.price))}` : "Free"}</td>
                   </tr>
-                  ${e.dateRange ? `<tr><td colspan="2" style="font-size: 13px; color: #64748b; padding-top: 6px;">📅 <strong>Dates:</strong> ${e.dateRange}</td></tr>` : ""}
+                  ${e.dateRange ? `<tr><td colspan="2" style="font-size: 13px; color: #64748b; padding-top: 6px;">📅 <strong>Dates:</strong> ${esc(e.dateRange)}</td></tr>` : ""}
                 </table>
               </div>
 
               <div style="text-align: center;">
-                <a href="${frontendUrl}/events/${e.slug}" style="display: inline-block; background-color: #0284c7; color: #ffffff; padding: 14px 36px; border-radius: 8px; font-size: 15px; font-weight: 700; text-decoration: none; box-shadow: 0 2px 6px rgba(2,132,199,0.3);">Book Your Child's Spot Now →</a>
+                <a href="${frontendUrl}/events/${esc(String(e.slug))}" style="display: inline-block; background-color: #0284c7; color: #ffffff; padding: 14px 36px; border-radius: 8px; font-size: 15px; font-weight: 700; text-decoration: none; box-shadow: 0 2px 6px rgba(2,132,199,0.3);">Book Your Child's Spot Now →</a>
               </div>
             </div>
           </div>
@@ -368,9 +375,9 @@ export class NewsletterDigestService {
                     .map(
                       (s) => `
                     <div style="flex: 1; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
-                      <h4 style="font-size: 14px; margin: 0 0 6px 0;"><a href="${frontendUrl}/events/${s.slug}" style="color: #0284c7; text-decoration: none;">${s.title}</a></h4>
-                      <p style="font-size: 12px; color: #64748b; margin: 0 0 10px 0;">${s.description}</p>
-                      <a href="${frontendUrl}/events/${s.slug}" style="font-size: 12px; color: #0284c7; font-weight: 600; text-decoration: none;">View Details →</a>
+                      <h4 style="font-size: 14px; margin: 0 0 6px 0;"><a href="${frontendUrl}/events/${esc(String(s.slug))}" style="color: #0284c7; text-decoration: none;">${esc(s.title)}</a></h4>
+                      <p style="font-size: 12px; color: #64748b; margin: 0 0 10px 0;">${esc(s.description)}</p>
+                      <a href="${frontendUrl}/events/${esc(String(s.slug))}" style="font-size: 12px; color: #0284c7; font-weight: 600; text-decoration: none;">View Details →</a>
                     </div>
                   `,
                     )
@@ -392,7 +399,7 @@ export class NewsletterDigestService {
 
           ${
             data.competitionCustomMessage
-              ? `<div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 16px; margin-bottom: 24px; font-size: 14px; color: #581c87; line-height: 1.5;">${data.competitionCustomMessage}</div>`
+              ? `<div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 16px; margin-bottom: 24px; font-size: 14px; color: #581c87; line-height: 1.5;">${esc(data.competitionCustomMessage)}</div>`
               : ""
           }
 
@@ -437,15 +444,15 @@ export class NewsletterDigestService {
       const b = data.customBroadcast;
       bodyContentHtml = `
         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px; margin-bottom: 24px;">
-          <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 8px 0;">${b.heroTitle}</h2>
-          ${b.heroSubtitle ? `<p style="font-size: 15px; color: #64748b; margin: 0 0 18px 0;">${b.heroSubtitle}</p>` : ""}
+          <h2 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 8px 0;">${esc(b.heroTitle)}</h2>
+          ${b.heroSubtitle ? `<p style="font-size: 15px; color: #64748b; margin: 0 0 18px 0;">${esc(b.heroSubtitle)}</p>` : ""}
           <div style="font-size: 14px; color: #334155; line-height: 1.7; margin: 18px 0;">
             ${b.bodyHtml}
           </div>
           ${
-            b.ctaText && b.ctaUrl
+            b.ctaText && SAFE_URL.test(b.ctaUrl || "")
               ? `<div style="text-align: center; margin-top: 24px;">
-                  <a href="${b.ctaUrl}" style="display: inline-block; background-color: #0284c7; color: #ffffff; padding: 12px 32px; border-radius: 8px; font-size: 14px; font-weight: 700; text-decoration: none;">${b.ctaText}</a>
+                  <a href="${esc(b.ctaUrl)}" style="display: inline-block; background-color: #0284c7; color: #ffffff; padding: 12px 32px; border-radius: 8px; font-size: 14px; font-weight: 700; text-decoration: none;">${esc(b.ctaText)}</a>
                 </div>`
               : ""
           }
@@ -459,7 +466,7 @@ export class NewsletterDigestService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${data.subject}</title>
+        <title>${esc(data.subject)}</title>
       </head>
       <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 30px 10px;">

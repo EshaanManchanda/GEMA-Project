@@ -264,50 +264,52 @@ export function startMonthlyPayoutBatchCron() {
 }
 
 /**
+ * One check of the Email Blog & Updates Digest schedule: sends when the active
+ * settings have autoSend on, today is scheduleDay, `now` is within 30 min of
+ * scheduleTime (UTC) and nothing was sent in the last 20 h. Exported for tests.
+ */
+export async function runEmailDigestTick(now: Date = new Date()): Promise<void> {
+  try {
+    const settings = await EmailDigestSettings.findOne({
+      status: "active",
+      autoSend: true,
+    });
+
+    if (!settings) return;
+
+    const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const currentDay = days[now.getUTCDay()];
+
+    if (settings.scheduleDay !== currentDay) return;
+
+    // Check time (format "HH:MM")
+    const [targetHour, targetMinute] = (settings.scheduleTime || "10:00").split(":").map(Number);
+    const currentHour = now.getUTCHours();
+    const currentMinute = now.getUTCMinutes();
+
+    // Check if within 30 minutes window and hasn't been sent in the last 20 hours
+    const diffMinutes = Math.abs((currentHour * 60 + currentMinute) - (targetHour * 60 + targetMinute));
+    if (diffMinutes <= 30) {
+      if (settings.lastSentAt) {
+        const hoursSinceLast = (now.getTime() - new Date(settings.lastSentAt).getTime()) / (1000 * 60 * 60);
+        if (hoursSinceLast < 20) return;
+      }
+
+      logger.info("Executing scheduled email digest campaign dispatch");
+      await newsletterDigestService.dispatchDigest({});
+      logger.info("Scheduled email digest campaign dispatch completed");
+    }
+  } catch (error) {
+    logger.error("Email digest cron failed:", error);
+  }
+}
+
+/**
  * Email Blog & Updates Digest cron job
  * Checks every 30 minutes if automated digest dispatch is due
  */
 export function startEmailDigestCron() {
-  const job = cron.schedule(
-    "*/30 * * * *",
-    async () => {
-      try {
-        const settings = await EmailDigestSettings.findOne({
-          status: "active",
-          autoSend: true,
-        });
-
-        if (!settings) return;
-
-        const now = new Date();
-        const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-        const currentDay = days[now.getUTCDay()];
-
-        if (settings.scheduleDay !== currentDay) return;
-
-        // Check time (format "HH:MM")
-        const [targetHour, targetMinute] = (settings.scheduleTime || "10:00").split(":").map(Number);
-        const currentHour = now.getUTCHours();
-        const currentMinute = now.getUTCMinutes();
-
-        // Check if within 30 minutes window and hasn't been sent in the last 20 hours
-        const diffMinutes = Math.abs((currentHour * 60 + currentMinute) - (targetHour * 60 + targetMinute));
-        if (diffMinutes <= 30) {
-          if (settings.lastSentAt) {
-            const hoursSinceLast = (now.getTime() - new Date(settings.lastSentAt).getTime()) / (1000 * 60 * 60);
-            if (hoursSinceLast < 20) return;
-          }
-
-          logger.info("Executing scheduled email digest campaign dispatch");
-          await newsletterDigestService.dispatchDigest({});
-          logger.info("Scheduled email digest campaign dispatch completed");
-        }
-      } catch (error) {
-        logger.error("Email digest cron failed:", error);
-      }
-    },
-    { timezone: "UTC" },
-  );
+  const job = cron.schedule("*/30 * * * *", () => runEmailDigestTick(), { timezone: "UTC" });
 
   logger.info("Email digest automation cron started (checks every 30 mins, gated by active status & schedule)");
   return job;
