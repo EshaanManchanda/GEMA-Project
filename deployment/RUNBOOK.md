@@ -125,6 +125,12 @@ grep -E '^(RATE_LIMIT_MAX|RATE_LIMIT_WINDOW_MS|UPLOAD_PROVIDER|REDIS_HOST|REDIS_
 - `ADMIN_SECRET_KEY`: the only thing protecting the `register-admin` route, so it must be long and random (`openssl rand -hex 32`), never a word or a default. If you never create admins that way, say so and we will switch the route off in the next release.
 - `RATE_LIMIT_MAX` now means *requests per minute* (it used to be per 15 minutes). If it is set to a small number such as `100`, raise it (e.g. `300`) or remove the line.
 - `SENTRY_DSN`: optional, gives you error tracking.
+- Email digest / campaigns (new in this release, all optional): `SENDER_FROM_EMAIL` / `MAILCHIMP_FROM_EMAIL` set the reply-to address
+  (default `newsletter@kidrove.com`, which must be a verified sender in Sender/Mailchimp or the send is refused). `SENDER_WEBHOOK_SECRET` /
+  `MAILCHIMP_WEBHOOK_SECRET` are needed only if you point the provider's unsubscribe webhook at the site. The scheduled digest is OFF until
+  an admin sets a campaign Active with auto-send on; every send goes to the whole marketing list.
+- Never set `ALLOW_TEST_PAYMENT_SKIP` or `E2E_RELAX_RATE_LIMITS` here (the code ignores both when `NODE_ENV=production`, so check that
+  `NODE_ENV=production` is set).
 
 Edit with `nano .env` (`chmod 600 .env` stays). Nothing reads the new values until step 10.
 
