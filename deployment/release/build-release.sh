@@ -90,7 +90,9 @@ git archive --format=tar "$COMMIT" | docker run --rm -i \
     echo "== frontend: npm ci, build"
     cd /src/frontend
     npm ci --no-audit --no-fund
-    npm run build
+    # NODE_ENV=production only for vite: it turns off sourcemaps and console.*, and stops
+    # vite.config.ts baking NODE_ENV="development" into the bundle (npm ci above still needs devDeps)
+    NODE_ENV=production npm run build
     test -f dist/index.html
 
     echo "== assembling $RELEASE_ID"
@@ -117,6 +119,9 @@ for must in "$ID/backend/dist/server.js" "$ID/backend/dist/workers/index.js" "$I
 done
 if echo "$LIST" | grep -E '(^|/)\.env($|\.)|node_modules/|\.git/' | grep -v '\.env\.example' | head -3 | grep -q .; then
   die "release contains an .env, node_modules or .git entry; refusing to ship it"
+fi
+if echo "$LIST" | grep -E "^$ID/frontend/dist/.*\.map$" | head -1 | grep -q .; then
+  die "release frontend contains sourcemaps (built without NODE_ENV=production?); refusing to ship it"
 fi
 
 (cd "$OUT" && sha256sum "kidrove-$ID.tar.gz" > "kidrove-$ID.tar.gz.sha256")
