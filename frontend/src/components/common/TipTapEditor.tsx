@@ -25,6 +25,7 @@ import OrderedList from '@tiptap/extension-ordered-list';
 import Blockquote from '@tiptap/extension-blockquote';
 import { common, createLowlight } from 'lowlight';
 import HtmlInsertModal from './HtmlInsertModal';
+import { normalizeHtmlForTipTap } from '@/utils/normalizeHtmlForTipTap';
 
 // Initialize lowlight with common languages
 const lowlight = createLowlight(common);
@@ -1031,64 +1032,6 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
     editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }, [editor]);
 
-  // Normalize HTML structure for TipTap parsing - wraps orphaned inline elements in <p> tags
-  const normalizeHtmlForTipTap = useCallback((html: string): string => {
-    // Create a temporary container to parse HTML
-    const container = document.createElement('div');
-    container.innerHTML = html;
-
-    // Inline tags that need block wrapping when at root level
-    const inlineTags = ['B', 'I', 'STRONG', 'EM', 'U', 'S', 'SPAN', 'A', 'CODE', 'MARK'];
-
-    // Use globalThis.Node to avoid conflict with TipTap's Node import
-    const DOMNode = globalThis.Node;
-    const result: globalThis.Node[] = [];
-    let currentParagraph: HTMLParagraphElement | null = null;
-
-    const flushParagraph = () => {
-      if (currentParagraph && currentParagraph.innerHTML.trim()) {
-        result.push(currentParagraph);
-      }
-      currentParagraph = null;
-    };
-
-    container.childNodes.forEach(node => {
-      if (node.nodeType === DOMNode.TEXT_NODE) {
-        const text = node.textContent?.trim();
-        if (text) {
-          if (!currentParagraph) {
-            currentParagraph = document.createElement('p');
-          }
-          currentParagraph.appendChild(document.createTextNode(node.textContent || ''));
-        }
-      } else if (node.nodeType === DOMNode.ELEMENT_NODE) {
-        const el = node as HTMLElement;
-        const tagName = el.tagName.toUpperCase();
-
-        if (tagName === 'BR') {
-          // BR at root level - flush current paragraph, start new one
-          flushParagraph();
-        } else if (inlineTags.includes(tagName)) {
-          // Inline element at root - add to current paragraph
-          if (!currentParagraph) {
-            currentParagraph = document.createElement('p');
-          }
-          currentParagraph.appendChild(el.cloneNode(true));
-        } else {
-          // Block element - flush paragraph first, then add block
-          flushParagraph();
-          result.push(el.cloneNode(true));
-        }
-      }
-    });
-
-    flushParagraph();
-
-    // Convert result back to HTML string
-    const output = document.createElement('div');
-    result.forEach(node => output.appendChild(node));
-    return output.innerHTML;
-  }, []);
 
   const handleInsertHtml = useCallback((html: string) => {
     if (!editor) return;
@@ -1138,7 +1081,7 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
       logger.error('Error inserting HTML:', error);
       toast.error('Failed to insert HTML content');
     }
-  }, [editor, onChange, normalizeHtmlForTipTap]);
+  }, [editor, onChange]);
 
   if (!editor) {
     return (

@@ -1,6 +1,27 @@
 import DOMPurify, { Config } from 'isomorphic-dompurify';
 
 /**
+ * Embeds allowed in vendor/author HTML. Every DOMPurify call site in the app passes
+ * ADD_TAGS: ['iframe'], so without this any website could be framed inside a Kidrove
+ * page. The hook runs on the one shared DOMPurify instance, so it covers all of them;
+ * main.tsx imports this module first.
+ */
+const ALLOWED_IFRAME_SRC = [
+  /^https:\/\/(www\.)?youtube(-nocookie)?\.com\/embed\//i,
+  /^https:\/\/player\.vimeo\.com\/video\//i,
+  /^https:\/\/(www\.)?google\.com\/maps\/embed/i,
+];
+
+export const isAllowedIframeSrc = (src: string | null): boolean =>
+  !!src && ALLOWED_IFRAME_SRC.some((re) => re.test(src.trim()));
+
+DOMPurify.addHook('uponSanitizeElement', (node, data) => {
+  if (data.tagName === 'iframe' && !isAllowedIframeSrc((node as Element).getAttribute?.('src') ?? null)) {
+    node.parentNode?.removeChild(node);
+  }
+});
+
+/**
  * Centralized HTML sanitization utility
  * Uses DOMPurify for XSS prevention
  */

@@ -1,6 +1,8 @@
 // CRITICAL: Import polyfills FIRST before any other imports
 // This ensures fetch API is available for all modules, especially axios
 import './polyfills';
+// Registers the DOMPurify iframe source policy before anything renders user HTML
+import '@/utils/sanitize';
 
 import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';

@@ -62,12 +62,12 @@ const getSiteName = (): string => {
 export const stripHtmlTags = (html: string): string => {
   if (!html || typeof html !== 'string') return '';
 
-  // Create a temporary div element to leverage browser's HTML parsing
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html;
+  // Parse in an inert document: event handlers in it never run. A detached
+  // document.createElement('div') with innerHTML still fires <img onerror>.
+  const doc = new DOMParser().parseFromString(html, 'text/html');
 
   // Get text content (automatically strips all tags)
-  let text = tmp.textContent || tmp.innerText || '';
+  let text = doc.body.textContent || '';
 
   // Normalize whitespace
   text = text.replace(/\s+/g, ' ').trim();
