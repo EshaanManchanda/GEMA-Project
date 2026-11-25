@@ -29,13 +29,8 @@ const CAMPAIGN_PURPOSE_LABELS: Record<string, { label: string; color: string }> 
   custom_broadcast: { label: '📢 Announcement', color: 'bg-amber-100 text-amber-800' },
 };
 
-const AUDIENCE_LABELS: Record<string, string> = {
-  newsletter_all: 'Newsletter Subscribers',
-  customers_parents: 'Parents & Customers',
-  teachers: 'Teachers & Educators',
-  vendors: 'Vendors & Partners',
-  all_consented: 'All Consented Users',
-};
+// Every campaign goes to the whole marketing list (audience segments are not implemented).
+const RECIPIENTS_LABEL = 'All list subscribers';
 
 export const SavedCampaignsTab: React.FC<SavedCampaignsTabProps> = ({
   onEditCampaign,
@@ -130,7 +125,7 @@ export const SavedCampaignsTab: React.FC<SavedCampaignsTabProps> = ({
                 label: c.campaignType || 'Campaign',
                 color: 'bg-gray-100 text-gray-800',
               };
-            const audienceText = AUDIENCE_LABELS[c.targetAudience] || c.targetAudience;
+            const audienceText = RECIPIENTS_LABEL;
 
             return (
               <Card key={c._id} className="hover:border-blue-200 transition-all shadow-sm">

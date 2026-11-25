@@ -17,6 +17,17 @@ import { escapeHtml } from "../../utils/htmlHelpers";
 const esc = (v: unknown): string => (v === undefined || v === null ? "" : escapeHtml(String(v)));
 const SAFE_URL = /^https?:\/\//i;
 
+// A provider that never answers must not hold the admin request or the cron tick open.
+export const PROVIDER_TIMEOUT_MS = 20_000;
+
+/**
+ * Audience segments are not implemented: Sender sends to the configured group and
+ * Mailchimp to the configured audience, i.e. the whole marketing list. The stored
+ * targetAudience is always forced to "newsletter_all" so nothing claims otherwise.
+ */
+export const ALL_LIST_AUDIENCE: TargetAudience = "newsletter_all";
+export const ALL_LIST_LABEL = "all subscribers on the email-marketing list";
+
 // Official Competitions mapping from /competitions
 export const OFFICIAL_COMPETITIONS = [
   {
@@ -117,21 +128,8 @@ export class NewsletterDigestService {
   /**
    * Audience label mapping
    */
-  getAudienceLabel(audience: TargetAudience): string {
-    switch (audience) {
-      case "newsletter_all":
-        return "Newsletter Subscribers (tag: newsletter)";
-      case "customers_parents":
-        return "Registered Parents & Customers (role: parent / customer)";
-      case "teachers":
-        return "Registered Teachers & Educators (role: teacher)";
-      case "vendors":
-        return "Activity Partners & Vendors (role: vendor)";
-      case "all_consented":
-        return "All Marketing-Consented Users & Subscribers";
-      default:
-        return "All Subscribers";
-    }
+  getAudienceLabel(_audience?: TargetAudience): string {
+    return ALL_LIST_LABEL;
   }
 
   /**
@@ -143,7 +141,7 @@ export class NewsletterDigestService {
       : await EmailDigestSettings.getSettings();
 
     const campaignType: CampaignPurpose = settings.campaignType || "blog_digest";
-    const targetAudience: TargetAudience = settings.targetAudience || "newsletter_all";
+    const targetAudience: TargetAudience = ALL_LIST_AUDIENCE;
 
     const assembled: AssembledCampaignData = {
       campaignType,
@@ -546,6 +544,7 @@ export class NewsletterDigestService {
         // Step A: Create Campaign in Sender
         const createRes = await fetch("https://api.sender.net/v2/campaigns", {
           method: "POST",
+          signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
           headers: {
             Authorization: `Bearer ${cfg.senderApiKey}`,
             "Content-Type": "application/json",
@@ -578,6 +577,7 @@ export class NewsletterDigestService {
         // Step B: Send the campaign
         const sendRes = await fetch(`https://api.sender.net/v2/campaigns/${campaignId}/send`, {
           method: "POST",
+          signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
           headers: {
             Authorization: `Bearer ${cfg.senderApiKey}`,
             "Content-Type": "application/json",
@@ -634,6 +634,7 @@ export class NewsletterDigestService {
         // Step A: Create Regular Campaign in Mailchimp
         const createCampRes = await fetch(`${baseUrl}/campaigns`, {
           method: "POST",
+          signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
           headers: {
             Authorization: authHeader,
             "Content-Type": "application/json",
@@ -667,6 +668,7 @@ export class NewsletterDigestService {
         // Step B: Set Campaign HTML Content
         const setContentRes = await fetch(`${baseUrl}/campaigns/${campaignId}/content`, {
           method: "PUT",
+          signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
           headers: {
             Authorization: authHeader,
             "Content-Type": "application/json",
@@ -685,6 +687,7 @@ export class NewsletterDigestService {
         // Step C: Send the Campaign immediately
         const sendCampRes = await fetch(`${baseUrl}/campaigns/${campaignId}/actions/send`, {
           method: "POST",
+          signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
           headers: {
             Authorization: authHeader,
             "Content-Type": "application/json",

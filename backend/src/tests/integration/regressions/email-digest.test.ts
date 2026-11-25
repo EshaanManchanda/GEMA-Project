@@ -177,3 +177,53 @@ describe("digest cron tick", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 });
+
+describe("audience and provider calls", () => {
+  it("the audience cannot be chosen: every campaign targets the whole list", async () => {
+    const h = await asAdmin();
+    const res = await request(app).put(`${BASE}/digest-settings`).set(h).send({ subject: "S", targetAudience: "teachers" });
+    expect(res.status).toBe(200);
+    expect((await EmailDigestSettings.findOne().lean())!.targetAudience).toBe("newsletter_all");
+    expect(res.body.campaignRecord.targetAudience).toBe("newsletter_all");
+
+    const prev = await request(app).post(`${BASE}/digest-preview`).set(h).send({ targetAudience: "vendors" });
+    expect(prev.body.data.targetAudience).toBe("newsletter_all");
+    expect(prev.body.data.audienceLabel).toBe("all subscribers on the email-marketing list");
+  });
+
+  describe("via Sender", () => {
+    beforeEach(() => {
+      Object.assign((config as any).emailMarketing, { provider: "sender", senderApiKey: "test-key", senderListId: "grp1" });
+      invalidateEmailMarketingConfig();
+    });
+    afterEach(() => {
+      Object.assign((config as any).emailMarketing, { provider: "dev", senderApiKey: "", senderListId: "" });
+    });
+    const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body }) as any;
+
+    it("every provider call carries a timeout signal and the result names the whole list", async () => {
+      await EmailDigestSettings.getSettings();
+      const fetchSpy = jest
+        .spyOn(global, "fetch")
+        .mockResolvedValueOnce(ok({ data: { id: "c1" } }))
+        .mockResolvedValueOnce(ok({ data: { recipient_count: 3 } }));
+
+      const r = await newsletterDigestService.dispatchDigest({});
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      for (const [, init] of fetchSpy.mock.calls) expect((init as RequestInit).signal).toBeInstanceOf(AbortSignal);
+      expect(r.message).toContain("all subscribers on the email-marketing list");
+      expect((await EmailDigestSettings.findOne().lean())!.lastSentStatus).toBe("success");
+    });
+
+    it("a provider timeout fails the send and records it, so the cron does not retry in a loop", async () => {
+      await EmailDigestSettings.getSettings();
+      jest.spyOn(global, "fetch").mockRejectedValue(Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" }));
+
+      await expect(newsletterDigestService.dispatchDigest({})).rejects.toThrow(/timeout/);
+      const s = await EmailDigestSettings.findOne().lean();
+      expect(s!.lastSentStatus).toBe("failed");
+      expect(s!.lastSentAt).toBeDefined();
+    });
+  });
+});

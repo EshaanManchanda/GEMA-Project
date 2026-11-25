@@ -71,33 +71,9 @@ const CAMPAIGN_TYPES = [
   },
 ] as const;
 
-const AUDIENCE_OPTIONS = [
-  {
-    id: 'newsletter_all',
-    label: 'Newsletter Subscribers (tag: newsletter)',
-    desc: 'All visitors who opted in to the blog newsletter on the website.',
-  },
-  {
-    id: 'customers_parents',
-    label: 'Parents & Customers (role: parent / customer)',
-    desc: 'Parents with verified accounts or past paid bookings (best for Camp & Event announcements).',
-  },
-  {
-    id: 'teachers',
-    label: 'Teachers & Educators (role: teacher)',
-    desc: 'Educators and school coordinators on Kidrove.',
-  },
-  {
-    id: 'vendors',
-    label: 'Partners & Vendors (role: vendor)',
-    desc: 'Activity providers and workshop organizers.',
-  },
-  {
-    id: 'all_consented',
-    label: 'All Consented Users & Subscribers (Full Audience)',
-    desc: 'Broadest reach: everyone who has marketing permissions enabled.',
-  },
-] as const;
+// Audience segments are not implemented: every send goes to the whole marketing list
+// (the Sender group / Mailchimp audience set under Email Marketing settings).
+const RECIPIENTS_LABEL = 'all subscribers on your email-marketing list';
 
 interface DigestAutomationTabProps {
   onSaved?: () => void;
@@ -203,7 +179,6 @@ export const DigestAutomationTab: React.FC<DigestAutomationTabProps> = ({
     }
   }, [
     settings.campaignType,
-    settings.targetAudience,
     settings.blogMode,
     settings.autoBlogCount,
     settings.selectedBlogIds?.length,
@@ -370,7 +345,7 @@ export const DigestAutomationTab: React.FC<DigestAutomationTabProps> = ({
               <p className="text-xs text-gray-500 mt-1">
                 {editingCampaign
                   ? 'Editing existing campaign record. Click Save to persist changes or Reset to start fresh.'
-                  : 'Choose a single clear purpose, pick your audience segment, and dispatch clean, high-converting emails via your configured provider.'}
+                  : 'Choose a single clear purpose and dispatch clean, high-converting emails to your whole list via your configured provider.'}
               </p>
               {settings.lastSentAt && (
                 <p className="text-[11px] text-gray-400 mt-0.5">
@@ -472,42 +447,19 @@ export const DigestAutomationTab: React.FC<DigestAutomationTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* STEP 2: AUDIENCE TARGETING SELECTOR */}
+      {/* STEP 2: RECIPIENTS (segments not available yet) */}
       <Card>
         <CardHeader className="pb-3 border-b border-gray-100">
           <CardTitle className="text-sm font-semibold flex items-center gap-2 text-gray-800">
             <Users className="w-4 h-4 text-indigo-600" />
-            Step 2: Select Target Audience (Who Should Receive This?)
+            Step 2: Recipients
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            {AUDIENCE_OPTIONS.map((aud) => {
-              const isSelected = settings.targetAudience === aud.id;
-              return (
-                <div
-                  key={aud.id}
-                  onClick={() => setSettings({ ...settings, targetAudience: aud.id as any })}
-                  className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
-                    isSelected
-                      ? 'border-indigo-600 bg-indigo-50/60 ring-1 ring-indigo-600'
-                      : 'border-gray-200 bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      checked={isSelected}
-                      onChange={() => setSettings({ ...settings, targetAudience: aud.id as any })}
-                      className="text-indigo-600"
-                    />
-                    <span className="text-xs font-bold text-gray-900">{aud.label}</span>
-                  </div>
-                  <p className="text-[11px] text-gray-500 mt-1 pl-5">{aud.desc}</p>
-                </div>
-              );
-            })}
-          </div>
+        <CardContent className="p-4">
+          <p className="text-xs text-gray-700">
+            This campaign goes to <strong>{RECIPIENTS_LABEL}</strong> (the Sender group or Mailchimp
+            audience configured in Email Marketing settings). Sending to a smaller group is not available yet.
+          </p>
         </CardContent>
       </Card>
 
@@ -1035,7 +987,7 @@ export const DigestAutomationTab: React.FC<DigestAutomationTabProps> = ({
                 onClick={() => {
                   if (
                     window.confirm(
-                      `Are you sure you want to blast this [${settings.campaignType?.toUpperCase()}] campaign to ${settings.targetAudience?.toUpperCase()} now?`
+                      `Are you sure you want to blast this [${settings.campaignType?.toUpperCase()}] campaign to ${RECIPIENTS_LABEL} now?`
                     )
                   ) {
                     dispatchMutation.mutate({
@@ -1060,7 +1012,7 @@ export const DigestAutomationTab: React.FC<DigestAutomationTabProps> = ({
               <div className="flex items-center gap-3">
                 <span className="text-sm font-bold text-gray-900">Live Email Preview</span>
                 <span className="text-xs text-gray-500">
-                  Target: <strong>{settings.targetAudience}</strong>
+                  To: <strong>{RECIPIENTS_LABEL}</strong>
                 </span>
               </div>
 

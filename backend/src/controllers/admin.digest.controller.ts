@@ -9,9 +9,11 @@ import newsletterDigestService from "../services/communication/newsletterDigest.
  * `__v`, timestamps, `lastSent*` delivery tracking that gates the cron,
  * `senderCampaignId`) is dropped: the edit form posts the whole saved record
  * back, and copying its `_id` onto the settings singleton made save() fail.
+ * `targetAudience` is left out on purpose: segments are not implemented, every
+ * send goes to the whole list (see ALL_LIST_AUDIENCE in newsletterDigest.service).
  */
 const CAMPAIGN_FIELDS = [
-  "title", "subject", "preheader", "campaignType", "targetAudience", "status",
+  "title", "subject", "preheader", "campaignType", "status",
   "autoSend", "scheduleDay", "scheduleTime", "blogMode", "autoBlogCount",
   "selectedBlogIds", "featuredEventId", "secondaryEventIds", "eventCustomMessage",
   "selectedCompetitionSlugs", "competitionCustomMessage", "customBroadcast",
@@ -227,7 +229,7 @@ export const dispatchEmailDigest = async (
           title: overrideSettings?.subject || "Instant Campaign Blast",
           subject: overrideSettings?.subject || "Instant Campaign Blast",
           campaignType: overrideSettings?.campaignType || "blog_digest",
-          targetAudience: overrideSettings?.targetAudience || "newsletter_all",
+          targetAudience: "newsletter_all",
           status: "active",
           lastSentAt: new Date(),
           lastSentStatus: "success",
