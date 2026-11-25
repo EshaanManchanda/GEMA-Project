@@ -4,6 +4,7 @@ import request from "supertest";
 import { Application } from "express";
 import { Types } from "mongoose";
 import Reel from "../../../models/Reel";
+import MediaAsset from "../../../models/MediaAsset";
 import { createTestApp } from "../setup/testApp";
 import { connectTestDB, clearTestDB, closeTestDB } from "../setup/testDB";
 import { ensureCollections } from "../setup/factories";
@@ -13,8 +14,11 @@ let app: Application;
 beforeAll(async () => {
   await connectTestDB();
   await ensureCollections(); // services here write inside transactions
+  // ...and a transaction that runs while an index build is still going on its collection fails with a
+  // "catalog changes" WriteConflict (an intermittent 500 under the full parallel run). Wait for them.
+  await Promise.all([Reel, MediaAsset].map((m) => m.init()));
   app = createTestApp();
-});
+}, 120_000);
 afterEach(clearTestDB);
 afterAll(closeTestDB);
 

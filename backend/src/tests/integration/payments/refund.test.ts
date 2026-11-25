@@ -31,7 +31,9 @@ beforeAll(async () => {
   // Wait out index builds on what the refund transaction writes; one still
   // running fails the transaction with a "catalog changes" WriteConflict.
   await Promise.all([Order, Ticket, RevenueTransaction].map((m) => m.init()));
-});
+  // Measured 29 s under the full parallel run: every test file builds its indexes on the one
+  // shared replica set. The wait is needed (see above), so the hook gets a budget that fits it.
+}, 120_000);
 afterEach(clearTestDB);
 afterAll(closeTestDB);
 

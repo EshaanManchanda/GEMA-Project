@@ -11,7 +11,10 @@ let app: Application;
 beforeAll(async () => {
   await connectTestDB();
   app = createTestApp();
-});
+  // $text search needs the text index. Building it inside the test took over the 30 s test
+  // timeout under the full parallel run (shared replica set), so wait for it here instead.
+  await Category.init();
+}, 120_000);
 afterEach(clearTestDB);
 afterAll(closeTestDB);
 
