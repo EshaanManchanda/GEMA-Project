@@ -227,7 +227,7 @@ kidrove.com sends no security headers today (no HSTS, clickjacking or MIME-sniff
 from the repo into the live kidrove.com server block; the rest of the live nginx config stays as it is. The CSP in it is
 report-only (it blocks nothing).
 ```sh
-SITE=$(sudo grep -lE 'server_name[^;]*kidrove\.com' /etc/nginx/sites-enabled/* | head -1); echo "$SITE"   # one file
+SITE=$(sudo grep -lE 'server_name[^;]*[[:space:]]kidrove\.com' /etc/nginx/sites-enabled/* | head -1); echo "$SITE"   # one file
 sudo grep -n 'security-headers.conf' "$SITE" || echo "not included yet"
 sudo cp "$SITE" /root/nginx-kidrove.before-headers.conf                     # backup
 sudo cp $APP/deployment/nginx/snippets/security-headers.conf /etc/nginx/snippets/security-headers.conf
