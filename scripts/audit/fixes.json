@@ -1,5 +1,5 @@
 {
-  "testsPassing": "1416 / 1455",
+  "testsPassing": "1623 / 1655",
   "issues": [
     {
       "area": "Security",
@@ -749,6 +749,27 @@
       "commit": "b6049ea",
       "title": "A runaway log can no longer outgrow its size cap for a whole day",
       "text": "The pm2 output and error files were capped at 100 MB by logrotate, but the system only runs logrotate once a day, so a log storm could write gigabytes (about 18 GB on 14 Nov) long before the next run. A cron entry now runs the same rule every 15 minutes; when no file is over the limit it does nothing. Tested with a real cron daemon and logrotate 3.21: an oversized pm2 file was rotated by cron's own run, other files in the folder were left alone, and a second run changed nothing. Limits: a storm can still write for up to 15 minutes between runs, and the application's own winston files are not covered here (they cap and prune themselves at 50 MB x 20); not installed on the server yet, RUNBOOK step 2c does it."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "2dab621",
+      "title": "Vendor-written text can no longer inject HTML into the subscriber digest or the admin preview",
+      "text": "The new email digest (merged from Aditya's branch) put blog and event titles, descriptions, locations and the custom messages straight into the HTML that is emailed to every subscriber and shown in the admin's preview frame. An event titled with an HTML tag would have been sent as markup to the whole list and rendered inside the admin panel. Every value is escaped now, the button link must start with http:// or https://, and the preview frame is sandboxed so nothing in it can run scripts. Limits: the free-form 'custom broadcast' body is still raw HTML on purpose, because only admins write it."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "high",
+      "commit": "2dab621",
+      "title": "Editing or activating a saved email campaign works (it returned an error)",
+      "text": "In Aditya's Saved Campaigns tab, saving an edited campaign and switching a campaign to Active both failed with a server error, because the whole saved record (including its database id) was copied onto the live settings. The server now accepts only the campaign fields an admin can set, so the delivery record that stops the scheduler sending twice can no longer be overwritten from the form either. Deleting a campaign that does not exist now says 'not found'."
+    },
+    {
+      "area": "Events & Admin",
+      "sev": "medium",
+      "commit": "2dab621",
+      "title": "Only published events can be featured in an email campaign",
+      "text": "A campaign could feature an event by id even if it was a draft or rejected, which would have announced it to every subscriber. The featured event must now be published; otherwise the newest published event is used."
     }
   ],
   "tests": [
@@ -1077,6 +1098,16 @@
         "After a quarter of an hour: ls -l /var/log/GEMA-Project/backend/api-*.log /var/log/GEMA-Project/backend/worker-*.log   (none larger than about 100 MB)"
       ],
       "expect": "Both files are in place and the dry run prints no errors. No pm2 log file stays above the 100 MB cap for longer than one cron interval; rotated copies appear as api-output.log.1, .2.gz and so on."
+    },
+    {
+      "title": "Email digest: edit, activate and preview a campaign",
+      "where": "Local stack or staging, logged in as admin",
+      "steps": [
+        "Admin > Email Marketing > Saved Campaigns: edit a campaign, change the subject, Save   (success toast, the new subject is in the list)",
+        "Set the same campaign's status to Active   (success toast; Digest tab now shows its settings)",
+        "As a vendor, create and publish an event titled <b>Test</b>; as admin, pick it as the featured event and open the preview   (the title shows the literal text <b>Test</b>, not bold text)"
+      ],
+      "expect": "No error toasts; the preview shows tags as plain text; no email is sent unless Dispatch is pressed or the schedule is active with auto-send on."
     }
   ]
 }
