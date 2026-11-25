@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { config } from "../config/index";
 import * as authController from "../controllers/auth.controller";
 import { exportMyData, deleteMyAccount } from "../controllers/account.controller";
 import {
@@ -51,10 +52,19 @@ router.post(
 /**
  * @route   POST /auth/register-admin
  * @desc    Register a new admin user (requires admin secret key)
- * @access  Public (protected by secret key)
+ * @access  Public (protected by secret key); development and tests only.
+ *          Production answers 404: a leaked ADMIN_SECRET_KEY must not be enough to mint an
+ *          admin. New admins are promoted by an existing admin (PATCH /api/admin/users/:id/role).
  */
 router.post(
   "/register-admin",
+  (_req, res, next) => {
+    if (config.nodeEnv === "production") {
+      res.status(404).json({ success: false, message: "Not Found" });
+      return;
+    }
+    next();
+  },
   authLimiter,
   validateAdminRegistration,
   validate,

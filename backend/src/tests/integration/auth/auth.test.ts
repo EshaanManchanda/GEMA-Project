@@ -330,6 +330,18 @@ describe("POST /api/auth/register-admin", () => {
       .send(payload);
     expect(res.status).toBe(400);
   });
+  it("does not exist in production, even with the right secret (admins are promoted in the admin panel)", async () => {
+    const { config } = require("../../../config/index");
+    const saved = config.nodeEnv;
+    config.nodeEnv = "production";
+    try {
+      expect((await request(app).post("/api/auth/register-admin").send(adminPayload())).status).toBe(404);
+      expect((await request(app).post("/api/auth/register-admin").send({})).status).toBe(404);
+      expect(await User.countDocuments({ role: UserRole.ADMIN })).toBe(0);
+    } finally {
+      config.nodeEnv = saved;
+    }
+  });
 });
 
 // ===========================================================================
