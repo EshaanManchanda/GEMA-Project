@@ -1,10 +1,12 @@
 name: Deploy GEMA
 
+# Manual only (25 Nov 2026). The deploy jobs below pull and build ON the server
+# (npm install --omit=dev cannot build the frontend: vite is a dev dependency, and
+# building on the 1 vCPU box is what overloaded it). Production now ships as a
+# prebuilt release with an atomic switch and automatic rollback:
+# deployment/release/ + deployment/RUNBOOK.md. A push to main must not redeploy
+# in place over that release, so pushes no longer trigger this workflow.
 on:
-  push:
-    branches:
-      - main
-      - dev
   workflow_dispatch:
 
 permissions:
@@ -155,6 +157,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Production uses the release tooling
+        run: |
+          echo "::error::Production is deployed with deployment/release/build-release.sh + deploy-release.sh (see deployment/RUNBOOK.md), not by an in-place pull and build."
+          exit 1
+
       - uses: appleboy/ssh-action@v1.0.3
         env:
           PROD_MONGODB_URI: ${{ secrets.PROD_MONGODB_URI }}
