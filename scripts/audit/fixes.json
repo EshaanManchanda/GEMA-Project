@@ -1,5 +1,5 @@
 {
-  "testsPassing": "1623 / 1655",
+  "testsPassing": "1632 / 1658",
   "issues": [
     {
       "area": "Security",
@@ -770,6 +770,27 @@
       "commit": "2dab621",
       "title": "Only published events can be featured in an email campaign",
       "text": "A campaign could feature an event by id even if it was a draft or rejected, which would have announced it to every subscriber. The featured event must now be published; otherwise the newest published event is used."
+    },
+    {
+      "area": "Bugs & user experience",
+      "sev": "medium",
+      "commit": "b6c45af",
+      "title": "Email campaigns no longer offer an audience choice that was never applied",
+      "text": "Admins could pick Teachers, Vendors or Parents, but every campaign went to the whole marketing list (the Sender group or Mailchimp audience). Segments are not built, so the choice is removed: the page now says who receives the email and the server ignores any audience sent to it. Calls to Sender and Mailchimp also give up after 20 seconds instead of hanging, and a timeout is recorded as a failed send."
+    },
+    {
+      "area": "Dependencies",
+      "sev": "high",
+      "commit": "4cfba2b",
+      "title": "mongoose patched (four advisories, including prototype pollution)",
+      "text": "The backend's database library was on 8.24.3, which has four published advisories (connection-level sanitizeFilter ignored, prototype pollution, discriminator-key bypass, denial of service). Updated to 8.24.11 on the same major version; no code changes needed. npm audit now shows no high or critical issue in the backend's production dependencies."
+    },
+    {
+      "area": "Testing & CI",
+      "sev": "low",
+      "commit": "74cc5cf",
+      "title": "Four test files no longer fail at random in the full run",
+      "text": "refund, category, reel and banner tests failed now and then when the whole suite ran together. Measured cause: each test file builds its database indexes on one shared test database server, which took up to 29 seconds, so setup timed out or a transaction hit an index still being built. Setup now waits for those indexes. No test checks were changed, and the live site is unaffected."
     }
   ],
   "tests": [
