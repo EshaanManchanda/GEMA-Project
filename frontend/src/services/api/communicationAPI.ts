@@ -1,5 +1,69 @@
 import { ApiService } from '../api';
 
+export interface EmailDigestSettingsData {
+  _id?: string;
+  campaignRecordId?: string;
+  status: 'active' | 'draft' | 'inactive';
+  campaignType: 'blog_digest' | 'event_spotlight' | 'competition_announcement' | 'custom_broadcast';
+  targetAudience: 'newsletter_all' | 'customers_parents' | 'teachers' | 'vendors' | 'all_consented';
+  autoSend: boolean;
+  scheduleDay: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  scheduleTime: string;
+  subject: string;
+  preheader?: string;
+
+  // Blog Digest Config
+  blogMode: 'auto' | 'manual';
+  autoBlogCount: number;
+  selectedBlogIds: string[];
+
+  // Event Spotlight Config
+  featuredEventId?: string;
+  secondaryEventIds?: string[];
+  eventCustomMessage?: string;
+
+  // Competition Config
+  selectedCompetitionSlugs: string[];
+  competitionCustomMessage?: string;
+
+  // Free-form Broadcast Config
+  customBroadcast?: {
+    heroTitle: string;
+    heroSubtitle: string;
+    bodyHtml: string;
+    ctaText: string;
+    ctaUrl: string;
+  };
+
+  lastSentAt?: string;
+  lastSentStatus?: 'success' | 'failed';
+  lastSentRecipientCount?: number;
+  lastSentCampaignType?: string;
+}
+
+export interface DigestPreviewResult {
+  subject: string;
+  html: string;
+  blogs: Array<{
+    _id: string;
+    title: string;
+    slug: string;
+    excerpt: string;
+    image: string;
+    publishedAt?: string;
+  }>;
+  competitions: Array<{
+    _id: string;
+    title: string;
+    slug: string;
+    description: string;
+    image: string;
+    price?: number;
+    currency?: string;
+  }>;
+  banner?: { title: string; text: string };
+}
+
 export interface CommunicationSettings {
   whatsapp: { provider: string; configured: boolean };
   emailMarketing: { provider: string; configured: boolean };
@@ -228,6 +292,72 @@ const communicationAPI = {
       simulated: boolean;
     }>('/admin/communication/email-marketing/test-connection');
     return response.data;
+  },
+
+  getEmailDigestSettings: async (): Promise<EmailDigestSettingsData> => {
+    const response = await ApiService.get<any>(
+      '/admin/communication/email-marketing/digest-settings'
+    );
+    return response.data?.data || response.data || response;
+  },
+
+  updateEmailDigestSettings: async (
+    payload: Partial<EmailDigestSettingsData>
+  ): Promise<any> => {
+    const response = await ApiService.put<any>(
+      '/admin/communication/email-marketing/digest-settings',
+      payload
+    );
+    return response.data || response;
+  },
+
+  previewEmailDigest: async (
+    payload?: Partial<EmailDigestSettingsData>
+  ): Promise<DigestPreviewResult> => {
+    const response = await ApiService.post<any>(
+      '/admin/communication/email-marketing/digest-preview',
+      payload || {}
+    );
+    return response.data?.data || response.data || response;
+  },
+
+  dispatchEmailDigest: async (payload: {
+    testEmail?: string;
+    testMode?: boolean;
+    overrideSettings?: Partial<EmailDigestSettingsData>;
+    campaignRecordId?: string;
+  }): Promise<{ success: boolean; recipientCount?: number; message: string }> => {
+    const response = await ApiService.post<any>(
+      '/admin/communication/email-marketing/digest-dispatch',
+      payload
+    );
+    return response.data || response;
+  },
+
+  listEmailCampaigns: async (): Promise<EmailDigestSettingsData[]> => {
+    const response = await ApiService.get<any>(
+      '/admin/communication/email-marketing/campaigns'
+    );
+    const data = response.data?.data || response.data || response;
+    return Array.isArray(data) ? data : [];
+  },
+
+  updateCampaignRecord: async (
+    id: string,
+    payload: Partial<EmailDigestSettingsData>
+  ): Promise<EmailDigestSettingsData> => {
+    const response = await ApiService.patch<any>(
+      `/admin/communication/email-marketing/campaigns/${id}`,
+      payload
+    );
+    return response.data?.data || response.data || response;
+  },
+
+  deleteCampaignRecord: async (id: string): Promise<{ success: boolean; message: string }> => {
+    const response = await ApiService.delete<any>(
+      `/admin/communication/email-marketing/campaigns/${id}`
+    );
+    return response.data || response;
   },
 };
 

@@ -1259,6 +1259,28 @@ export default function NationalDayCompetitionPage() {
           </div>
         </section>
 
+        {/* ── Partnership & Sponsorship CTA ─────────────────────────────────────── */}
+        <div id="partnerships" className="py-20 border-y border-amber-200/80 relative overflow-hidden bg-gradient-to-b from-[#FEF8E7]/90 via-[#FFFDF5]/95 to-[#FAF5EB]/90 backdrop-blur-md">
+          {/* Subtle Decorative Background Glows */}
+          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[80%] rounded-full bg-amber-300/25 blur-[140px] pointer-events-none" />
+          <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[80%] rounded-full bg-emerald-300/20 blur-[140px] pointer-events-none" />
+
+          <div className="max-w-5xl mx-auto px-4 relative z-10 text-center">
+            <h2 className="text-4xl md:text-6xl font-black text-slate-900 mb-6 tracking-tight">
+              Become a <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 drop-shadow-xs">Sponsor</span>
+            </h2>
+            <p className="text-slate-600 max-w-2xl mx-auto text-lg md:text-xl mb-10 leading-relaxed font-medium">
+              We invite schools, universities, and businesses to empower young artists across the UAE celebrating Eid Al Etihad through meaningful sponsorships.
+            </p>
+            <Link
+              to="/competitions/national-day-art-competition/sponsorship"
+              className="inline-flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-bold text-lg rounded-full transition-all shadow-md hover:shadow-xl hover:scale-105 active:scale-95"
+            >
+              Explore Sponsorship Options <FiChevronRight className="stroke-[3] text-xl" />
+            </Link>
+          </div>
+        </div>
+
         {/* ─── 7. REGISTRATION WIZARD ────────────────────────────────────── */}
         <section
           id="registration-wizard"

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Mail, Send, Users, UserCheck, UserX, RefreshCw, PlugZap, ExternalLink } from 'lucide-react';
+import { Mail, Users, UserCheck, UserX, RefreshCw, PlugZap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import newsletterAPI from '@/services/api/newsletterAPI';
-import communicationAPI from '@/services/api/communicationAPI';
+import communicationAPI, { EmailDigestSettingsData } from '@/services/api/communicationAPI';
 import Button from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
@@ -12,10 +12,12 @@ import Select from '@/components/ui/Select';
 import Badge from '@/components/ui/Badge';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
-type TabType = 'overview' | 'subscribers' | 'compose' | 'automations';
+import DigestAutomationTab from './communications/DigestAutomationTab';
+import { SavedCampaignsTab } from './communications/SavedCampaignsTab';
+
+type TabType = 'overview' | 'subscribers' | 'digest' | 'campaigns' | 'automations';
 
 const PROVIDER_LABEL = { dev: 'Development (Mailpit)', sender: 'Sender', mailchimp: 'Mailchimp' } as const;
-const PROVIDER_DASHBOARD = { sender: 'https://app.sender.net', mailchimp: 'https://admin.mailchimp.com' } as const;
 
 // Tags/fields Kidrove keeps up to date on each contact, and the provider workflow each one powers.
 const AUTOMATIONS = [
@@ -104,28 +106,14 @@ const AdminEmailMarketingPage: React.FC = () => {
     staleTime: 30 * 1000,
   });
 
-  // ---- Compose ----
-  const [campaign, setCampaign] = useState({ subject: '', content: '', testMode: true });
-
-  const sendMutation = useMutation({
-    mutationFn: () => newsletterAPI.admin.sendNewsletter(campaign),
-    onSuccess: (result: any) => {
-      toast.success(
-        campaign.testMode
-          ? 'Test email sent to your own inbox'
-          : `Newsletter sent to ${result?.recipientCount ?? 'all'} subscribers`
-      );
-      queryClient.invalidateQueries({ queryKey: ['newsletter-stats'] });
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to send newsletter');
-    },
-  });
+  // ---- Active editing campaign for Digest & Automation ----
+  const [editingCampaign, setEditingCampaign] = useState<EmailDigestSettingsData | null>(null);
 
   const tabs: { id: TabType; label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'subscribers', label: 'Subscribers' },
-    { id: 'compose', label: isRealProvider ? 'Campaigns' : 'Compose & Send' },
+    { id: 'digest', label: editingCampaign ? '✨ Edit Campaign' : '✨ Digest & Automation' },
+    { id: 'campaigns', label: 'Campaigns & Broadcasts' },
     { id: 'automations', label: 'Automations' },
   ];
 
@@ -150,12 +138,16 @@ const AdminEmailMarketingPage: React.FC = () => {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
+              onClick={() => {
+                if (tab.id === 'digest') {
+                  setEditingCampaign(null);
+                }
+                setActiveTab(tab.id);
+              }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
             >
               {tab.label}
             </button>
@@ -332,95 +324,29 @@ const AdminEmailMarketingPage: React.FC = () => {
           </Card>
         )}
 
-        {activeTab === 'compose' && isRealProvider && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Design and send campaigns in {PROVIDER_LABEL[providerKey]}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-gray-600">
-              <p>
-                {PROVIDER_LABEL[providerKey]} has the drag-and-drop email designer, scheduling, A/B tests and
-                open/click reports. Kidrove keeps your audience in sync automatically, so you only need to pick a
-                segment there:
-              </p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li><code>newsletter</code> — everyone who subscribed through the site</li>
-                <li><code>customer</code> and <code>booked:&lt;category&gt;</code> — people who have booked (and what)</li>
-                <li><code>role:parent</code>, <code>role:teacher</code>, <code>role:vendor</code> — by account type</li>
-              </ul>
-              <p className="text-xs text-gray-500">
-                Registered users appear only after they explicitly opt in. Unsubscribes made inside{' '}
-                {PROVIDER_LABEL[providerKey]} are mirrored back to Kidrove through the webhook.
-              </p>
-              <a
-                href={PROVIDER_DASHBOARD[providerKey as 'sender' | 'mailchimp']}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Open {PROVIDER_LABEL[providerKey]} <ExternalLink className="w-4 h-4" />
-              </a>
-            </CardContent>
-          </Card>
+        {activeTab === 'digest' && (
+          <DigestAutomationTab
+            key={editingCampaign?._id || 'new-digest'}
+            editingCampaign={editingCampaign}
+            onCancelEdit={() => setEditingCampaign(null)}
+            onSaved={() => {
+              setEditingCampaign(null);
+              setActiveTab('campaigns');
+            }}
+          />
         )}
 
-        {activeTab === 'compose' && !isRealProvider && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Compose a Campaign</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Input
-                label="Subject line"
-                value={campaign.subject}
-                onChange={(e) => setCampaign({ ...campaign, subject: e.target.value })}
-                placeholder="This month's events for your kids"
-              />
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 block">Email content (HTML)</label>
-                <textarea
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-400"
-                  rows={10}
-                  value={campaign.content}
-                  onChange={(e) => setCampaign({ ...campaign, content: e.target.value })}
-                  placeholder="<p>Hi there! Here's what's happening this month...</p>"
-                />
-              </div>
-
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={campaign.testMode}
-                  onChange={(e) => setCampaign({ ...campaign, testMode: e.target.checked })}
-                />
-                Test mode — only send to my own email address first
-              </label>
-              {window.location.hostname === 'localhost' && (
-                <p className="text-xs text-gray-500">
-                  Local development: every email lands in Mailpit at{' '}
-                  <a className="underline" href="http://localhost:8025" target="_blank" rel="noopener noreferrer">
-                    http://localhost:8025
-                  </a>
-                  .
-                </p>
-              )}
-
-              <Button
-                leftIcon={<Send className="w-4 h-4" />}
-                onClick={() => sendMutation.mutate()}
-                loading={sendMutation.isPending}
-                disabled={!campaign.subject || !campaign.content}
-              >
-                {campaign.testMode ? 'Send Test Email' : 'Send to All Subscribers'}
-              </Button>
-
-              {!campaign.testMode && (
-                <p className="text-xs text-amber-600">
-                  This will send to every active subscriber ({statsData?.activeSubscribers ?? 0}). Send a test first to check formatting.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+        {activeTab === 'campaigns' && (
+          <SavedCampaignsTab
+            onEditCampaign={(camp) => {
+              setEditingCampaign(camp);
+              setActiveTab('digest');
+            }}
+            onCreateNew={() => {
+              setEditingCampaign(null);
+              setActiveTab('digest');
+            }}
+          />
         )}
 
         {activeTab === 'automations' && (

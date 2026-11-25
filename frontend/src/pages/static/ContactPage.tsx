@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { FiMapPin, FiPhone, FiMail, FiClock, FiSend, FiCheckCircle } from 'react-icons/fi';
-import { FaFacebookF, FaTwitter, FaInstagram, FaYoutube, FaLinkedinIn } from 'react-icons/fa';
+import { FaFacebookF, FaWhatsapp, FaInstagram, FaYoutube, FaLinkedinIn } from 'react-icons/fa';
 import SEO from '@/components/common/SEO';
 import { useQuery } from '@tanstack/react-query';
 import seoContentAPI from '@/services/api/seoContentAPI';
@@ -234,11 +234,15 @@ const ContactPage: React.FC = () => {
                         <FaFacebookF className="w-5 h-5" />
                       </a>
                     )}
-                    {socialSettings.twitterUrl && (
-                      <a href={socialSettings.twitterUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-primary hover:text-white transition-colors">
-                        <FaTwitter className="w-5 h-5" />
-                      </a>
-                    )}
+                    <a
+                      href={`https://wa.me/${socialSettings.whatsappNumber || '971529881170'}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Contact us on WhatsApp"
+                      className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-primary hover:text-white transition-colors"
+                    >
+                      <FaWhatsapp className="w-5 h-5" />
+                    </a>
                     {socialSettings.instagramUrl && (
                       <a href={socialSettings.instagramUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-primary hover:text-white transition-colors">
                         <FaInstagram className="w-5 h-5" />

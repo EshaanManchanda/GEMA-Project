@@ -14,6 +14,15 @@ import {
   testEmailMarketingConnection,
   backfillEmailMarketing,
 } from "../controllers/admin.communication.controller";
+import {
+  getEmailDigestSettings,
+  updateEmailDigestSettings,
+  previewEmailDigest,
+  dispatchEmailDigest,
+  listEmailCampaigns,
+  updateCampaignRecord,
+  deleteCampaignRecord,
+} from "../controllers/admin.digest.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { UserRole } from "../models/User";
 
@@ -62,5 +71,16 @@ router.get(
 );
 
 router.post("/communication/email-marketing/backfill", backfillEmailMarketing);
+
+// Digest & Automation endpoints
+router.get("/communication/email-marketing/digest-settings", getEmailDigestSettings);
+router.put("/communication/email-marketing/digest-settings", updateEmailDigestSettings);
+router.post("/communication/email-marketing/digest-preview", previewEmailDigest);
+router.post("/communication/email-marketing/digest-dispatch", dispatchEmailDigest);
+
+// Campaign Records Management
+router.get("/communication/email-marketing/campaigns", listEmailCampaigns);
+router.patch("/communication/email-marketing/campaigns/:id", updateCampaignRecord);
+router.delete("/communication/email-marketing/campaigns/:id", deleteCampaignRecord);
 
 export default router;

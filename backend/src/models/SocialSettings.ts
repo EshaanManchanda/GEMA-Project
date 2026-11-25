@@ -3,6 +3,7 @@ import mongoose, { Document, Schema, Model } from "mongoose";
 export interface ISocialSettings extends Document {
   facebookUrl: string;
   twitterUrl: string;
+  whatsappNumber: string;
   instagramUrl: string;
   youtubeUrl: string;
   linkedinUrl: string;
@@ -23,6 +24,10 @@ const SocialSettingsSchema = new Schema<ISocialSettings>(
     twitterUrl: {
       type: String,
       default: "",
+    },
+    whatsappNumber: {
+      type: String,
+      default: "971529881170",
     },
     instagramUrl: {
       type: String,
