@@ -221,6 +221,27 @@ It switches the four links, reloads `gema-backend` and `gema-worker`, then waits
 **If the health check fails it rolls back by itself** (data migrations are not undone; see Rollback).
 *Expected:* `release <id> is live and healthy`.
 
+## 10b. SRV: security headers for kidrove.com (5 minutes, can be undone)
+
+kidrove.com sends no security headers today (no HSTS, clickjacking or MIME-sniffing protection). Install ONLY the headers snippet
+from the repo into the live kidrove.com server block; the rest of the live nginx config stays as it is. The CSP in it is
+report-only (it blocks nothing).
+```sh
+SITE=$(sudo grep -lE 'server_name[^;]*kidrove\.com' /etc/nginx/sites-enabled/* | head -1); echo "$SITE"   # one file
+sudo grep -n 'security-headers.conf' "$SITE" || echo "not included yet"
+sudo cp "$SITE" /root/nginx-kidrove.before-headers.conf                     # backup
+sudo cp $APP/deployment/nginx/snippets/security-headers.conf /etc/nginx/snippets/security-headers.conf
+```
+Edit `$SITE` (`sudo nano "$SITE"`): in the `server { ... }` block that has `listen 443` and `server_name kidrove.com`, add the line
+`include snippets/security-headers.conf;` next to the other server-level lines (not inside a `location`). If a `location` in that block
+has its own `add_header` lines, nginx drops the server-level headers there: add the same include inside that location too.
+```sh
+sudo nginx -t && sudo systemctl reload nginx || { sudo cp /root/nginx-kidrove.before-headers.conf "$SITE"; sudo nginx -t && sudo systemctl reload nginx; echo REVERTED; }
+curl -sI https://kidrove.com/ | grep -iE 'strict-transport|x-frame|x-content-type|referrer-policy|content-security'   # 5 lines, each once
+curl -sI https://kidrove.com/assets/ 2>/dev/null | grep -ic 'x-content-type'                                          # 1
+```
+Undo: `sudo cp /root/nginx-kidrove.before-headers.conf "$SITE" && sudo nginx -t && sudo systemctl reload nginx`.
+
 ## 11. Verify (from any computer)
 
 ```sh
