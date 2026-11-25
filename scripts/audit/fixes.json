@@ -833,6 +833,13 @@
       "commit": "d26f760",
       "title": "Step-by-step install of the website's security headers",
       "text": "kidrove.com sends no security headers. The repository has them, but nothing installed them. The release runbook now has a short step (10b) that adds only the headers file to the live site configuration, checks it, and undoes itself automatically if the check fails. Not live until that step is done on the server."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "411e9f6",
+      "title": "The release build no longer publishes the website's source code",
+      "text": "The release build did not mark the website as a production build, so it would have shipped source maps (the readable source of the whole website), kept debug messages in the browser console and run in development mode. The live site was built correctly, so this release would have made it worse. The build now marks it as production and refuses to finish if any source map is found."
     }
   ],
   "tests": [
