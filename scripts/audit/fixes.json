@@ -1,5 +1,5 @@
 {
-  "testsPassing": "1632 / 1658",
+  "testsPassing": "1659 / 1683",
   "issues": [
     {
       "area": "Security",
@@ -791,6 +791,48 @@
       "commit": "74cc5cf",
       "title": "Four test files no longer fail at random in the full run",
       "text": "refund, category, reel and banner tests failed now and then when the whole suite ran together. Measured cause: each test file builds its database indexes on one shared test database server, which took up to 29 seconds, so setup timed out or a transaction hit an index still being built. Setup now waits for those indexes. No test checks were changed, and the live site is unaffected."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "0531e98",
+      "title": "Text from events and blogs can no longer run script in visitors' browsers, and only YouTube, Vimeo and Google Maps can be embedded",
+      "text": "Two helpers turned event and blog HTML into plain text or editor content by loading it into a hidden page element. Tested in Chrome: a picture tag with an error handler still ran its script there. Both now parse the HTML in an inert document where nothing runs (also checked in Chrome). Separately, every place that shows vendor or author HTML allowed an embedded frame from any website, so a vendor could put a fake login form from another site inside a Kidrove page. Embeds are now limited to YouTube, Vimeo and Google Maps in one place that covers all eight screens. Event custom CSS was checked too: only admins can set it and the server cleans it, so nothing changed there."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "6b040cf",
+      "title": "Admin accounts can no longer be created from the internet",
+      "text": "The admin sign-up address was open in production; anyone holding the admin secret could create an admin. It now answers 'not found' on the live site. To make someone an admin, an existing admin changes their role under Admin > Users. Development and tests keep the old route."
+    },
+    {
+      "area": "Security",
+      "sev": "high",
+      "commit": "2bbc48b",
+      "title": "The live server refuses to start without its encryption, Stripe and Firebase settings",
+      "text": "Before, missing settings only produced a warning: the site ran with vendor and teacher Stripe secret keys stored unencrypted and every Stripe payment confirmation rejected. Now the server stops at start-up with one message listing every missing setting, and the encryption key must be at least 32 characters. The release tooling rolls back automatically if that happens, and RUNBOOK step 3 lists exactly what must be set."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "e408ccb",
+      "title": "Uploads can no longer be written outside the upload folder or into a private folder",
+      "text": "The media upload took the folder name from the browser and used it as part of the file path, so '../' could write elsewhere on the server and 'certificates' could drop a file among private documents. The upload now accepts only simple folder names that are not private, and the storage code itself refuses any path outside the upload folder (for saving, reading, listing and deleting)."
+    },
+    {
+      "area": "Reliability & operations",
+      "sev": "high",
+      "commit": "38cd85a",
+      "title": "Pushing to main no longer rebuilds the live site in place",
+      "text": "The GitHub deploy ran on every push to main: it pulled the code and built it on the server, which cannot work (the build tools are not installed there) and is what overloaded the small server before. It would also have overwritten the new release folders. It now runs only by hand, and its production step points to the release tooling instead."
+    },
+    {
+      "area": "Security",
+      "sev": "medium",
+      "commit": "d26f760",
+      "title": "Step-by-step install of the website's security headers",
+      "text": "kidrove.com sends no security headers. The repository has them, but nothing installed them. The release runbook now has a short step (10b) that adds only the headers file to the live site configuration, checks it, and undoes itself automatically if the check fails. Not live until that step is done on the server."
     }
   ],
   "tests": [
@@ -1129,6 +1171,14 @@
         "As a vendor, create and publish an event titled <b>Test</b>; as admin, pick it as the featured event and open the preview   (the title shows the literal text <b>Test</b>, not bold text)"
       ],
       "expect": "No error toasts; the preview shows tags as plain text; no email is sent unless Dispatch is pressed or the schedule is active with auto-send on."
+    },
+    {
+      "title": "Security headers on kidrove.com",
+      "where": "Production, after RUNBOOK step 10b",
+      "steps": [
+        "curl -sI https://kidrove.com/ | grep -iE 'strict-transport|x-frame|x-content-type|referrer-policy|content-security'"
+      ],
+      "expect": "Five header lines, each present once."
     }
   ]
 }
