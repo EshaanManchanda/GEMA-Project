@@ -460,78 +460,72 @@ export const config: Config = {
   },
 };
 
-// Validate required environment variables
-const validateEnv = (): void => {
-  const isProduction = config.nodeEnv === "production";
+// Validate required environment variables. Exported (with an injectable env) for tests.
+export const validateEnv = (
+  env: NodeJS.ProcessEnv = process.env,
+  isProduction: boolean = config.nodeEnv === "production",
+): void => {
+  const has = (v: string) => !!env[v]?.trim();
 
   // These vars must be set in all environments — missing them means the server cannot function
   const criticalVars = ["MONGODB_URI", "JWT_SECRET", "JWT_REFRESH_SECRET"];
-  const missingCritical = criticalVars.filter((v) => !process.env[v]);
+  const missingCritical = criticalVars.filter((v) => !has(v));
   if (missingCritical.length > 0) {
     throw new Error(
       `Missing critical environment variables: ${missingCritical.join(", ")}. Server cannot start.`,
     );
   }
 
+  if (!isProduction) return;
+
   // SESSION_SECRET must be a non-trivial value in production
-  if (isProduction && !process.env.SESSION_SECRET) {
+  if (!has("SESSION_SECRET")) {
     throw new Error(
       "SESSION_SECRET must be set in production. Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
     );
   }
 
   // JWT secrets must be long enough to resist brute-force under HS256 in production
-  if (isProduction) {
-    const jwtSecret = process.env.JWT_SECRET ?? "";
-    const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET ?? "";
-    if (jwtSecret.length < 32) {
-      throw new Error(
-        "JWT_SECRET must be at least 32 characters in production.",
-      );
-    }
-    if (jwtRefreshSecret.length < 32) {
-      throw new Error(
-        "JWT_REFRESH_SECRET must be at least 32 characters in production.",
-      );
-    }
-    if (jwtSecret === jwtRefreshSecret) {
-      throw new Error(
-        "JWT_SECRET and JWT_REFRESH_SECRET must be different values.",
-      );
-    }
+  const jwtSecret = env.JWT_SECRET ?? "";
+  const jwtRefreshSecret = env.JWT_REFRESH_SECRET ?? "";
+  if (jwtSecret.length < 32) {
+    throw new Error("JWT_SECRET must be at least 32 characters in production.");
+  }
+  if (jwtRefreshSecret.length < 32) {
+    throw new Error("JWT_REFRESH_SECRET must be at least 32 characters in production.");
+  }
+  if (jwtSecret === jwtRefreshSecret) {
+    throw new Error("JWT_SECRET and JWT_REFRESH_SECRET must be different values.");
   }
 
-  // Business report (KBOS) integrity checksum secret — warn, don't block,
-  // since it's a new feature and the codebase's other secrets already
-  // follow this same warn-in-prod pattern (see Firebase below).
-  if (isProduction && !process.env.REPORT_INTEGRITY_SECRET) {
+  // Fail closed (owner decision 25 Nov 2026): without these the server used to start and
+  // store vendor/teacher Stripe secret keys in plaintext, reject every Stripe webhook, or
+  // run without Firebase admin. All problems are reported in one message.
+  const problems: string[] = [];
+  const required = [
+    "FIELD_ENCRYPTION_KEY", // encrypts vendor/teacher Stripe secret keys at rest (utils/encryption.ts)
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "FIREBASE_PROJECT_ID",
+    "FIREBASE_PRIVATE_KEY",
+    "FIREBASE_CLIENT_EMAIL",
+  ];
+  for (const v of required) if (!has(v)) problems.push(`${v} is not set`);
+  if (has("FIELD_ENCRYPTION_KEY") && env.FIELD_ENCRYPTION_KEY!.trim().length < 32) {
+    problems.push("FIELD_ENCRYPTION_KEY must be at least 32 characters (openssl rand -hex 32)");
+  }
+  if (problems.length > 0) {
+    throw new Error(
+      `Production cannot start: ${problems.join("; ")}. See deployment/RUNBOOK.md step 3.`,
+    );
+  }
+
+  // Business report (KBOS) integrity checksum secret — warn, don't block: only report
+  // checksums depend on it.
+  if (!has("REPORT_INTEGRITY_SECRET")) {
     console.warn(
       "Warning: REPORT_INTEGRITY_SECRET is not set in production. Business report snapshot checksums will fail to compute.",
     );
-  }
-
-  // Encrypts vendor/teacher manual Stripe secret keys at rest — see utils/encryption.ts.
-  if (isProduction && !process.env.FIELD_ENCRYPTION_KEY) {
-    console.warn(
-      "Warning: FIELD_ENCRYPTION_KEY is not set in production. Vendor/teacher manual Stripe secret keys will be stored in plaintext. Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
-    );
-  }
-
-  // Firebase validation only in production
-  if (isProduction) {
-    const firebaseVars = [
-      "FIREBASE_PROJECT_ID",
-      "FIREBASE_PRIVATE_KEY",
-      "FIREBASE_CLIENT_EMAIL",
-    ];
-
-    for (const envVar of firebaseVars) {
-      if (!process.env[envVar]) {
-        console.warn(
-          `Warning: Firebase environment variable ${envVar} is not set in production.`,
-        );
-      }
-    }
   }
 };
 

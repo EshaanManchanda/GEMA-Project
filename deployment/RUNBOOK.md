@@ -109,7 +109,7 @@ Send me this output. Then, in this order:
 List which of these are missing (names only, no values printed):
 ```sh
 cd $APP/backend
-for v in STRIPE_WEBHOOK_SECRET FIELD_ENCRYPTION_KEY REPORT_INTEGRITY_SECRET ANALYTICS_IP_SALT ADMIN_SECRET_KEY SENTRY_DSN JWT_SECRET SESSION_SECRET MONGODB_URI; do
+for v in STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET FIELD_ENCRYPTION_KEY FIREBASE_PROJECT_ID FIREBASE_PRIVATE_KEY FIREBASE_CLIENT_EMAIL REPORT_INTEGRITY_SECRET ANALYTICS_IP_SALT SENTRY_DSN JWT_SECRET JWT_REFRESH_SECRET SESSION_SECRET MONGODB_URI; do
   grep -qE "^$v=.+" .env && echo "set      $v" || echo "MISSING  $v"; done
 grep -E '^(RATE_LIMIT_MAX|RATE_LIMIT_WINDOW_MS|UPLOAD_PROVIDER|REDIS_HOST|REDIS_PORT|REDIS_URL|PORT|ENABLE_REQUEST_LOGGING|LOG_[A-Z_]*)=' .env
 ```
@@ -122,8 +122,12 @@ grep -E '^(RATE_LIMIT_MAX|RATE_LIMIT_WINDOW_MS|UPLOAD_PROVIDER|REDIS_HOST|REDIS_
 - `REPORT_INTEGRITY_SECRET`: `openssl rand -hex 32`. The app warns at boot that business-report checksums cannot be computed without it.
 - `FIELD_ENCRYPTION_KEY` matters more than it looks: the boot log says that without it vendor and teacher **Stripe secret keys are stored in plaintext**. Setting the key encrypts them on their next save; keys already saved stay plaintext until then (we will migrate them after the release).
 - `ANALYTICS_IP_SALT`: `openssl rand -hex 32`.
-- `ADMIN_SECRET_KEY`: the only thing protecting the `register-admin` route, so it must be long and random (`openssl rand -hex 32`), never a word or a default. If you never create admins that way, say so and we will switch the route off in the next release.
 - `RATE_LIMIT_MAX` now means *requests per minute* (it used to be per 15 minutes). If it is set to a small number such as `100`, raise it (e.g. `300`) or remove the line.
+- **The new backend refuses to start** in production unless `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FIELD_ENCRYPTION_KEY` (32+ characters)
+  and the three `FIREBASE_*` lines are all set; the error names every missing one. Every line above marked `MISSING` among those must be filled
+  before step 10, otherwise the health check fails and `deploy-release.sh` rolls back to the old release.
+- `ADMIN_SECRET_KEY` is no longer used in production: `/api/auth/register-admin` answers 404 there. To make someone an admin, an existing admin
+  changes their role under Admin > Users.
 - `SENTRY_DSN`: optional, gives you error tracking.
 - Email digest / campaigns (new in this release, all optional): `SENDER_FROM_EMAIL` / `MAILCHIMP_FROM_EMAIL` set the reply-to address
   (default `newsletter@kidrove.com`, which must be a verified sender in Sender/Mailchimp or the send is refused). `SENDER_WEBHOOK_SECRET` /
