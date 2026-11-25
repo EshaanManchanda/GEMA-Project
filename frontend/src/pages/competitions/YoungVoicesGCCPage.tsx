@@ -1058,6 +1058,28 @@ const YoungVoicesGCCPage: React.FC = () => {
 
       </div>
 
+      {/* ── Partnership & Sponsorship CTA ─────────────────────────────────────── */}
+      <div id="partnerships" className="py-20 border-y border-teal-200/90 relative overflow-hidden bg-gradient-to-b from-[#E6F8F8]/90 via-[#F4FDFD]/95 to-[#EBF9F9]/90 backdrop-blur-md">
+        {/* Subtle Decorative Background Glows */}
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[80%] rounded-full bg-teal-300/25 blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[80%] rounded-full bg-[#9DF4F3]/35 blur-[140px] pointer-events-none" />
+
+        <div className="max-w-5xl mx-auto px-4 relative z-10 text-center">
+          <h2 className="text-4xl md:text-6xl font-black text-slate-900 mb-6 tracking-tight">
+            Become a <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-700 via-teal-600 to-cyan-700 drop-shadow-xs">Sponsor</span>
+          </h2>
+          <p className="text-slate-600 max-w-2xl mx-auto text-lg md:text-xl mb-10 leading-relaxed font-medium">
+            We invite schools, universities, and businesses to empower the next generation of GCC writers and storytellers through meaningful sponsorships.
+          </p>
+          <Link
+            to="/competitions/young-voices-of-the-gcc/sponsorship"
+            className="inline-flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-bold text-lg rounded-full transition-all shadow-md hover:shadow-xl hover:scale-105 active:scale-95"
+          >
+            Explore Sponsorship Options <FiChevronRight className="stroke-[3] text-xl" />
+          </Link>
+        </div>
+      </div>
+
       {/* ─── 7. REGISTRATION WIZARD ────────────────────────────────────── */}
       <section
         id="register-section"

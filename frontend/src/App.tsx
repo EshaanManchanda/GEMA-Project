@@ -177,10 +177,13 @@ const CompetitionPaymentSuccessPage = React.lazy(() => import(/* webpackChunkNam
 const NationalDayCompetitionPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/competitions/NationalDayCompetitionPage'));
 const NationalDayPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/competitions/NationalDayPaymentSuccessPage'));
 const NationalDayArtworkSubmitPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/competitions/NationalDayArtworkSubmitPage'));
+const NationalDaySponsorshipPage = React.lazy(() => import(/* webpackChunkName: "national-day-competition" */ './pages/competitions/NationalDaySponsorshipPage'));
 const YoungVoicesGCCPage = React.lazy(() => import(/* webpackChunkName: "gcc-competition" */ './pages/competitions/YoungVoicesGCCPage'));
 const YoungVoicesPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "gcc-competition" */ './pages/competitions/YoungVoicesPaymentSuccessPage'));
+const YoungVoicesGCCSponsorshipPage = React.lazy(() => import(/* webpackChunkName: "gcc-competition" */ './pages/competitions/YoungVoicesGCCSponsorshipPage'));
 const GCCReelChallengePage = React.lazy(() => import(/* webpackChunkName: "reel-competition" */ './pages/competitions/GCCReelChallengePage'));
 const GCCReelPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "reel-competition" */ './pages/competitions/GCCReelPaymentSuccessPage'));
+const GCCReelSponsorshipPage = React.lazy(() => import(/* webpackChunkName: "reel-competition" */ './pages/competitions/GCCReelSponsorshipPage'));
 const YoungVoicesGCCSubmitPage = React.lazy(() => import(/* webpackChunkName: "gcc-competition" */ './pages/competitions/YoungVoicesGCCSubmitPage'));
 const GCCReelSubmitPage = React.lazy(() => import(/* webpackChunkName: "reel-competition" */ './pages/competitions/GCCReelSubmitPage'));
 
@@ -414,6 +417,11 @@ function AppContent() {
                   <NationalDayArtworkSubmitPage />
                 </Suspense>
               } />
+              <Route path="sponsorship" element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <NationalDaySponsorshipPage />
+                </Suspense>
+              } />
             </Route>
             <Route path="young-voices-of-the-gcc">
               <Route index element={
@@ -429,6 +437,11 @@ function AppContent() {
               <Route path="submit" element={
                 <Suspense fallback={<GenericPageSkeleton />}>
                   <YoungVoicesGCCSubmitPage />
+                </Suspense>
+              } />
+              <Route path="sponsorship" element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <YoungVoicesGCCSponsorshipPage />
                 </Suspense>
               } />
             </Route>
@@ -448,6 +461,11 @@ function AppContent() {
                   <GCCReelSubmitPage />
                 </Suspense>
               } />
+              <Route path="sponsorship" element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <GCCReelSponsorshipPage />
+                </Suspense>
+              } />
             </Route>
           </Route>
 
@@ -458,12 +476,15 @@ function AppContent() {
           <Route path="national-day-art-competition" element={<Navigate to="/competitions/national-day-art-competition" replace />} />
           <Route path="national-day-art-competition/payment-success" element={<Navigate to="/competitions/national-day-art-competition/payment-success" replace />} />
           <Route path="national-day-art-competition/submit" element={<Navigate to="/competitions/national-day-art-competition/submit" replace />} />
+          <Route path="national-day-art-competition/sponsorship" element={<Navigate to="/competitions/national-day-art-competition/sponsorship" replace />} />
           <Route path="young-voices-of-the-gcc" element={<Navigate to="/competitions/young-voices-of-the-gcc" replace />} />
           <Route path="young-voices-of-the-gcc/payment-success" element={<Navigate to="/competitions/young-voices-of-the-gcc/payment-success" replace />} />
+          <Route path="young-voices-of-the-gcc/submit" element={<Navigate to="/competitions/young-voices-of-the-gcc/submit" replace />} />
+          <Route path="young-voices-of-the-gcc/sponsorship" element={<Navigate to="/competitions/young-voices-of-the-gcc/sponsorship" replace />} />
           <Route path="gcc-reel-challenge" element={<Navigate to="/competitions/gcc-reel-challenge" replace />} />
           <Route path="gcc-reel-challenge/payment-success" element={<Navigate to="/competitions/gcc-reel-challenge/payment-success" replace />} />
-          <Route path="young-voices-of-the-gcc/submit" element={<Navigate to="/competitions/young-voices-of-the-gcc/submit" replace />} />
           <Route path="gcc-reel-challenge/submit" element={<Navigate to="/competitions/gcc-reel-challenge/submit" replace />} />
+          <Route path="gcc-reel-challenge/sponsorship" element={<Navigate to="/competitions/gcc-reel-challenge/sponsorship" replace />} />
 
           {/* Legacy: redirect old teaching-events detail URLs to the unified search page */}
           <Route path="teaching-events/:id" element={<Navigate to="/search" replace />} />

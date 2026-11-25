@@ -1117,6 +1117,28 @@ const GCCReelChallengePage: React.FC = () => {
 
       </div>
 
+      {/* ── Partnership & Sponsorship CTA ─────────────────────────────────────── */}
+      <div id="partnerships" className="py-20 border-y border-purple-200/90 relative overflow-hidden bg-gradient-to-b from-[#F5EEFD]/90 via-[#FAF7FE]/95 to-[#F3EBFC]/90 backdrop-blur-md">
+        {/* Subtle Decorative Background Glows */}
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[80%] rounded-full bg-purple-300/25 blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[80%] rounded-full bg-violet-300/25 blur-[140px] pointer-events-none" />
+
+        <div className="max-w-5xl mx-auto px-4 relative z-10 text-center">
+          <h2 className="text-4xl md:text-6xl font-black text-slate-900 mb-6 tracking-tight">
+            Become a <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-700 via-violet-700 to-fuchsia-700 drop-shadow-xs">Sponsor</span>
+          </h2>
+          <p className="text-slate-600 max-w-2xl mx-auto text-lg md:text-xl mb-10 leading-relaxed font-medium">
+            We invite schools, universities, and businesses to empower young videographers and reel creators across the GCC through meaningful sponsorships.
+          </p>
+          <Link
+            to="/competitions/gcc-reel-challenge/sponsorship"
+            className="inline-flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-purple-600 via-violet-600 to-purple-700 hover:from-purple-700 hover:to-violet-800 text-white font-bold text-lg rounded-full transition-all shadow-md hover:shadow-xl hover:scale-105 active:scale-95"
+          >
+            Explore Sponsorship Options <FiChevronRight className="stroke-[3] text-xl" />
+          </Link>
+        </div>
+      </div>
+
       {/* ─── 7. REGISTRATION WIZARD ────────────────────────────────────── */}
       <section
         id="register-section"
