@@ -1145,6 +1145,26 @@ function CompetitionDetailModal({
         onClose();
     };
 
+    const handleSendSingleReminder = async () => {
+        if (!confirm(`Send reminder email with submission link to ${submission.participant?.parentEmail}?`)) return;
+        setLoading(true);
+        try {
+            let res: any;
+            if (competitionType === 'national-day') {
+                res = await nationalDayAPI.sendReminder(submission._id);
+            } else if (competitionType === 'young-voices-gcc') {
+                res = await gccCompetitionAPI.sendReminder(submission._id);
+            } else if (competitionType === 'gcc-reel-challenge') {
+                res = await reelCompetitionAPI.sendReminder(submission._id);
+            }
+            toast.success(res?.message || 'Reminder email sent successfully');
+        } catch (err: any) {
+            toast.error(err?.response?.data?.message || err?.message || 'Failed to send reminder email');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -1593,7 +1613,7 @@ function CompetitionDetailModal({
                     </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 px-6 pb-6 pt-2 bg-gray-50 border-t border-gray-100 sticky bottom-0">
+                <div className="flex flex-wrap items-center gap-2 px-6 pb-6 pt-2 bg-gray-50 border-t border-gray-100 sticky bottom-0">
                     <button
                         onClick={async () => {
                             if (!confirm('Are you sure you want to delete this submission?')) return;
@@ -1607,6 +1627,16 @@ function CompetitionDetailModal({
                     >
                         <Trash2 className="w-4 h-4" /> Delete
                     </button>
+                    {competitionType !== 'ai-art' && (
+                        <button
+                            onClick={handleSendSingleReminder}
+                            disabled={loading}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                            title="Send email with submission link & reference number"
+                        >
+                            <Send className="w-4 h-4" /> Send Email
+                        </button>
+                    )}
                     <button
                         onClick={handleSave}
                         disabled={loading}
@@ -1636,6 +1666,51 @@ function CompetitionTab() {
     const [to, setTo] = useState('');
     const [page, setPage] = useState(1);
     const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null);
+    const [isSendingReminder, setIsSendingReminder] = useState(false);
+    const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
+
+    const handleSendReminder = async (sub?: any) => {
+        const isBulk = !sub;
+        const confirmMsg = isBulk
+            ? `Send reminder email with submission link to ALL pending registrations in ${
+                selectedCompetition === 'national-day'
+                    ? 'Eid Al Etihad'
+                    : selectedCompetition === 'young-voices-gcc'
+                    ? 'Young Voices'
+                    : 'Ramadan & Eid'
+              }?`
+            : `Send reminder email with submission link to ${sub.participant?.parentEmail} (Ref: ${
+                sub.submissionRef || sub._id
+              })?`;
+
+        if (!confirm(confirmMsg)) return;
+
+        if (isBulk) {
+            setIsSendingReminder(true);
+        } else {
+            setSendingReminderId(sub._id);
+        }
+
+        try {
+            let res: any;
+            if (selectedCompetition === 'national-day') {
+                res = await nationalDayAPI.sendReminder(sub?._id);
+            } else if (selectedCompetition === 'young-voices-gcc') {
+                res = await gccCompetitionAPI.sendReminder(sub?._id);
+            } else if (selectedCompetition === 'gcc-reel-challenge') {
+                res = await reelCompetitionAPI.sendReminder(sub?._id);
+            }
+            toast.success(res?.message || 'Reminder email(s) sent successfully');
+        } catch (err: any) {
+            toast.error(err?.response?.data?.message || err?.message || 'Failed to send reminder email');
+        } finally {
+            if (isBulk) {
+                setIsSendingReminder(false);
+            } else {
+                setSendingReminderId(null);
+            }
+        }
+    };
 
     const fetchSubmissions = useCallback(async () => {
         setIsLoading(true);
@@ -1871,6 +1946,17 @@ function CompetitionTab() {
                             search: search || undefined,
                         }}
                     />
+                    {selectedCompetition !== 'ai-art' && (
+                        <button
+                            onClick={() => handleSendReminder()}
+                            disabled={isSendingReminder}
+                            className="p-2.5 bg-amber-50 border border-amber-300 text-amber-800 rounded-lg hover:bg-amber-100 transition-colors flex items-center gap-2 text-sm font-semibold disabled:opacity-50"
+                            title="Send email to all participants whose artwork/entry is pending with reference number & submission link"
+                        >
+                            <Send className={`w-4 h-4 ${isSendingReminder ? 'animate-pulse' : ''}`} />
+                            {isSendingReminder ? 'Sending Emails...' : 'Send email'}
+                        </button>
+                    )}
                     <button onClick={fetchSubmissions} className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm text-gray-600">
                         <RefreshCw className="w-4 h-4" /> Refresh
                     </button>
@@ -1979,6 +2065,16 @@ function CompetitionTab() {
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex justify-end gap-1">
+                                                {selectedCompetition !== 'ai-art' && (!sub.artwork?.title && !sub.story?.title && !sub.reel?.title || sub.status === 'pending') && (
+                                                    <button
+                                                        onClick={() => handleSendReminder(sub)}
+                                                        disabled={sendingReminderId === sub._id}
+                                                        className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-600 transition-colors disabled:opacity-50"
+                                                        title="Send reminder email with submission link & reference number"
+                                                    >
+                                                        <Send className={`w-4 h-4 ${sendingReminderId === sub._id ? 'animate-pulse' : ''}`} />
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => setSelectedSubmission(sub)}
                                                     className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors"

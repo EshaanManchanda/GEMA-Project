@@ -874,6 +874,127 @@ export const generateSubmissionCertificate = catchAsync(
   }
 );
 
+// ─── Admin: Send Pending Artwork Submission Reminder Email ──────────────────
+
+export const sendSubmissionReminder = catchAsync(
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+
+    // Single submission reminder if ID is passed
+    if (id && id !== "bulk") {
+      const submission = await NationalDaySubmission.findById(id);
+      if (!submission) {
+        return next(new AppError("Submission not found", 404));
+      }
+
+      const hasArtwork = Boolean(submission.artworkUpload?.artworkUrl);
+      const isPending = !hasArtwork || submission.status === SubmissionStatus.PENDING;
+      if (!isPending) {
+        return next(
+          new AppError("Artwork has already been submitted for this registration", 400)
+        );
+      }
+
+      const parentEmail = submission.participant?.parentEmail;
+      if (!parentEmail) {
+        return next(new AppError("Parent email not found for this entry", 400));
+      }
+
+      const subRef =
+        (submission as any).submissionRef ||
+        `UAE2026-${submission._id.toString().slice(-8).toUpperCase()}`;
+      const isLittleArtist =
+        submission.participant?.category === "Little Artists" ||
+        ["kindergarten", "kg1", "kg2", "grade 1", "grade 2", "1", "2"].includes(
+          (submission.participant?.grade || "").toLowerCase().trim()
+        );
+
+      await emailService.sendCompetitionSubmissionReminder({
+        to: parentEmail,
+        studentName: submission.participant.studentFullName,
+        parentName: submission.participant.parentName,
+        refNo: subRef,
+        grade: submission.participant.grade,
+        category: submission.participant.category,
+        competitionType: "national-day",
+        isLittleArtist,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: `Reminder email sent successfully to ${parentEmail} (Ref: ${subRef})`,
+      });
+    }
+
+    // Bulk send to all pending/unsubmitted registrations
+    const pendingSubmissions = await NationalDaySubmission.find({
+      $or: [
+        { "artworkUpload.artworkUrl": { $exists: false } },
+        { "artworkUpload.artworkUrl": null },
+        { "artworkUpload.artworkUrl": "" },
+        { status: SubmissionStatus.PENDING },
+      ],
+      "participant.parentEmail": { $exists: true, $ne: "" },
+    });
+
+    if (pendingSubmissions.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No pending submissions found requiring a reminder email.",
+        data: { totalPending: 0, sentCount: 0 },
+      });
+    }
+
+    // Process asynchronous background dispatch with rate-limiting so the HTTP request returns immediately without timing out
+    setImmediate(async () => {
+      logger.info(`[national-day] Starting background email reminder dispatch for ${pendingSubmissions.length} pending entries`);
+      let sentCount = 0;
+
+      for (const sub of pendingSubmissions) {
+        const email = sub.participant?.parentEmail;
+        if (!email) continue;
+        const subRef =
+          (sub as any).submissionRef ||
+          `UAE2026-${sub._id.toString().slice(-8).toUpperCase()}`;
+        const isLittleArtist =
+          sub.participant?.category === "Little Artists" ||
+          ["kindergarten", "kg1", "kg2", "grade 1", "grade 2", "1", "2"].includes(
+            (sub.participant?.grade || "").toLowerCase().trim()
+          );
+
+        try {
+          await emailService.sendCompetitionSubmissionReminder({
+            to: email,
+            studentName: sub.participant.studentFullName,
+            parentName: sub.participant.parentName,
+            refNo: subRef,
+            grade: sub.participant.grade,
+            category: sub.participant.category,
+            competitionType: "national-day",
+            isLittleArtist,
+          });
+          sentCount++;
+        } catch (err: any) {
+          logger.error(`[national-day] Failed to send reminder email to ${email} (Ref: ${subRef}):`, err);
+        }
+
+        // Brief delay between emails to avoid hitting SMTP rate-limits
+        await new Promise((r) => setTimeout(r, 200));
+      }
+
+      logger.info(`[national-day] Completed background email reminders: ${sentCount}/${pendingSubmissions.length} sent successfully.`);
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Reminder dispatch started for ${pendingSubmissions.length} pending entries. Emails are being delivered in the background.`,
+      data: {
+        totalPending: pendingSubmissions.length,
+      },
+    });
+  }
+);
+
 // ─── Download / View Artwork File (Direct Proxy Stream) ───────────────────────
 
 export const downloadArtwork = catchAsync(

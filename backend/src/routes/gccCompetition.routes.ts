@@ -14,6 +14,7 @@ import {
   updateSubmissionStatus,
   deleteSubmission,
   generateSubmissionCertificate,
+  sendSubmissionReminder,
   downloadStoryFile,
 } from "../controllers/gccCompetition.controller";
 
@@ -38,6 +39,8 @@ router.get("/submissions", authenticate, authorize([UserRole.ADMIN]), getSubmiss
 router.patch("/submissions/:id/status", authenticate, authorize([UserRole.ADMIN]), updateSubmissionStatus);
 router.delete("/submissions/:id", authenticate, authorize([UserRole.ADMIN]), deleteSubmission);
 router.post("/submissions/:id/certificate", authenticate, authorize([UserRole.ADMIN]), generateSubmissionCertificate);
+router.post("/submissions/:id/remind", authenticate, authorize([UserRole.ADMIN]), sendSubmissionReminder);
+router.post("/submissions/remind-pending", authenticate, authorize([UserRole.ADMIN]), sendSubmissionReminder);
 // Manuscripts are minors' work: admin only (the admin UI opens this with its session cookie).
 router.get("/submissions/:id/file", authenticate, authorize([UserRole.ADMIN]), downloadStoryFile);
 

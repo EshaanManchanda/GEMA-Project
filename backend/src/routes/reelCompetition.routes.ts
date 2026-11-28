@@ -14,6 +14,7 @@ import {
   updateSubmissionStatus,
   deleteSubmission,
   generateSubmissionCertificate,
+  sendSubmissionReminder,
 } from "../controllers/reelCompetition.controller";
 
 const router = Router();
@@ -37,6 +38,8 @@ router.get("/submissions", authenticate, authorize([UserRole.ADMIN]), getSubmiss
 router.patch("/submissions/:id/status", authenticate, authorize([UserRole.ADMIN]), updateSubmissionStatus);
 router.delete("/submissions/:id", authenticate, authorize([UserRole.ADMIN]), deleteSubmission);
 router.post("/submissions/:id/certificate", authenticate, authorize([UserRole.ADMIN]), generateSubmissionCertificate);
+router.post("/submissions/:id/remind", authenticate, authorize([UserRole.ADMIN]), sendSubmissionReminder);
+router.post("/submissions/remind-pending", authenticate, authorize([UserRole.ADMIN]), sendSubmissionReminder);
 
 export default router;
 

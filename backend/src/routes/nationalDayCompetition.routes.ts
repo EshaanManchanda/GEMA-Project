@@ -14,6 +14,7 @@ import {
   updateSubmissionStatus,
   deleteSubmission,
   generateSubmissionCertificate,
+  sendSubmissionReminder,
   downloadArtwork,
 } from "../controllers/nationalDayCompetition.controller";
 
@@ -103,6 +104,20 @@ router.post(
   authenticate,
   authorize([UserRole.ADMIN]),
   generateSubmissionCertificate
+);
+
+router.post(
+  "/submissions/:id/remind",
+  authenticate,
+  authorize([UserRole.ADMIN]),
+  sendSubmissionReminder
+);
+
+router.post(
+  "/submissions/remind-pending",
+  authenticate,
+  authorize([UserRole.ADMIN]),
+  sendSubmissionReminder
 );
 
 /**

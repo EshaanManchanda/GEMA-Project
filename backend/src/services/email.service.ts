@@ -1,4 +1,4 @@
-import nodemailer, { type Mail } from "nodemailer";
+import nodemailer from "nodemailer";
 import { config } from "../config/index";
 import { escapeHtml } from "../utils/htmlHelpers";
 import {
@@ -304,8 +304,24 @@ export interface NationalDayRegistrationEmailOptions {
   }>;
 }
 
+export interface CompetitionSubmissionReminderOptions {
+  to: string;
+  studentName: string;
+  parentName: string;
+  refNo: string;
+  grade?: string;
+  category?: string;
+  competitionType: "national-day" | "young-voices-gcc" | "gcc-reel-challenge";
+  competitionName?: string;
+  competitionBadge?: string;
+  submissionDeadline?: string;
+  submissionUrl?: string;
+  templateDownloadUrl?: string;
+  isLittleArtist?: boolean;
+}
+
 class EmailService {
-  private transporter: Mail;
+  private transporter: nodemailer.Transporter;
 
   constructor() {
     this.transporter = this.buildTransporter({
@@ -321,7 +337,7 @@ class EmailService {
     port: number;
     username: string;
     password: string;
-  }): Mail {
+  }): nodemailer.Transporter {
     return nodemailer.createTransport({
       host: cfg.host,
       port: cfg.port,
@@ -2761,6 +2777,157 @@ Deadline for artwork submission: 15 December 2026.
       html,
       text,
       attachments: options.attachments,
+      notificationType: "essential",
+    });
+  }
+
+  /**
+   * Send reminder email to participants who have not submitted their artwork / story / reel yet
+   */
+  async sendCompetitionSubmissionReminder(
+    options: CompetitionSubmissionReminderOptions,
+  ): Promise<void> {
+    const frontendUrl = config.frontendUrl || "http://localhost:5173";
+
+    let defaultBadge = "🇦🇪 Eid Al Etihad 2026";
+    let defaultCompName = "Eid Al Etihad Children's Art Competition 2026";
+    let defaultDeadline = "15 December 2026";
+    let defaultSubmitUrl = `${frontendUrl}/competitions/national-day-art-competition/submit?ref=${encodeURIComponent(options.refNo)}&email=${encodeURIComponent(String(options.to))}`;
+    let itemNoun = "artwork";
+
+    if (options.competitionType === "young-voices-gcc") {
+      defaultBadge = "✨ Young Voices of the GCC 2027";
+      defaultCompName = "Young Voices of the GCC Short Story Competition 2027";
+      defaultDeadline = "31 January 2027";
+      defaultSubmitUrl = `${frontendUrl}/competitions/young-voices-of-the-gcc/submit?ref=${encodeURIComponent(options.refNo)}&email=${encodeURIComponent(String(options.to))}`;
+      itemNoun = "story manuscript";
+    } else if (options.competitionType === "gcc-reel-challenge") {
+      defaultBadge = "🌙 GCC Reel Challenge 2027";
+      defaultCompName = "Ramadan & Eid Through My Lens — Mobile Reel Competition";
+      defaultDeadline = "28 February 2027";
+      defaultSubmitUrl = `${frontendUrl}/competitions/gcc-reel-challenge/submit?ref=${encodeURIComponent(options.refNo)}&email=${encodeURIComponent(String(options.to))}`;
+      itemNoun = "reel video";
+    }
+
+    const badgeText = options.competitionBadge || defaultBadge;
+    const compName = options.competitionName || defaultCompName;
+    const deadline = options.submissionDeadline || defaultDeadline;
+    const submitUrl = options.submissionUrl || defaultSubmitUrl;
+    const downloadUrl = options.templateDownloadUrl || `${frontendUrl}/assets/eid-al-etihad-colouring-template.pdf`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #334155; margin: 0; padding: 40px 20px; background-color: #f8fafc; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%); color: white; padding: 40px 30px; text-align: center; }
+          .header-badge { display: inline-block; background: rgba(0,0,0,0.25); padding: 8px 16px; border-radius: 30px; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.25); }
+          .header h1 { margin: 0; font-size: 26px; font-weight: 800; }
+          .content { padding: 35px 30px; background: #ffffff; }
+          .greeting { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 0; }
+          .lead { font-size: 15px; color: #475569; margin-bottom: 20px; }
+          .urgent-banner { background: #fef3c7; border: 2px solid #f59e0b; border-radius: 14px; padding: 18px 20px; text-align: center; margin: 20px 0; }
+          .urgent-title { color: #92400e; font-weight: 800; font-size: 16px; margin: 0 0 6px 0; }
+          .urgent-date { color: #b45309; font-weight: 900; font-size: 18px; margin: 0; }
+          .ref-card { background: #FAF8F5; border: 2px dashed #d97706; border-radius: 16px; padding: 20px; text-align: center; margin: 25px 0; }
+          .ref-title { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #78350f; font-weight: 800; margin-bottom: 6px; display: block; }
+          .ref-number { font-size: 24px; font-family: monospace; font-weight: 900; color: #b45309; letter-spacing: 2px; }
+          .btn { display: inline-block; padding: 14px 28px; border-radius: 30px; font-size: 15px; font-weight: 800; text-decoration: none; text-align: center; margin: 10px 6px; }
+          .btn-primary { background: #059669; color: white !important; }
+          .btn-action { background: #d97706; color: white !important; }
+          .instructions-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 20px; margin: 25px 0; }
+          .instructions-box h3 { margin-top: 0; color: #166534; font-size: 16px; font-weight: 800; }
+          .footer { background: #0f172a; padding: 25px; text-align: center; color: #94a3b8; font-size: 12px; }
+          .footer p { margin: 4px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="header-badge">${badgeText}</div>
+            <h1>Have you not submitted your ${itemNoun} yet?</h1>
+          </div>
+          <div class="content">
+            <h2 class="greeting">Hi ${escapeHtml(options.parentName)}!</h2>
+            <p class="lead">
+              We noticed that the submission for <strong>${escapeHtml(options.studentName)}</strong>${options.grade ? ` (${escapeHtml(options.grade)})` : ""} in the <strong>${compName}</strong> is still pending. Don't miss out on having your child participate!
+            </p>
+
+            <div class="urgent-banner">
+              <div class="urgent-title">⏰ LAST DATE OF SUBMISSION</div>
+              <div class="urgent-date">${deadline}</div>
+            </div>
+
+            <div class="ref-card">
+              <span class="ref-title">Your Official Reference Number</span>
+              <div class="ref-number">${options.refNo}</div>
+              <p style="font-size: 12px; color: #64748b; margin: 8px 0 0 0;">Use this Reference Number to upload the ${itemNoun}.</p>
+            </div>
+
+            ${
+              options.competitionType === "national-day" && options.isLittleArtist
+                ? `
+            <div class="instructions-box">
+              <h3>🎨 Little Artists (Kindergarten to Grade 2):</h3>
+              <p style="background: #fef3c7; border: 1px solid #f59e0b; padding: 10px 14px; border-radius: 8px; color: #92400e; font-size: 13px; font-weight: 700; margin: 10px 0 15px 0;">
+                ⚠️ <strong>Note:</strong> Download the colouring template, choose and colour any ONE template, and upload the photo before ${deadline}.
+              </p>
+              <div style="text-align: center; margin-top: 20px;">
+                <a href="${downloadUrl}" class="btn btn-primary" target="_blank">📥 Download Colouring Template</a>
+                <a href="${submitUrl}" class="btn btn-action" target="_blank">🎨 Submit Artwork Online Now</a>
+              </div>
+            </div>
+            `
+                : `
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${submitUrl}" class="btn btn-action" style="background:#059669;padding:16px 36px;font-size:16px;" target="_blank">
+                👉 Click Here to Submit Your ${itemNoun.toUpperCase()}
+              </a>
+              <p style="font-size: 13px; color: #64748b; margin-top: 10px;">
+                Direct link: <a href="${submitUrl}" style="color:#059669;word-break:break-all;">${submitUrl}</a>
+              </p>
+            </div>
+            `
+            }
+
+            <p style="font-size: 14px; color: #64748b; line-height: 1.6;">
+              Please make sure your ${itemNoun} is ready and uploaded before the deadline (${deadline}). If you have already submitted or have any questions, feel free to reply to this email.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>KIDROVE · ${compName}</strong></p>
+            <p>&copy; ${new Date().getFullYear()} Kidrove. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Hi ${options.parentName}!
+
+Have you not submitted your ${itemNoun} yet?
+
+We noticed that the submission for ${options.studentName}${options.grade ? ` (${options.grade})` : ""} in ${compName} is still pending.
+
+LAST DATE OF SUBMISSION: ${deadline}
+
+Your Reference Number: ${options.refNo}
+
+Submit your ${itemNoun} here:
+${submitUrl}
+
+Please ensure your ${itemNoun} is uploaded before ${deadline}.
+    `.trim();
+
+    await this.sendEmail({
+      to: options.to,
+      subject: `Have you not submitted your ${itemNoun} yet? (Ref: ${options.refNo}) — ${compName}`,
+      html,
+      text,
       notificationType: "essential",
     });
   }

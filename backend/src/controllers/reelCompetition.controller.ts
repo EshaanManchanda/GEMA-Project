@@ -888,3 +888,109 @@ export const generateSubmissionCertificate = catchAsync(
   }
 );
 
+// ─── Admin: Send Pending Reel Submission Reminder Email ─────────────────────
+
+export const sendSubmissionReminder = catchAsync(
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+
+    if (id && id !== "bulk") {
+      const submission = await ReelSubmission.findById(id);
+      if (!submission) {
+        return next(new AppError("Submission not found", 404));
+      }
+
+      const hasReel = Boolean(submission.reel?.videoUrl || submission.reel?.videoDriveLink);
+      const isPending = !hasReel || submission.status === ReelSubmissionStatus.PENDING;
+      if (!isPending) {
+        return next(
+          new AppError("Reel video has already been submitted for this registration", 400)
+        );
+      }
+
+      const parentEmail = submission.participant?.parentEmail;
+      if (!parentEmail) {
+        return next(new AppError("Parent email not found for this entry", 400));
+      }
+
+      const subRef =
+        (submission as any).submissionRef ||
+        `REEL2027-${submission._id.toString().slice(-8).toUpperCase()}`;
+
+      await emailService.sendCompetitionSubmissionReminder({
+        to: parentEmail,
+        studentName: submission.participant.studentFullName,
+        parentName: submission.participant.parentName,
+        refNo: subRef,
+        grade: submission.participant.grade,
+        category: submission.participant.category,
+        competitionType: "gcc-reel-challenge",
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: `Reminder email sent successfully to ${parentEmail} (Ref: ${subRef})`,
+      });
+    }
+
+    const pendingSubmissions = await ReelSubmission.find({
+      $or: [
+        { "reel.videoUrl": { $exists: false } },
+        { "reel.videoUrl": null },
+        { "reel.videoUrl": "" },
+        { status: ReelSubmissionStatus.PENDING },
+      ],
+      "participant.parentEmail": { $exists: true, $ne: "" },
+    });
+
+    if (pendingSubmissions.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No pending submissions found requiring a reminder email.",
+        data: { totalPending: 0, sentCount: 0 },
+      });
+    }
+
+    setImmediate(async () => {
+      logger.info(`[reel-challenge] Starting background email reminder dispatch for ${pendingSubmissions.length} pending entries`);
+      let sentCount = 0;
+
+      for (const sub of pendingSubmissions) {
+        const email = sub.participant?.parentEmail;
+        if (!email) continue;
+        const subRef =
+          (sub as any).submissionRef ||
+          `REEL2027-${sub._id.toString().slice(-8).toUpperCase()}`;
+
+        try {
+          await emailService.sendCompetitionSubmissionReminder({
+            to: email,
+            studentName: sub.participant.studentFullName,
+            parentName: sub.participant.parentName,
+            refNo: subRef,
+            grade: sub.participant.grade,
+            category: sub.participant.category,
+            competitionType: "gcc-reel-challenge",
+          });
+          sentCount++;
+        } catch (err: any) {
+          logger.error(`[reel-challenge] Failed to send reminder email to ${email} (Ref: ${subRef}):`, err);
+        }
+
+        await new Promise((r) => setTimeout(r, 200));
+      }
+
+      logger.info(`[reel-challenge] Completed background email reminders: ${sentCount}/${pendingSubmissions.length} sent successfully.`);
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Reminder dispatch started for ${pendingSubmissions.length} pending entries. Emails are being delivered in the background.`,
+      data: {
+        totalPending: pendingSubmissions.length,
+      },
+    });
+  }
+);
+
+

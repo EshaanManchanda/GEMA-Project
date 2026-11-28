@@ -158,6 +158,16 @@ export const reelCompetitionAPI = {
       medal,
     });
   },
+
+  /**
+   * Admin: Send reminder email to unsubmitted / pending submission
+   */
+  sendReminder: async (id?: string) => {
+    const endpoint = id
+      ? `/reel-competition/submissions/${id}/remind`
+      : `/reel-competition/submissions/remind-pending`;
+    return ApiService.post<any>(endpoint, {}, { timeout: 120000 });
+  },
 };
 
 export default reelCompetitionAPI;

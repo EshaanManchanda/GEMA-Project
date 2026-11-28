@@ -890,6 +890,111 @@ export const generateSubmissionCertificate = catchAsync(
   }
 );
 
+// ─── Admin: Send Pending Story Submission Reminder Email ────────────────────
+
+export const sendSubmissionReminder = catchAsync(
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+
+    if (id && id !== "bulk") {
+      const submission = await GCCSubmission.findById(id);
+      if (!submission) {
+        return next(new AppError("Submission not found", 404));
+      }
+
+      const hasStory = Boolean(submission.storyUpload?.storyUrl || submission.story?.storyContent);
+      const isPending = !hasStory || submission.status === GCCSubmissionStatus.PENDING;
+      if (!isPending) {
+        return next(
+          new AppError("Story manuscript has already been submitted for this registration", 400)
+        );
+      }
+
+      const parentEmail = submission.participant?.parentEmail;
+      if (!parentEmail) {
+        return next(new AppError("Parent email not found for this entry", 400));
+      }
+
+      const subRef =
+        (submission as any).submissionRef ||
+        `GCC2027-${submission._id.toString().slice(-8).toUpperCase()}`;
+
+      await emailService.sendCompetitionSubmissionReminder({
+        to: parentEmail,
+        studentName: submission.participant.studentFullName,
+        parentName: submission.participant.parentName,
+        refNo: subRef,
+        grade: submission.participant.grade,
+        category: submission.participant.category,
+        competitionType: "young-voices-gcc",
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: `Reminder email sent successfully to ${parentEmail} (Ref: ${subRef})`,
+      });
+    }
+
+    const pendingSubmissions = await GCCSubmission.find({
+      $or: [
+        { "storyUpload.storyUrl": { $exists: false } },
+        { "storyUpload.storyUrl": null },
+        { "storyUpload.storyUrl": "" },
+        { status: GCCSubmissionStatus.PENDING },
+      ],
+      "participant.parentEmail": { $exists: true, $ne: "" },
+    });
+
+    if (pendingSubmissions.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No pending submissions found requiring a reminder email.",
+        data: { totalPending: 0, sentCount: 0 },
+      });
+    }
+
+    setImmediate(async () => {
+      logger.info(`[gcc-competition] Starting background email reminder dispatch for ${pendingSubmissions.length} pending entries`);
+      let sentCount = 0;
+
+      for (const sub of pendingSubmissions) {
+        const email = sub.participant?.parentEmail;
+        if (!email) continue;
+        const subRef =
+          (sub as any).submissionRef ||
+          `GCC2027-${sub._id.toString().slice(-8).toUpperCase()}`;
+
+        try {
+          await emailService.sendCompetitionSubmissionReminder({
+            to: email,
+            studentName: sub.participant.studentFullName,
+            parentName: sub.participant.parentName,
+            refNo: subRef,
+            grade: sub.participant.grade,
+            category: sub.participant.category,
+            competitionType: "young-voices-gcc",
+          });
+          sentCount++;
+        } catch (err: any) {
+          logger.error(`[gcc-competition] Failed to send reminder email to ${email} (Ref: ${subRef}):`, err);
+        }
+
+        await new Promise((r) => setTimeout(r, 200));
+      }
+
+      logger.info(`[gcc-competition] Completed background email reminders: ${sentCount}/${pendingSubmissions.length} sent successfully.`);
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Reminder dispatch started for ${pendingSubmissions.length} pending entries. Emails are being delivered in the background.`,
+      data: {
+        totalPending: pendingSubmissions.length,
+      },
+    });
+  }
+);
+
 // ─── Download / View Story File ───────────────────────────────────────────────
 
 // Types a story manuscript may legitimately be (always downloaded, never rendered).

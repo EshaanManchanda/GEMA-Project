@@ -300,6 +300,17 @@ const nationalDayAPI = {
     });
     return response as { success: boolean; message?: string; data?: any };
   },
+
+  /**
+   * Admin: Send reminder email to unsubmitted / pending submission
+   */
+  sendReminder: async (id?: string) => {
+    const endpoint = id
+      ? `/national-day-competition/submissions/${id}/remind`
+      : `/national-day-competition/submissions/remind-pending`;
+    const response = await ApiService.post(endpoint, {}, { timeout: 120000 });
+    return response as { success: boolean; message: string; data?: any };
+  },
 };
 
 export default nationalDayAPI;

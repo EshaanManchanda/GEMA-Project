@@ -154,6 +154,16 @@ export const gccCompetitionAPI = {
       medal,
     });
   },
+
+  /**
+   * Admin: Send reminder email to unsubmitted / pending submission
+   */
+  sendReminder: async (id?: string) => {
+    const endpoint = id
+      ? `/gcc-competition/submissions/${id}/remind`
+      : `/gcc-competition/submissions/remind-pending`;
+    return ApiService.post<any>(endpoint, {}, { timeout: 120000 });
+  },
 };
 
 export default gccCompetitionAPI;

@@ -295,11 +295,28 @@ export const config: Config = {
   },
   email: {
     service: process.env.EMAIL_SERVICE || "smtp",
-    host: process.env.SMTP_HOST || process.env.EMAIL_HOST || "smtp.hostinger.com",
-    port: parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || "587", 10),
-    username: process.env.SMTP_CUSTOMER || process.env.SMTP_USER || process.env.EMAIL_USERNAME || "contact@kidrove.com",
-    password: process.env.SMTP_PASS || process.env.EMAIL_PASSWORD || "",
-    from: process.env.SMTP_FROM || process.env.EMAIL_FROM || "contact@kidrove.com",
+    host:
+      process.env.NODE_ENV !== "production" && process.env.EMAIL_SERVICE === "ethereal"
+        ? (process.env.EMAIL_HOST || "smtp.ethereal.email")
+        : (process.env.SMTP_HOST || process.env.EMAIL_HOST || "smtp.hostinger.com"),
+    port: parseInt(
+      (process.env.NODE_ENV !== "production" && process.env.EMAIL_SERVICE === "ethereal"
+        ? (process.env.EMAIL_PORT || "587")
+        : (process.env.SMTP_PORT || process.env.EMAIL_PORT || "587")),
+      10
+    ),
+    username:
+      process.env.NODE_ENV !== "production" && process.env.EMAIL_SERVICE === "ethereal"
+        ? (process.env.EMAIL_USERNAME || "")
+        : (process.env.SMTP_CUSTOMER || process.env.SMTP_USER || process.env.EMAIL_USERNAME || "contact@kidrove.com"),
+    password:
+      process.env.NODE_ENV !== "production" && process.env.EMAIL_SERVICE === "ethereal"
+        ? (process.env.EMAIL_PASSWORD || "")
+        : (process.env.SMTP_PASS || process.env.EMAIL_PASSWORD || ""),
+    from:
+      process.env.NODE_ENV !== "production" && process.env.EMAIL_SERVICE === "ethereal"
+        ? (process.env.EMAIL_FROM || process.env.EMAIL_USERNAME || "contact@kidrove.com")
+        : (process.env.SMTP_FROM || process.env.EMAIL_FROM || "contact@kidrove.com"),
     fromName: process.env.EMAIL_FROM_NAME || process.env.APP_NAME || "Kidrove",
   },
   upload: {
