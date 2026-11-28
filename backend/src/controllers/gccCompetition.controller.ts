@@ -910,6 +910,12 @@ export const sendSubmissionReminder = catchAsync(
         );
       }
 
+      if (submission.paymentStatus !== "paid") {
+        return next(
+          new AppError("Cannot send submission link: payment has not been received for this registration", 400)
+        );
+      }
+
       const parentEmail = submission.participant?.parentEmail;
       if (!parentEmail) {
         return next(new AppError("Parent email not found for this entry", 400));
@@ -935,7 +941,9 @@ export const sendSubmissionReminder = catchAsync(
       });
     }
 
+    // Bulk send to all pending/unsubmitted registrations that have PAID
     const pendingSubmissions = await GCCSubmission.find({
+      paymentStatus: "paid",
       $or: [
         { "storyUpload.storyUrl": { $exists: false } },
         { "storyUpload.storyUrl": null },
